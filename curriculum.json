@@ -1,540 +1,553 @@
 {
   "tracks": {
     "art": {
-      "title": "Art Endurance & Structural Craft",
-      "icon": "\ud83c\udfa8",
       "accent": "#fbbf24",
       "description": "Process, manual labor, negative space, geometric systems, and time saturation.",
+      "icon": "\ud83c\udfa8",
       "lessons": [
         {
-          "seq": 1,
+          "core": "Trained at the Bauhaus after being barred from glass and painting workshops, Anni Albers elevated weaving from decorative craft to rigorous modernist architecture. Studying ancient Andean knotted quipus and tunics, she treated warp and weft intersections as an encrypted, textless language.",
           "date": "2026-10-16",
+          "maker": "Layering Climalite, felt, flannel, and heavy denim isn't surface decoration\u2014the structural tension between weave weights is the architecture of the piece itself.",
           "model": "ARCHIVE",
-          "title": "Anni Albers \u2014 Thread as Structural Architecture",
+          "seq": 1,
           "tags": [
             "bauhaus",
             "textiles",
             "visual-code"
           ],
-          "core": "Trained at the Bauhaus after being barred from glass and painting workshops, Anni Albers elevated weaving from decorative craft to rigorous modernist architecture. Studying ancient Andean knotted quipus and tunics, she treated warp and weft intersections as an encrypted, textless language.",
-          "maker": "Layering Climalite, felt, flannel, and heavy denim isn't surface decoration\u2014the structural tension between weave weights is the architecture of the piece itself."
+          "title": "Anni Albers \u2014 Thread as Structural Architecture"
         },
         {
-          "seq": 2,
+          "core": "Using a wire-looping basketry technique learned in Toluca, Mexico, Ruth Asawa suspended biomorphic forms within forms where inside and outside occur simultaneously. Shadow on the gallery wall becomes half the sculpture.",
           "date": "2026-10-17",
+          "maker": "Cutting complete negative-space windows through outer denim to expose contrasting under-layers turns emptiness into an active structural layer.",
           "model": "ARCHIVE",
-          "title": "Ruth Asawa \u2014 Looped Wire & Continuous Negative Space",
+          "seq": 2,
           "tags": [
             "sculpture",
             "negative-space",
             "craft"
           ],
-          "core": "Using a wire-looping basketry technique learned in Toluca, Mexico, Ruth Asawa suspended biomorphic forms within forms where inside and outside occur simultaneously. Shadow on the gallery wall becomes half the sculpture.",
-          "maker": "Cutting complete negative-space windows through outer denim to expose contrasting under-layers turns emptiness into an active structural layer."
+          "title": "Ruth Asawa \u2014 Looped Wire & Continuous Negative Space"
         },
         {
-          "seq": 3,
+          "core": "Working behind the Iron Curtain in 1960s Warsaw with scavenged sisal ship ropes untwisted and dyed by hand, Abakanowicz wove towering three-dimensional 'Abakans' hung straight from gallery ceilings\u2014freeing textiles from flat walls forever into raw, bodily armor.",
           "date": "2026-10-18",
+          "maker": "Heavy reconstructed hoodies and layered denim carry sculptural weight even on a hanger\u2014garments as wearable monuments rather than flat merchandise.",
           "model": "ARCHIVE",
-          "title": "Magdalena Abakanowicz \u2014 Abakans & Monumental Fiber",
+          "seq": 3,
           "tags": [
             "fiber-sculpture",
             "texture",
             "presence"
           ],
-          "core": "Working behind the Iron Curtain in 1960s Warsaw with scavenged sisal ship ropes untwisted and dyed by hand, Abakanowicz wove towering three-dimensional 'Abakans' hung straight from gallery ceilings\u2014freeing textiles from flat walls forever into raw, bodily armor.",
-          "maker": "Heavy reconstructed hoodies and layered denim carry sculptural weight even on a hanger\u2014garments as wearable monuments rather than flat merchandise."
+          "title": "Magdalena Abakanowicz \u2014 Abakans & Monumental Fiber"
         },
         {
-          "seq": 4,
+          "core": "Rather than static gallery objects, Pierre Huyghe constructs self-regulating ecosystems\u2014from compost-and-bee sculptures to AI-driven aquariums\u2014that continue mutating whether a human audience is watching or not.",
           "date": "2026-10-19",
+          "maker": "Building autonomous software loops alongside physical garments treats code as a living studio organism running continuously in the background.",
           "model": "ARCHIVE",
-          "title": "Pierre Huyghe \u2014 Living Systems & Time-Based Worlds",
+          "seq": 4,
           "tags": [
             "ecosystems",
             "time-based",
             "autonomy"
           ],
-          "core": "Rather than static gallery objects, Pierre Huyghe constructs self-regulating ecosystems\u2014from compost-and-bee sculptures to AI-driven aquariums\u2014that continue mutating whether a human audience is watching or not.",
-          "maker": "Building autonomous software loops alongside physical garments treats code as a living studio organism running continuously in the background."
+          "title": "Pierre Huyghe \u2014 Living Systems & Time-Based Worlds"
         },
         {
-          "seq": 5,
+          "core": "Starting at the number 1 in the top-left corner of a black canvas in 1965, Opa\u0142ka spent the remaining 46 years of his life painting sequential numbers in white titanium pigment while speaking each integer into a tape recorder, lightening his background by 1% until painting white-on-white past 5.6 million.",
           "date": "2026-10-20",
+          "maker": "Repeating a strict non-verbal motif\u2014like 38 hand-cut cross windows across multi-tone denim\u2014builds hypnotic visual gravity without needing a single printed word.",
           "model": "ARCHIVE",
-          "title": "Roman Opa\u0142ka \u2014 1965 / 1 \u2013 \u221e",
+          "seq": 5,
           "tags": [
             "repetition",
             "monochrome",
             "mortality"
           ],
-          "core": "Starting at the number 1 in the top-left corner of a black canvas in 1965, Opa\u0142ka spent the remaining 46 years of his life painting sequential numbers in white titanium pigment while speaking each integer into a tape recorder, lightening his background by 1% until painting white-on-white past 5.6 million.",
-          "maker": "Repeating a strict non-verbal motif\u2014like 38 hand-cut cross windows across multi-tone denim\u2014builds hypnotic visual gravity without needing a single printed word."
+          "title": "Roman Opa\u0142ka \u2014 1965 / 1 \u2013 \u221e"
         },
         {
-          "seq": 6,
+          "core": "From April 1980 to April 1981, Tehching Hsieh punched a factory time clock every single hour on the hour for 365 days, snapping one 16mm frame each time and never sleeping more than 50 minutes at a stretch.",
           "date": "2026-10-21",
+          "maker": "Logging 20+ hours of hand-stitching into a single garment turns fabric into a physical time-card\u2014crystallized labor that fast fashion can never counterfeit.",
           "model": "ARCHIVE",
-          "title": "Tehching Hsieh \u2014 One Year Performance (Time Clock Piece)",
+          "seq": 6,
           "tags": [
             "endurance",
             "durational-art",
             "discipline"
           ],
-          "core": "From April 1980 to April 1981, Tehching Hsieh punched a factory time clock every single hour on the hour for 365 days, snapping one 16mm frame each time and never sleeping more than 50 minutes at a stretch.",
-          "maker": "Logging 20+ hours of hand-stitching into a single garment turns fabric into a physical time-card\u2014crystallized labor that fast fashion can never counterfeit."
+          "title": "Tehching Hsieh \u2014 One Year Performance (Time Clock Piece)"
         },
         {
-          "seq": 7,
+          "core": "Working alone in their Dresden studio without assistants for decades, father-and-son lampworkers Leopold and Rudolf Blaschka hand-formed thousands of anatomically exact glass jellyfish, octopuses, and sea slugs whose secret annealing techniques still baffle modern conservators.",
           "date": "2026-10-22",
+          "maker": "Extreme material mastery\u2014knowing exact stitch tension across stretchy Climalite versus rigid denim\u2014creates objects that look impossible to reverse-engineer.",
           "model": "ARCHIVE",
-          "title": "Leopold & Rudolf Blaschka \u2014 Glass Marine Invertebrates",
+          "seq": 7,
           "tags": [
             "precision-craft",
             "anatomy",
             "obsession"
           ],
-          "core": "Working alone in their Dresden studio without assistants for decades, father-and-son lampworkers Leopold and Rudolf Blaschka hand-formed thousands of anatomically exact glass jellyfish, octopuses, and sea slugs whose secret annealing techniques still baffle modern conservators.",
-          "maker": "Extreme material mastery\u2014knowing exact stitch tension across stretchy Climalite versus rigid denim\u2014creates objects that look impossible to reverse-engineer."
+          "title": "Leopold & Rudolf Blaschka \u2014 Glass Marine Invertebrates"
         },
         {
-          "seq": 8,
+          "core": "Duchamp dropped three one-meter threads from a height of one meter to freeze gravity's curve into wooden templates, and let months of studio dust settle onto The Large Glass before fixing it with varnish\u2014treating time and chance as pigments.",
           "date": "2026-10-23",
+          "maker": "Thrifted wear, sun fade, and uncontrolled denim fraying after washing collaborate with your deliberate zig-zag stitching.",
           "model": "ARCHIVE",
-          "title": "Marcel Duchamp \u2014 3 Standard Stoppages & Dust Breeding",
+          "seq": 8,
           "tags": [
             "conceptual",
             "chance",
             "patina"
           ],
-          "core": "Duchamp dropped three one-meter threads from a height of one meter to freeze gravity's curve into wooden templates, and let months of studio dust settle onto The Large Glass before fixing it with varnish\u2014treating time and chance as pigments.",
-          "maker": "Thrifted wear, sun fade, and uncontrolled denim fraying after washing collaborate with your deliberate zig-zag stitching."
+          "title": "Marcel Duchamp \u2014 3 Standard Stoppages & Dust Breeding"
         },
         {
-          "seq": 9,
+          "core": "When Lucio Fontana sliced razor blades straight through monochrome canvases in 1958, he broke flat 2D illusion to open real 3D physical space behind the linen, backed with black gauze to hold structural tension.",
           "date": "2026-10-24",
+          "maker": "Every deliberate blade cut into a thrifted base garment transforms flat apparel into spatial relief, pulling the eye physically beneath the surface.",
           "model": "ARCHIVE",
-          "title": "Lucio Fontana \u2014 Concetto Spaziale (The Slash as Threshold)",
+          "seq": 9,
           "tags": [
             "spatialism",
             "cutouts",
             "dimension"
           ],
-          "core": "When Lucio Fontana sliced razor blades straight through monochrome canvases in 1958, he broke flat 2D illusion to open real 3D physical space behind the linen, backed with black gauze to hold structural tension.",
-          "maker": "Every deliberate blade cut into a thrifted base garment transforms flat apparel into spatial relief, pulling the eye physically beneath the surface."
+          "title": "Lucio Fontana \u2014 Concetto Spaziale (The Slash as Threshold)"
         },
         {
-          "seq": 10,
+          "core": "Sophie Calle turns strict self-imposed rules and urban observation\u2014following strangers' routes, cataloguing hotel rooms as a chambermaid\u2014into forensic photo-and-ledger archives of human traces.",
           "date": "2026-10-25",
+          "maker": "Urban scavenging across Denver and documenting every trade or stitch inside permanent ledgers elevates daily movement into intentional fieldwork.",
           "model": "ARCHIVE",
-          "title": "Sophie Calle \u2014 Ritual Surveillance & Documented Life",
+          "seq": 10,
           "tags": [
             "conceptual",
             "archival",
             "constraints"
           ],
-          "core": "Sophie Calle turns strict self-imposed rules and urban observation\u2014following strangers' routes, cataloguing hotel rooms as a chambermaid\u2014into forensic photo-and-ledger archives of human traces.",
-          "maker": "Urban scavenging across Denver and documenting every trade or stitch inside permanent ledgers elevates daily movement into intentional fieldwork."
+          "title": "Sophie Calle \u2014 Ritual Surveillance & Documented Life"
         },
         {
-          "seq": 11,
+          "core": "Before mirrored Infinity Rooms, Kusama spent sleepless marathons in 1960s New York painting thousands of tiny white loops over dark grounds and hand-sewing hundreds of stuffed fabric forms onto found furniture.",
           "date": "2026-10-26",
+          "maker": "Dense accumulation\u2014clustering dozens of geometric symbols and stitched repairs across sleeves and torso\u2014overwhelms casual glance and forces slow inspection.",
           "model": "ARCHIVE",
-          "title": "Yayoi Kusama \u2014 Accumulation & Infinity Nets",
+          "seq": 11,
           "tags": [
             "accumulation",
             "obsession",
             "pattern"
           ],
-          "core": "Before mirrored Infinity Rooms, Kusama spent sleepless marathons in 1960s New York painting thousands of tiny white loops over dark grounds and hand-sewing hundreds of stuffed fabric forms onto found furniture.",
-          "maker": "Dense accumulation\u2014clustering dozens of geometric symbols and stitched repairs across sleeves and torso\u2014overwhelms casual glance and forces slow inspection."
+          "title": "Yayoi Kusama \u2014 Accumulation & Infinity Nets"
         },
         {
-          "seq": 12,
+          "core": "Armed with chainsaws and reciprocating saws in the 1970s, Gordon Matta-Clark sliced entire condemned suburban houses and warehouses cleanly in half, carving geometric cones and cross-sections through floors so sunlight flooded hidden structural bones.",
           "date": "2026-10-27",
+          "maker": "Your reconstructed garments apply Matta-Clark's 'building cuts' to clothing\u2014slicing cross windows straight through outer walls to expose the hidden joists of felt and flannel underneath.",
           "model": "ARCHIVE",
-          "title": "Gordon Matta-Clark \u2014 Splitting & Anarchitecture",
+          "seq": 12,
           "tags": [
             "anarchitecture",
             "cutouts",
             "negative-space"
           ],
-          "core": "Armed with chainsaws and reciprocating saws in the 1970s, Gordon Matta-Clark sliced entire condemned suburban houses and warehouses cleanly in half, carving geometric cones and cross-sections through floors so sunlight flooded hidden structural bones.",
-          "maker": "Your reconstructed garments apply Matta-Clark's 'building cuts' to clothing\u2014slicing cross windows straight through outer walls to expose the hidden joists of felt and flannel underneath."
+          "title": "Gordon Matta-Clark \u2014 Splitting & Anarchitecture"
         },
         {
-          "seq": 13,
+          "core": "In 18th-century Rome, Piranesi etched sixteen monumental plates of imaginary subterranean vaults\u2014endless stone bridges, pulleys, and impossible staircases drenched in high-contrast shadow that defined dark architectural atmosphere for centuries.",
           "date": "2026-10-28",
+          "maker": "Pushing black point and shadow contrast in photo edits while building multi-layered garment depth taps directly into Piranesi's dramatic chiaroscuro.",
           "model": "ARCHIVE",
-          "title": "Giovanni Battista Piranesi \u2014 Carceri d'Invenzione",
+          "seq": 13,
           "tags": [
             "etching",
             "chiaroscuro",
             "architecture"
           ],
-          "core": "In 18th-century Rome, Piranesi etched sixteen monumental plates of imaginary subterranean vaults\u2014endless stone bridges, pulleys, and impossible staircases drenched in high-contrast shadow that defined dark architectural atmosphere for centuries.",
-          "maker": "Pushing black point and shadow contrast in photo edits while building multi-layered garment depth taps directly into Piranesi's dramatic chiaroscuro."
+          "title": "Giovanni Battista Piranesi \u2014 Carceri d'Invenzione"
         },
         {
-          "seq": 14,
+          "core": "Five hundred years before Surrealism, Hieronymus Bosch packed his oak-panel triptychs with hundreds of encrypted visual emblems, hybrid machines, and geometric orbs that reward hours of inch-by-inch decoding.",
           "date": "2026-10-29",
+          "maker": "Replacing written slogans with an encrypted personal lexicon of stars, crosses, and geometric figures makes viewers decode the garment visually.",
           "model": "ARCHIVE",
-          "title": "Hieronymus Bosch \u2014 Dense Symbolic Cosmologies",
+          "seq": 14,
           "tags": [
             "symbolism",
             "triptych",
             "visual-code"
           ],
-          "core": "Five hundred years before Surrealism, Hieronymus Bosch packed his oak-panel triptychs with hundreds of encrypted visual emblems, hybrid machines, and geometric orbs that reward hours of inch-by-inch decoding.",
-          "maker": "Replacing written slogans with an encrypted personal lexicon of stars, crosses, and geometric figures makes viewers decode the garment visually."
+          "title": "Hieronymus Bosch \u2014 Dense Symbolic Cosmologies"
         },
         {
-          "seq": 15,
+          "core": "By resting an industrial horseshoe magnet on top of a 1965 cathode-ray television, Nam June Paik bent broadcast electron beams into living abstract light sculptures\u2014turning passive consumer electronics into a studio instrument.",
           "date": "2026-10-30",
+          "maker": "Whether repurposing athletic mesh into fine-art outerwear or wiring Linux dashboards from scratch, hacking existing tools beats waiting for permission.",
           "model": "ARCHIVE",
-          "title": "Nam June Paik \u2014 Magnet TV & Hardware Subversion",
+          "seq": 15,
           "tags": [
             "fluxus",
             "hardware-hacking",
             "signal"
           ],
-          "core": "By resting an industrial horseshoe magnet on top of a 1965 cathode-ray television, Nam June Paik bent broadcast electron beams into living abstract light sculptures\u2014turning passive consumer electronics into a studio instrument.",
-          "maker": "Whether repurposing athletic mesh into fine-art outerwear or wiring Linux dashboards from scratch, hacking existing tools beats waiting for permission."
+          "title": "Nam June Paik \u2014 Magnet TV & Hardware Subversion"
         },
         {
-          "seq": 16,
+          "core": "Refusing interviews, photographs, and printed brand logos, Martin Margiela sent models down runways in garments stitched from vintage army socks, exposed basting threads, raw shoulder pads, and a blank white rectangle tacked at four corners.",
           "date": "2026-10-31",
+          "maker": "Rejecting loud text graphics so the cut, four-layer reconstruction, frayed seam geometry, and hand-work identify your name on sight is pure Margiela lineage.",
           "model": "ARCHIVE",
-          "title": "Martin Margiela \u2014 Deconstruction, Blank Labels & Exposed Linings",
+          "seq": 16,
           "tags": [
             "deconstruction",
             "avant-garde",
             "anti-logo"
           ],
-          "core": "Refusing interviews, photographs, and printed brand logos, Martin Margiela sent models down runways in garments stitched from vintage army socks, exposed basting threads, raw shoulder pads, and a blank white rectangle tacked at four corners.",
-          "maker": "Rejecting loud text graphics so the cut, four-layer reconstruction, frayed seam geometry, and hand-work identify your name on sight is pure Margiela lineage."
+          "title": "Martin Margiela \u2014 Deconstruction, Blank Labels & Exposed Linings"
         },
         {
-          "seq": 17,
+          "core": "Collecting thousands of discarded aluminum liquor-bottle caps in Nigeria, El Anatsui flattens, folds, and stitches them together with copper wire into shimmering, colossal wall tapestries that drape and ripple like heavy silk kente cloth.",
           "date": "2026-11-01",
+          "maker": "Urban scavenging and thrifted base garments prove luxury isn't bought raw\u2014transmutation comes entirely from how relentlessly the maker joins humble parts.",
           "model": "ARCHIVE",
-          "title": "El Anatsui \u2014 Scavenged Bottle Caps Turned Royal Cloth",
+          "seq": 17,
           "tags": [
             "upcycling",
             "scavenging",
             "drape"
           ],
-          "core": "Collecting thousands of discarded aluminum liquor-bottle caps in Nigeria, El Anatsui flattens, folds, and stitches them together with copper wire into shimmering, colossal wall tapestries that drape and ripple like heavy silk kente cloth.",
-          "maker": "Urban scavenging and thrifted base garments prove luxury isn't bought raw\u2014transmutation comes entirely from how relentlessly the maker joins humble parts."
+          "title": "El Anatsui \u2014 Scavenged Bottle Caps Turned Royal Cloth"
         },
         {
-          "seq": 18,
+          "core": "A former WWII field surgeon turned painter, Alberto Burri abandoned oil paint in the 1950s to stitch torn burlap grain sacks ('Sacchi'), charred wood, and melted plastic over crimson and black under-grounds using literal surgical sutures.",
           "date": "2026-11-02",
+          "maker": "Heavy hand-stitching over slashed denim windows with flashes of burgundy, red, or yellow underneath echoes Burri's raw tension between rupture and repair.",
           "model": "ARCHIVE",
-          "title": "Alberto Burri \u2014 Sacchi, Torched Plastic & Sutured Wounds",
+          "seq": 18,
           "tags": [
             "arte-povera",
             "sutures",
             "distressing"
           ],
-          "core": "A former WWII field surgeon turned painter, Alberto Burri abandoned oil paint in the 1950s to stitch torn burlap grain sacks ('Sacchi'), charred wood, and melted plastic over crimson and black under-grounds using literal surgical sutures.",
-          "maker": "Heavy hand-stitching over slashed denim windows with flashes of burgundy, red, or yellow underneath echoes Burri's raw tension between rupture and repair."
+          "title": "Alberto Burri \u2014 Sacchi, Torched Plastic & Sutured Wounds"
         },
         {
-          "seq": 19,
+          "core": "Beginning with a patchwork crib quilt sewn for her infant son in 1911, Sonia Delaunay pioneered 'Simultaneous Dresses'\u2014placing contrasting blocks of yellow, burgundy, cobalt, and black wool side-by-side so colors vibrate optically as the wearer moves.",
           "date": "2026-11-03",
+          "maker": "Dropping sharp yellow accents and burgundy/blue blocks beneath distressed denim uses Delaunay's simultaneous color contrast to make dark surfaces pop in motion.",
           "model": "ARCHIVE",
-          "title": "Sonia Delaunay \u2014 Simultaneous Contrast & Wearable Geometry",
+          "seq": 19,
           "tags": [
             "color-theory",
             "geometric-textiles",
             "orphism"
           ],
-          "core": "Beginning with a patchwork crib quilt sewn for her infant son in 1911, Sonia Delaunay pioneered 'Simultaneous Dresses'\u2014placing contrasting blocks of yellow, burgundy, cobalt, and black wool side-by-side so colors vibrate optically as the wearer moves.",
-          "maker": "Dropping sharp yellow accents and burgundy/blue blocks beneath distressed denim uses Delaunay's simultaneous color contrast to make dark surfaces pop in motion."
+          "title": "Sonia Delaunay \u2014 Simultaneous Contrast & Wearable Geometry"
         },
         {
-          "seq": 20,
+          "core": "Growing up in her parents' tapestry restoration workshop, Louise Bourgeois saved every piece of clothing she wore across eighty years\u2014eventually slicing her own coats, linens, and dresses into geometric spiral and grid books stitched back together in her nineties.",
           "date": "2026-11-04",
+          "maker": "Reconstructing old family-stored denim and thrifted layers preserves lived personal history inside new structural armor.",
           "model": "ARCHIVE",
-          "title": "Louise Bourgeois \u2014 Fabric Memory & Cut Garment Archives",
+          "seq": 20,
           "tags": [
             "memory",
             "textiles",
             "reconstruction"
           ],
-          "core": "Growing up in her parents' tapestry restoration workshop, Louise Bourgeois saved every piece of clothing she wore across eighty years\u2014eventually slicing her own coats, linens, and dresses into geometric spiral and grid books stitched back together in her nineties.",
-          "maker": "Reconstructing old family-stored denim and thrifted layers preserves lived personal history inside new structural armor."
+          "title": "Louise Bourgeois \u2014 Fabric Memory & Cut Garment Archives"
         },
         {
-          "seq": 21,
+          "core": "Across four decades\u2014from sitting motionless for 736 hours at MoMA to testing physical limits in Rhythm 0\u2014Marina Abramovi\u0107 proved that sheer sustained presence and physical stamina generate an electric field no shortcut can fake.",
           "date": "2026-11-05",
+          "maker": "Moving warehouse freight, biking fixed-gear across Denver, and putting 20+ hours of needlework into a piece anchors conceptual art in real physical grit.",
           "model": "ARCHIVE",
-          "title": "Marina Abramovi\u0107 \u2014 Rhythm 0 & The Body Under Load",
+          "seq": 21,
           "tags": [
             "performance",
             "endurance",
             "presence"
           ],
-          "core": "Across four decades\u2014from sitting motionless for 736 hours at MoMA to testing physical limits in Rhythm 0\u2014Marina Abramovi\u0107 proved that sheer sustained presence and physical stamina generate an electric field no shortcut can fake.",
-          "maker": "Moving warehouse freight, biking fixed-gear across Denver, and putting 20+ hours of needlework into a piece anchors conceptual art in real physical grit."
+          "title": "Marina Abramovi\u0107 \u2014 Rhythm 0 & The Body Under Load"
         },
         {
-          "seq": 22,
+          "core": "Using a single mass-produced workshop item\u2014hundreds of thousands of index cards, safety pins, styrofoam cups, or buttons\u2014Tara Donovan applies one simple repetitive joining rule until the accumulation morphs into geological landscapes.",
           "date": "2026-11-06",
+          "maker": "Repeating one crisp unit\u2014a cross cutout or grid square\u2014dozens of times across a hoodie triggers emergent complexity from a simple rule.",
           "model": "ARCHIVE",
-          "title": "Tara Donovan \u2014 Everyday Multiples & Emergent Topography",
+          "seq": 22,
           "tags": [
             "emergence",
             "multiples",
             "scavenged-materials"
           ],
-          "core": "Using a single mass-produced workshop item\u2014hundreds of thousands of index cards, safety pins, styrofoam cups, or buttons\u2014Tara Donovan applies one simple repetitive joining rule until the accumulation morphs into geological landscapes.",
-          "maker": "Repeating one crisp unit\u2014a cross cutout or grid square\u2014dozens of times across a hoodie triggers emergent complexity from a simple rule."
+          "title": "Tara Donovan \u2014 Everyday Multiples & Emergent Topography"
         },
         {
-          "seq": 23,
+          "core": "Tom Sachs builds NASA lunar modules out of ConEd plywood, exposed screws, and scavenged hardware. His studio rule\u2014never sand away pencil marks or hide the joint\u2014celebrates the scar of assembly as proof of human agency.",
           "date": "2026-11-07",
+          "maker": "Exposed zig-zag seams, raw edges, and visible structural joins announce how the piece was built\u2014turning honest construction into an unmistakable signature.",
           "model": "ARCHIVE",
-          "title": "Tom Sachs \u2014 Bricolage & 'Always Be Knolling'",
+          "seq": 23,
           "tags": [
             "bricolage",
             "visible-repairs",
             "studio-ethos"
           ],
-          "core": "Tom Sachs builds NASA lunar modules out of ConEd plywood, exposed screws, and scavenged hardware. His studio rule\u2014never sand away pencil marks or hide the joint\u2014celebrates the scar of assembly as proof of human agency.",
-          "maker": "Exposed zig-zag seams, raw edges, and visible structural joins announce how the piece was built\u2014turning honest construction into an unmistakable signature."
+          "title": "Tom Sachs \u2014 Bricolage & 'Always Be Knolling'"
         },
         {
-          "seq": 24,
+          "core": "Agnes Martin's hand-ruled graphite grids pulse with subtle human fluctuations in pencil pressure and gesso texture; up close, rigid mathematical order dissolves into warm, breathing stillness.",
           "date": "2026-11-08",
+          "maker": "When building an oversized custom grid hoodie, frayed textile edges against disciplined grid lines keep the geometry human rather than factory-sterile.",
           "model": "ARCHIVE",
-          "title": "Agnes Martin \u2014 Quiet Grids & Imperfect Hand Tremor",
+          "seq": 24,
           "tags": [
             "grid",
             "minimalism",
             "hand-drawn"
           ],
-          "core": "Agnes Martin's hand-ruled graphite grids pulse with subtle human fluctuations in pencil pressure and gesso texture; up close, rigid mathematical order dissolves into warm, breathing stillness.",
-          "maker": "When building an oversized custom grid hoodie, frayed textile edges against disciplined grid lines keep the geometry human rather than factory-sterile."
+          "title": "Agnes Martin \u2014 Quiet Grids & Imperfect Hand Tremor"
         },
         {
-          "seq": 25,
+          "core": "Mondrian stripped painting down to vertical and horizontal black structural lines, white negative space, and small asymmetric counterweights of yellow, red, and blue\u2014proving a tiny square of yellow near an edge can balance a massive dark field.",
           "date": "2026-11-09",
+          "maker": "Strategic yellow accents placed asymmetrically across dark denim and black felt lock the whole composition into dynamic visual tension.",
           "model": "ARCHIVE",
-          "title": "Piet Mondrian \u2014 Dynamic Equilibrium & Asymmetric Balance",
+          "seq": 25,
           "tags": [
             "neoplasticism",
             "asymmetry",
             "primary-accents"
           ],
-          "core": "Mondrian stripped painting down to vertical and horizontal black structural lines, white negative space, and small asymmetric counterweights of yellow, red, and blue\u2014proving a tiny square of yellow near an edge can balance a massive dark field.",
-          "maker": "Strategic yellow accents placed asymmetrically across dark denim and black felt lock the whole composition into dynamic visual tension."
+          "title": "Piet Mondrian \u2014 Dynamic Equilibrium & Asymmetric Balance"
         },
         {
-          "seq": 26,
+          "core": "Trained first toward architecture before entering couture, Christian Dior engineered his 1947 'New Look' Bar Suit from the inside out\u2014layering horsehair canvas, hand-padded hips, and internal boning beneath shantung silk so soft cloth held rigid, gravity-defying sculptural volume.",
           "date": "2026-11-08",
+          "maker": "When layering heavy denim over felt, flannel, and Climalite, the hidden internal backing controls how the outer silhouette hangs and holds tension on the body.",
           "model": "ARCHIVE",
-          "title": "Christian Dior \u2014 The Bar Suit & Internal Tailoring Architecture",
+          "seq": 26,
           "tags": [
             "tailoring",
             "garment-architecture",
             "couture"
           ],
-          "core": "Trained first toward architecture before entering couture, Christian Dior engineered his 1947 'New Look' Bar Suit from the inside out\u2014layering horsehair canvas, hand-padded hips, and internal boning beneath shantung silk so soft cloth held rigid, gravity-defying sculptural volume.",
-          "maker": "When layering heavy denim over felt, flannel, and Climalite, the hidden internal backing controls how the outer silhouette hangs and holds tension on the body."
+          "title": "Christian Dior \u2014 The Bar Suit & Internal Tailoring Architecture"
+        },
+        {
+          "seq": 27,
+          "date": "2026-11-08",
+          "model": "CURATED",
+          "title": "Ralph Steadman \u2014 Gonzo Ink Splatter & Controlled Violence",
+          "tags": [
+            "gonzo",
+            "ink-splatter",
+            "high-contrast"
+          ],
+          "core": "Rejecting polite pencil underdrawings entirely, Ralph Steadman attacks heavy paper directly with steel nib pens, razor blades, and hurled blots of India ink\u2014letting accidental splatter dictate the anatomy before carving ferocious, razor-sharp crosshatching out of the chaos.",
+          "maker": "Letting frayed denim threads, raw scissor slashes, and aggressive high-contrast black-and-yellow shifts stay wild inside tight structural seams channels Steadman's controlled fury onto cloth."
         }
-      ]
+      ],
+      "title": "Art Endurance & Structural Craft"
     },
     "universe": {
-      "title": "Physics & Architecture of Time",
-      "icon": "\ud83c\udf0c",
       "accent": "#58a6ff",
       "description": "Relativity, entropy, quantum histories, phase transitions, and non-Markovian memory.",
+      "icon": "\ud83c\udf0c",
       "lessons": [
         {
-          "seq": 1,
+          "core": "Because the speed of light c is invariant for every observer regardless of motion, two events that happen simultaneously for someone sitting still in Denver occur at different times for someone moving past them. Universal 'Now' does not exist\u2014only local proper time.",
           "date": "2026-10-27",
+          "maker": "Stop comparing your timeline to external clocks; the only valid metric is proper time\u2014hours logged along your own worldline at the workbench.",
           "model": "ARCHIVE",
-          "title": "Special Relativity & The Death of Universal 'Now'",
+          "seq": 1,
           "tags": [
             "relativity",
             "simultaneity",
             "light-cones"
           ],
-          "core": "Because the speed of light c is invariant for every observer regardless of motion, two events that happen simultaneously for someone sitting still in Denver occur at different times for someone moving past them. Universal 'Now' does not exist\u2014only local proper time.",
-          "maker": "Stop comparing your timeline to external clocks; the only valid metric is proper time\u2014hours logged along your own worldline at the workbench."
+          "title": "Special Relativity & The Death of Universal 'Now'"
         },
         {
-          "seq": 2,
+          "core": "Hermann Minkowski unified space and time into a four-dimensional geometric loaf where past, present, and future coordinates all coexist structurally. Objects aren't 3D things vanishing instant by instant; they are 4D 'world-tubes' stretching from birth to decay.",
           "date": "2026-10-28",
+          "maker": "A finished reconstructed jacket is a 4D cross-section holding the thrifted past of four dead garments fused into one permanent coordinate.",
           "model": "ARCHIVE",
-          "title": "Minkowski's 4D Block Universe (Eternalism)",
+          "seq": 2,
           "tags": [
             "spacetime",
             "block-universe",
             "geometry"
           ],
-          "core": "Hermann Minkowski unified space and time into a four-dimensional geometric loaf where past, present, and future coordinates all coexist structurally. Objects aren't 3D things vanishing instant by instant; they are 4D 'world-tubes' stretching from birth to decay.",
-          "maker": "A finished reconstructed jacket is a 4D cross-section holding the thrifted past of four dead garments fused into one permanent coordinate."
+          "title": "Minkowski's 4D Block Universe (Eternalism)"
         },
         {
-          "seq": 3,
+          "core": "Massive bodies curve spacetime, and in everyday weak-field conditions, what pulls an apple toward Earth isn't spatial bending alone\u2014it's primarily the gradient of time flowing fractionally slower closer to Earth's mass than higher up.",
           "date": "2026-10-29",
+          "maker": "Dense creative gravity slows perceived time; deep flow state bends an entire morning into pure focused mass.",
           "model": "ARCHIVE",
-          "title": "General Relativity \u2014 Gravity as Warped Time",
+          "seq": 3,
           "tags": [
             "gravity",
             "time-dilation",
             "curvature"
           ],
-          "core": "Massive bodies curve spacetime, and in everyday weak-field conditions, what pulls an apple toward Earth isn't spatial bending alone\u2014it's primarily the gradient of time flowing fractionally slower closer to Earth's mass than higher up.",
-          "maker": "Dense creative gravity slows perceived time; deep flow state bends an entire morning into pure focused mass."
+          "title": "General Relativity \u2014 Gravity as Warped Time"
         },
         {
-          "seq": 4,
+          "core": "Microscopic laws of physics run identically forward and backward, yet shattered glass never leaps back together. Ludwig Boltzmann proved why: S = k ln W\u2014there are trillions more disordered microstates than ordered ones, giving time its one-way forward arrow.",
           "date": "2026-10-30",
+          "maker": "Taking shredded scraps and organizing them into structured geometry is localized anti-entropy\u2014spending metabolic energy to force order out of decay.",
           "model": "ARCHIVE",
-          "title": "Boltzmann, Microstates & The Thermodynamic Arrow",
+          "seq": 4,
           "tags": [
             "entropy",
             "boltzmann",
             "arrow-of-time"
           ],
-          "core": "Microscopic laws of physics run identically forward and backward, yet shattered glass never leaps back together. Ludwig Boltzmann proved why: S = k ln W\u2014there are trillions more disordered microstates than ordered ones, giving time its one-way forward arrow.",
-          "maker": "Taking shredded scraps and organizing them into structured geometry is localized anti-entropy\u2014spending metabolic energy to force order out of decay."
+          "title": "Boltzmann, Microstates & The Thermodynamic Arrow"
         },
         {
-          "seq": 5,
+          "core": "For entropy to rise today, the early universe 13.8 billion years ago had to begin in an extraordinarily smooth, low-entropy gravitational state. Every memory, photograph, and fossil exists only because we sit downstream of that primordial gradient.",
           "date": "2026-10-31",
+          "maker": "Starting from a clean $50 baseline or a blank canvas gives every subsequent decision crisp mathematical traceability.",
           "model": "ARCHIVE",
-          "title": "The Past Hypothesis & Low-Entropy Origins",
+          "seq": 5,
           "tags": [
             "cosmology",
             "big-bang",
             "entropy"
           ],
-          "core": "For entropy to rise today, the early universe 13.8 billion years ago had to begin in an extraordinarily smooth, low-entropy gravitational state. Every memory, photograph, and fossil exists only because we sit downstream of that primordial gradient.",
-          "maker": "Starting from a clean $50 baseline or a blank canvas gives every subsequent decision crisp mathematical traceability."
+          "title": "The Past Hypothesis & Low-Entropy Origins"
         },
         {
-          "seq": 6,
+          "core": "Maxwell imagined a tiny gatekeeper sorting fast and slow gas molecules to beat the Second Law for free. Rolf Landauer solved the paradox in 1961: erasing even 1 bit of memory in the demon's brain must dump at least kT ln 2 of heat into the universe\u2014information is physical.",
           "date": "2026-11-01",
+          "maker": "Writing permanent trade and lesson ledgers preserves hard-won information instead of burning mental energy re-learning erased mistakes.",
           "model": "ARCHIVE",
-          "title": "Maxwell's Demon & Landauer's Erasure Cost",
+          "seq": 6,
           "tags": [
             "information-theory",
             "thermodynamics",
             "memory"
           ],
-          "core": "Maxwell imagined a tiny gatekeeper sorting fast and slow gas molecules to beat the Second Law for free. Rolf Landauer solved the paradox in 1961: erasing even 1 bit of memory in the demon's brain must dump at least kT ln 2 of heat into the universe\u2014information is physical.",
-          "maker": "Writing permanent trade and lesson ledgers preserves hard-won information instead of burning mental energy re-learning erased mistakes."
+          "title": "Maxwell's Demon & Landauer's Erasure Cost"
         },
         {
-          "seq": 7,
+          "core": "Bekenstein and Hawking discovered that a black hole's entropy scales not with its 3D volume, but with the 2D surface area of its event horizon in Planck squares\u2014while to a distant observer, an infalling clock redshifts and freezes asymptotically at the rim.",
           "date": "2026-11-02",
+          "maker": "Surface carries the entire archive\u2014the outer skin of a garment encodes every interior structural decision underneath.",
           "model": "ARCHIVE",
-          "title": "Black Hole Thermodynamics & Event Horizon Clocks",
+          "seq": 7,
           "tags": [
             "black-holes",
             "hawking",
             "holography"
           ],
-          "core": "Bekenstein and Hawking discovered that a black hole's entropy scales not with its 3D volume, but with the 2D surface area of its event horizon in Planck squares\u2014while to a distant observer, an infalling clock redshifts and freezes asymptotically at the rim.",
-          "maker": "Surface carries the entire archive\u2014the outer skin of a garment encodes every interior structural decision underneath."
+          "title": "Black Hole Thermodynamics & Event Horizon Clocks"
         },
         {
-          "seq": 8,
+          "core": "In Richard Feynman's formulation of quantum mechanics, a particle traveling from A to B doesn't pick one trajectory\u2014it explores every conceivable path simultaneously, with wild detours canceling out by destructive phase interference while classical paths reinforce.",
           "date": "2026-11-03",
+          "maker": "Dozens of messy sketches, failed seam tests, and stopped-out trades aren't wasted\u2014their interference pattern carves out the clean classical line that works.",
           "model": "ARCHIVE",
-          "title": "Feynman's Sum Over Histories (Path Integrals)",
+          "seq": 8,
           "tags": [
             "quantum",
             "feynman",
             "superposition"
           ],
-          "core": "In Richard Feynman's formulation of quantum mechanics, a particle traveling from A to B doesn't pick one trajectory\u2014it explores every conceivable path simultaneously, with wild detours canceling out by destructive phase interference while classical paths reinforce.",
-          "maker": "Dozens of messy sketches, failed seam tests, and stopped-out trades aren't wasted\u2014their interference pattern carves out the clean classical line that works."
+          "title": "Feynman's Sum Over Histories (Path Integrals)"
         },
         {
-          "seq": 9,
+          "core": "John Archibald Wheeler showed that choosing whether to insert a beam-splitter *after* a photon has already passed a double slit determines whether it behaved like a single-path particle or both-paths wave\u2014proving unmeasured past histories remain open until registered.",
           "date": "2026-11-04",
+          "maker": "How you frame and integrate an old scrap\u2014or dissect a past loss in Study Mode\u2014retroactively transforms raw noise into deliberate structure.",
           "model": "ARCHIVE",
-          "title": "Wheeler's Delayed-Choice & Participatory Reality",
+          "seq": 9,
           "tags": [
             "wheeler",
             "quantum-measurement",
             "delayed-choice"
           ],
-          "core": "John Archibald Wheeler showed that choosing whether to insert a beam-splitter *after* a photon has already passed a double slit determines whether it behaved like a single-path particle or both-paths wave\u2014proving unmeasured past histories remain open until registered.",
-          "maker": "How you frame and integrate an old scrap\u2014or dissect a past loss in Study Mode\u2014retroactively transforms raw noise into deliberate structure."
+          "title": "Wheeler's Delayed-Choice & Participatory Reality"
         },
         {
-          "seq": 10,
+          "core": "Macroscopic objects don't stay in eerie superpositions because stray photons and air molecules constantly bounce off them, leaking phase relationships into the surrounding environment in femtoseconds and locking in crisp, definite states.",
           "date": "2026-11-05",
+          "maker": "Ideas stay fuzzy in your head until they collide with physical denim, thread, or live market fills\u2014friction with reality locks the form.",
           "model": "ARCHIVE",
-          "title": "Quantum Decoherence \u2014 How the Classical World Emerges",
+          "seq": 10,
           "tags": [
             "decoherence",
             "entanglement",
             "emergence"
           ],
-          "core": "Macroscopic objects don't stay in eerie superpositions because stray photons and air molecules constantly bounce off them, leaking phase relationships into the surrounding environment in femtoseconds and locking in crisp, definite states.",
-          "maker": "Ideas stay fuzzy in your head until they collide with physical denim, thread, or live market fills\u2014friction with reality locks the form."
+          "title": "Quantum Decoherence \u2014 How the Classical World Emerges"
         },
         {
-          "seq": 11,
+          "core": "Liquid water looks identical in every direction, possessing high rotational symmetry. Cool it past 0\u00b0C and it abruptly snaps into a rigid hexagonal crystal lattice\u2014losing uniform symmetry to gain load-bearing structural order.",
           "date": "2026-11-06",
+          "maker": "Committing to a strict 5-Gate rule set or a fixed geometric motif breaks infinite creative paralysis so solid architecture can crystallize.",
           "model": "ARCHIVE",
-          "title": "Phase Transitions & Spontaneous Symmetry Breaking",
+          "seq": 11,
           "tags": [
             "phase-transitions",
             "symmetry-breaking",
             "criticality"
           ],
-          "core": "Liquid water looks identical in every direction, possessing high rotational symmetry. Cool it past 0\u00b0C and it abruptly snaps into a rigid hexagonal crystal lattice\u2014losing uniform symmetry to gain load-bearing structural order.",
-          "maker": "Committing to a strict 5-Gate rule set or a fixed geometric motif breaks infinite creative paralysis so solid architecture can crystallize."
+          "title": "Phase Transitions & Spontaneous Symmetry Breaking"
         },
         {
-          "seq": 12,
+          "core": "Ilya Prigogine won the Nobel Prize for showing that open systems far from equilibrium\u2014whirlpools, convection cells, living cells\u2014spontaneously self-organize into intricate, resilient structures precisely *because* energy flows continuously through them.",
           "date": "2026-11-07",
+          "maker": "Consistency\u2014biking to the makerspace, stitching daily, reviewing daily\u2014keeps energy flowing through the studio so skill compounds instead of decaying.",
           "model": "ARCHIVE",
-          "title": "Prigogine's Dissipative Structures \u2014 Order Through Flux",
+          "seq": 12,
           "tags": [
             "complexity",
             "far-from-equilibrium",
             "self-organization"
           ],
-          "core": "Ilya Prigogine won the Nobel Prize for showing that open systems far from equilibrium\u2014whirlpools, convection cells, living cells\u2014spontaneously self-organize into intricate, resilient structures precisely *because* energy flows continuously through them.",
-          "maker": "Consistency\u2014biking to the makerspace, stitching daily, reviewing daily\u2014keeps energy flowing through the studio so skill compounds instead of decaying."
+          "title": "Prigogine's Dissipative Structures \u2014 Order Through Flux"
         },
         {
-          "seq": 13,
+          "core": "Unlike the static 4D Block where the future is already cast in stone, physicist George Ellis champions the Evolving Block Universe: the past is fixed bedrock, the future is genuinely open quantum potential, and 'Now' is the razor-thin crystallization front adding new layers.",
           "date": "2026-11-08",
+          "maker": "Every completed piece and logged day adds another irreversible brick to your body of work while tomorrow's design remains wide open.",
           "model": "ARCHIVE",
-          "title": "The Growing Block Universe \u2014 An Crystallizing Present",
+          "seq": 13,
           "tags": [
             "philosophy-of-time",
             "growing-block",
             "becoming"
           ],
-          "core": "Unlike the static 4D Block where the future is already cast in stone, physicist George Ellis champions the Evolving Block Universe: the past is fixed bedrock, the future is genuinely open quantum potential, and 'Now' is the razor-thin crystallization front adding new layers.",
-          "maker": "Every completed piece and logged day adds another irreversible brick to your body of work while tomorrow's design remains wide open."
+          "title": "The Growing Block Universe \u2014 An Crystallizing Present"
         },
         {
-          "seq": 14,
+          "core": "A Markovian process is memoryless\u2014its next step depends only on its current snapshot, like a fair coin flip. Non-Markovian systems carry hysteresis and memory kernels: bent steel, magnetized iron, and biological tissue respond differently based on every stress they survived before.",
           "date": "2026-11-09",
+          "maker": "Distressed heavy denim and human mastery are deeply Non-Markovian\u2014the stress creases, scars, and past iterations stay woven into future strength.",
           "model": "ARCHIVE",
-          "title": "Non-Markovian Systems \u2014 When Matter Remembers Its Path",
+          "seq": 14,
           "tags": [
             "non-markovian",
             "hysteresis",
             "memory-kernels"
           ],
-          "core": "A Markovian process is memoryless\u2014its next step depends only on its current snapshot, like a fair coin flip. Non-Markovian systems carry hysteresis and memory kernels: bent steel, magnetized iron, and biological tissue respond differently based on every stress they survived before.",
-          "maker": "Distressed heavy denim and human mastery are deeply Non-Markovian\u2014the stress creases, scars, and past iterations stay woven into future strength."
+          "title": "Non-Markovian Systems \u2014 When Matter Remembers Its Path"
         }
-      ]
+      ],
+      "title": "Physics & Architecture of Time"
     }
   }
 }
