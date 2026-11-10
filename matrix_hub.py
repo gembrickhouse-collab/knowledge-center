@@ -301,7 +301,7 @@ class MatrixCommandCenter(tk.Tk):
                     rf = tk.Frame(df, bg="#08120e")
                     rf.pack(fill="x", padx=8, pady=2)
                     tk.Label(rf, text=f"▸ {row.get('code','')}", fg="#79c0ff", bg="#08120e", font=("Monospace", 8, "bold"), anchor="w", padx=8, pady=2).pack(fill="x")
-                    tk.Label(rf, text=f"   ↳ {row.get('meaning','')}", fg="#c9d1d9", bg="#08120e", font=("Monospace", 8), anchor="w", justify="left", wraplength=1120, padx=8, pady=(0, 4)).pack(fill="x")
+                    tk.Label(rf, text=f"   ↳ {row.get('meaning','')}", fg="#c9d1d9", bg="#08120e", font=("Monospace", 8), anchor="w", justify="left", wraplength=1120, padx=8).pack(fill="x", pady=(0, 4))
 
             # Deep Dive Essay Drawer
             if dd_open and les.get("deep_dive"):
