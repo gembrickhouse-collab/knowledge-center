@@ -1,0 +1,28 @@
+name: Morning Pulse & 08:30 MT Auto-Drop
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 1) Wake Knowledge Center at 08:32 AM MST & 08:45 AM MST daily (15:32 & 15:45 UTC)
+    #    Two staggered pulses guarantee cold-start wake + 60s scheduler tick completion
+    - cron: '32,45 15 * * *'
+    # 2) Keep OANDA 5-Gate Bot warm Mon-Fri across 05:50 AM - 12:05 PM MST (12:50 - 19:05 UTC)
+    - cron: '*/12 13-18 * * 1-5'
+
+jobs:
+  pulse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake Services & Verify Health
+        run: |
+          echo "Pulsing OANDA 5-Gate Command Center..."
+          curl -sS --max-time 90 --retry 2 https://oanda-5-gate-bot.onrender.com/state >/dev/null || true
+
+          HOUR_UTC=$(date -u +%H)
+          if [ "$HOUR_UTC" = "15" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Waking Knowledge Center for 08:30 MT Daily Lesson Drop..."
+            curl -sS --max-time 90 --retry 3 https://knowledge-center-dsog.onrender.com/health
+            sleep 65
+            curl -sS --max-time 30 https://knowledge-center-dsog.onrender.com/health
+            echo ""
+          fi
