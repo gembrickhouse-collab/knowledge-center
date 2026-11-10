@@ -100,6 +100,8 @@ WEB_TEMPLATE = """<!doctype html>
   .plate-box { width: 255px; flex-shrink: 0; background: #090d13; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; cursor: pointer; }
   .plate-box img { width: 100%; height: 175px; object-fit: cover; display: block; background: #090d13; }
   .plate-cap { font-size: 0.7rem; color: var(--muted); padding: 6px 8px; line-height: 1.35; }
+  .schem-box { border-color: #238636 !important; background: #060d0a !important; }
+  .schem-box svg { width: 100%; height: auto; display: block; }
   pre.code { background: #090d13; border: 1px solid #238636; color: #7ee787; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 0.78rem; line-height: 1.45; margin-top: 10px; }
   .decode-row { background: #0b1017; border-left: 3px solid var(--green); padding: 6px 10px; margin-top: 6px; font-size: 0.79rem; }
   .decode-code { color: #79c0ff; font-weight: bold; }
@@ -147,6 +149,52 @@ let CUR_TRACK = "{{ default_track }}";
 let OPEN_DD = {};
 let OPEN_GAL = {};
 
+const SCHEMATICS = {
+  telemetry_bus: [["OANDA v20 API","#fbbf24"],["Render Cloud Loop","#3fb950"],["/state JSON Bus","#58a6ff"],["Daemon Thread (10s)","#d2a8ff"],["Keyless Ubuntu HUD","#3fb950"]],
+  five_gate: [["G1 Clock/Spread","#3fb950"],["G2 9>21>200+ATR","#3fb950"],["G3 21EMA Zone","#3fb950"],["G4 RSI Trigger","#3fb950"],["G5 1% + Gemini","#fbbf24"]],
+  canvas_coords: [["28 M15 OHLC[]","#58a6ff"],["Bounds Filter","#d2a8ff"],["py() Invert Y","#fbbf24"],["px() Slot X","#3fb950"],["tk.Canvas Pixels","#3fb950"]],
+  git_loop: [["08:30 MT Trigger","#fbbf24"],["Gemini JSON","#d2a8ff"],["Base64 + SHA","#58a6ff"],["PUT GitHub API","#3fb950"],["Permanent Repo","#3fb950"]],
+  cascade: [["Prompt + Schema","#58a6ff"],["3.8-Flash Try","#fbbf24"],["429/503 Catch","#f85149"],["3.5-Lite Fallback","#3fb950"],["Parsed Dict","#3fb950"]],
+  cron_budget: [["GH Runner UTC","#58a6ff"],["08:32 Wake Pulse","#fbbf24"],["65s Tick Hold","#d2a8ff"],["Idle 15m Sleep","#8b949e"],["730h Saved!","#3fb950"]],
+  desktop_gui: [[".desktop SVG","#3fb950"],["WM_CLASS Bind","#58a6ff"],["Label Hook","#fbbf24"],["Thread Lock","#d2a8ff"],["60fps X11 HUD","#3fb950"]],
+  vault_crypto: [["Ciphertext SSD","#f85149"],["unlock (scrypt)","#fbbf24"],["FUSE RAM Mount","#58a6ff"],["git push TLS","#3fb950"],["lock (Unmount)","#3fb950"]]
+};
+
+function buildSchematicSvg(dtype) {
+  const nodes = SCHEMATICS[dtype] || [["Input Stream","#58a6ff"],["Core Engine","#fbbf24"],["Guardrail","#d2a8ff"],["Persistence","#3fb950"]];
+  const w = 320, h = 242, cx = 160, bw = 264, padY = 34;
+  const slotH = (h - padY - 10) / nodes.length;
+  let grid = '';
+  for (let gx = 0; gx <= w; gx += 24) grid += `<line x1="${gx}" y1="0" x2="${gx}" y2="${h}" stroke="#0d1612" stroke-width="1"/>`;
+  for (let gy = 0; gy <= h; gy += 24) grid += `<line x1="0" y1="${gy}" x2="${w}" y2="${gy}" stroke="#0d1612" stroke-width="1"/>`;
+  let body = '';
+  nodes.forEach((item, i) => {
+    const label = esc(item[0]), col = item[1];
+    const cy = Math.round(padY + (i + 0.45) * slotH);
+    const bh = Math.min(26, Math.round(slotH * 0.66));
+    body += `<rect x="${cx - bw/2}" y="${cy - bh/2}" width="${bw}" height="${bh}" rx="4" fill="#0d1914" stroke="${col}" stroke-width="1.3"/>`;
+    body += `<text x="${cx}" y="${cy + 4}" fill="${col}" font-family="ui-monospace,monospace" font-size="10.5" font-weight="bold" text-anchor="middle">[${i+1}] ${label}</text>`;
+    if (i < nodes.length - 1) {
+      const y1 = cy + bh/2;
+      const y2 = Math.round(padY + (i + 1.45) * slotH) - bh/2;
+      body += `<line x1="${cx}" y1="${y1}" x2="${cx}" y2="${y2 - 3}" stroke="#3fb950" stroke-width="2"/>`;
+      body += `<polygon points="${cx},${y2} ${cx-4},${y2-6} ${cx+4},${y2-6}" fill="#3fb950"/>`;
+    }
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">
+    <rect width="${w}" height="${h}" fill="#060d0a"/>
+    ${grid}
+    <text x="12" y="18" fill="#3fb950" font-family="ui-monospace,monospace" font-size="9.5" font-weight="bold">⚡ BLUEPRINT // ${esc((dtype||'pipeline').toUpperCase())}</text>
+    ${body}
+  </svg>`;
+}
+
+function zoomSvg(dtype, title) {
+  const svgStr = buildSchematicSvg(dtype);
+  const uri = 'data:image/svg+xml;utf8,' + encodeURIComponent(svgStr);
+  zoomImg(uri, '📐 Data-Flow Architecture Blueprint — ' + title);
+}
+
 function zoomImg(url, cap) {
   document.getElementById('lb-img').src = url;
   document.getElementById('lb-cap').textContent = cap || '';
@@ -182,11 +230,15 @@ function renderFeed() {
   const lessons = ((DATA.tracks[CUR_TRACK] || {}).lessons || []).slice().reverse();
   feed.innerHTML = lessons.map(l => {
     const key = CUR_TRACK + '_' + l.seq;
-    const plate = l.image_url ? `
+    const plate = (CUR_TRACK === 'matrix') ? `
+      <div class="plate-box schem-box" onclick="zoomSvg('${esc(l.diagram_type || 'pipeline')}', '${esc(l.title)}')">
+        ${buildSchematicSvg(l.diagram_type || 'pipeline')}
+        <div class="plate-cap" style="color:#7ee787;background:#0d1914;">📐 Data-Flow Blueprint • 🔍 Tap to Zoom</div>
+      </div>` : (l.image_url ? `
       <div class="plate-box" onclick="zoomImg('${esc(l.image_url)}', '${esc(l.image_caption || l.title)}')">
         <img src="${esc(l.image_url)}" loading="lazy">
         <div class="plate-cap">📸 ${esc(l.image_caption || l.title)} • 🔍 Zoom</div>
-      </div>` : '';
+      </div>` : '');
     const codeBlk = l.code_snippet ? `<pre class="code">${esc(l.code_snippet)}</pre>` : '';
     const decodes = (OPEN_DD[key] && l.line_decode) ? l.line_decode.map(d =>
       `<div class="decode-row"><span class="decode-code">${esc(d.code)}</span> → ${esc(d.meaning)}</div>`
