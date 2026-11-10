@@ -1,165 +1,315 @@
-import os
-import json
-import time
-import threading
+import os, time, threading
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, request, render_template_string
 import knowledge_engine as ke
 
 app = Flask(__name__)
-MT_TZ = ZoneInfo("America/Denver")
-scheduler_state = {"status": "ARMED (08:30 MT Daily Auto-Drop)", "last_check": "--"}
+MT_ZONE = ZoneInfo("America/Denver")
+SCHED_STATE = {"last_check": "--", "status": "BOOTING"}
 
 
-def _daily_scheduler():
+def _bg_scheduler():
     while True:
         try:
-            now_mt = datetime.now(MT_TZ)
-            scheduler_state["last_check"] = now_mt.strftime("%Y-%m-%d %H:%M:%S MT")
-            if os.getenv("GEMINI_API_KEY", "").strip():
-                ke.check_and_run_daily_drop(force=False)
-                scheduler_state["status"] = "ONLINE • 08:30 MT Auto-Drop Armed"
+            now_s = datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
+            has_key = bool(os.getenv("GEMINI_API_KEY", "").strip())
+            if has_key:
+                ke.check_and_run_daily_drop()
+                SCHED_STATE["status"] = "ONLINE • 08:30 MT Auto-Drop Armed (Art + Universe + Matrix)"
             else:
-                scheduler_state["status"] = "ARCHIVE MODE (Add GEMINI_API_KEY on Render for 08:30 MT Auto-Drop)"
+                SCHED_STATE["status"] = "STANDBY • Missing GEMINI_API_KEY"
+            SCHED_STATE["last_check"] = now_s
         except Exception as e:
-            scheduler_state["status"] = f"WARN: {str(e)[:80]}"
+            SCHED_STATE["status"] = f"WARN: {e}"
         time.sleep(60)
 
 
-threading.Thread(target=_daily_scheduler, daemon=True).start()
+threading.Thread(target=_bg_scheduler, daemon=True).start()
 
 
 @app.route("/health")
 def health():
-    return jsonify({"ok": True, "scheduler": scheduler_state})
+    return jsonify({"ok": True, "scheduler": SCHED_STATE})
 
 
 @app.route("/state")
 def state():
-    return jsonify({"scheduler": scheduler_state, "curriculum": ke.load_data()})
+    return jsonify({"ok": True, "scheduler": SCHED_STATE, "curriculum": ke.load_curriculum()})
 
 
-HTML = """<!DOCTYPE html>
+@app.route("/api/deep_dive", methods=["POST"])
+def api_deep_dive():
+    b = request.get_json(force=True)
+    try:
+        les = ke.generate_deep_dive_for_lesson(b["track"], int(b["seq"]))
+        return jsonify({"ok": True, "lesson": les})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/gallery", methods=["POST"])
+def api_gallery():
+    b = request.get_json(force=True)
+    try:
+        les = ke.generate_gallery_for_lesson(b["track"], int(b["seq"]))
+        return jsonify({"ok": True, "lesson": les})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/ask", methods=["POST"])
+def api_ask():
+    b = request.get_json(force=True)
+    try:
+        les = ke.ask_architect_on_lesson(b["track"], int(b["seq"]), b.get("question", ""))
+        return jsonify({"ok": True, "lesson": les})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+WEB_TEMPLATE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Knowledge Command Center // Keyshawn</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ page_title }}</title>
 <style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d; --fg: #e6edf3;
+    --muted: #8b949e; --accent: {{ accent }}; --amber: #fbbf24; --green: #3fb950; --purple: #d2a8ff;
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 16px; background: #0d1117; color: #e6edf3; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-  .wrap { max-width: 1020px; margin: 0 auto; }
-  .hdr { text-align: center; margin-bottom: 14px; }
-  .hdr h1 { margin: 0; font-size: 1.3rem; color: #58a6ff; }
-  .sub { font-size: 0.8rem; color: #8b949e; margin-top: 5px; }
-  .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
-  .tab-btn { cursor: pointer; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 8px; padding: 7px 13px; font-weight: 700; font-size: 0.84rem; font-family: inherit; }
-  .tab-btn.active { background: #1f6feb; color: #fff; border-color: #388bfd; }
-  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .search-in { background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 7px; padding: 6px 10px; font-size: 0.82rem; font-family: inherit; width: 190px; }
-  .study-btn { cursor: pointer; background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.65); border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: 0.8rem; font-family: inherit; }
-  .study-btn.active { background: #fbbf24; color: #0d1117; }
-  .track-desc { background: #161b22; border-left: 3px solid #58a6ff; padding: 9px 12px; border-radius: 6px; font-size: 0.83rem; color: #c9d1d9; margin-bottom: 12px; }
-  .lesson-card { background: #161b22; border: 1px solid #21262d; border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
-  .lesson-card summary { list-style: none; cursor: pointer; padding: 11px 14px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 700; }
-  .lesson-card summary::-webkit-details-marker { display: none; }
-  .lesson-card summary:hover { background: #1c222b; }
-  .amber-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #fbbf24; background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.65); }
-  .tag-pill { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 0.72rem; color: #8b949e; background: #0d1117; border: 1px solid #30363d; margin-left: 4px; font-weight: 400; }
-  .l-body { padding: 12px 15px; background: #090d13; border-top: 1px solid #21262d; font-size: 0.85rem; line-height: 1.58; color: #c9d1d9; }
-  .maker-box { margin-top: 10px; padding: 9px 12px; background: #161b22; border-left: 3px solid #fbbf24; border-radius: 6px; color: #e6edf3; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  header { padding: 16px; border-bottom: 1px solid var(--border); background: #090d13; text-align: center; }
+  h1 { margin: 0; font-size: 1.15rem; color: var(--accent); letter-spacing: 0.5px; }
+  .sub { font-size: 0.76rem; color: var(--muted); margin-top: 5px; }
+  .tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 12px 16px; }
+  .tab { background: var(--card); color: var(--fg); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: bold; font-size: 0.82rem; text-decoration: none; }
+  .tab.active { background: var(--accent); color: #090d13; border-color: var(--accent); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 8px 14px 48px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+  .card-grid { display: flex; gap: 16px; align-items: flex-start; }
+  @media (max-width: 740px) { .card-grid { flex-direction: column; } .plate-box { width: 100% !important; } }
+  .card-main { flex: 1; min-width: 0; }
+  .meta { font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .pill { background: #2d2208; color: var(--amber); border: 1px solid var(--amber); padding: 1px 6px; border-radius: 4px; font-weight: bold; font-size: 0.7rem; }
+  .title { font-size: 1.02rem; font-weight: bold; color: #f0f6fc; margin-bottom: 8px; }
+  .core { font-size: 0.86rem; line-height: 1.55; color: #c9d1d9; margin-bottom: 8px; }
+  .maker { font-size: 0.82rem; line-height: 1.5; color: var(--amber); background: #141921; border-left: 3px solid var(--amber); padding: 8px 10px; border-radius: 4px; }
+  .plate-box { width: 255px; flex-shrink: 0; background: #090d13; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; cursor: pointer; }
+  .plate-box img { width: 100%; height: 175px; object-fit: cover; display: block; background: #090d13; }
+  .plate-cap { font-size: 0.7rem; color: var(--muted); padding: 6px 8px; line-height: 1.35; }
+  pre.code { background: #090d13; border: 1px solid #238636; color: #7ee787; padding: 10px; border-radius: 6px; overflow-x: auto; font-size: 0.78rem; line-height: 1.45; margin-top: 10px; }
+  .decode-row { background: #0b1017; border-left: 3px solid var(--green); padding: 6px 10px; margin-top: 6px; font-size: 0.79rem; }
+  .decode-code { color: #79c0ff; font-weight: bold; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .btn { background: #21262d; color: var(--fg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 11px; font-family: inherit; font-size: 0.77rem; font-weight: bold; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .drawer { margin-top: 12px; padding: 12px; background: #090d13; border: 1px solid var(--border); border-radius: 6px; font-size: 0.84rem; line-height: 1.65; white-space: pre-wrap; color: #d0d7de; }
+  .gal-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
+  .gal-item { background: #090d13; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; cursor: pointer; }
+  .gal-item img { width: 100%; height: 130px; object-fit: cover; display: block; }
+  .gal-item div { padding: 6px; font-size: 0.7rem; color: var(--muted); }
+  .ask-bar { display: flex; gap: 6px; margin-top: 10px; }
+  .ask-bar input { flex: 1; background: #090d13; color: var(--fg); border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; font-family: inherit; font-size: 0.8rem; }
+  .qa-item { margin-top: 8px; padding: 9px 11px; background: #0c131d; border-left: 3px solid var(--purple); border-radius: 4px; font-size: 0.81rem; line-height: 1.55; white-space: pre-wrap; }
+  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:999; align-items:center; justify-content:center; flex-direction:column; padding:18px; }
+  #lightbox img { max-width:94vw; max-height:80vh; border:1px solid var(--border); border-radius:6px; }
+  #lightbox p { color:var(--fg); font-size:0.82rem; max-width:760px; text-align:center; margin-top:10px; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hdr">
-    <h1>🧠 KNOWLEDGE COMMAND CENTER</h1>
-    <div class="sub">{{ sched.status }} &bull; Checked: {{ sched.last_check }}</div>
-  </div>
+<header>
+  <h1>{{ header_icon }} {{ page_title }}</h1>
+  <div class="sub" id="sched">Syncing telemetry...</div>
+</header>
+<div class="tabs">
+  {% if mode == 'matrix' %}
+    <button class="tab active" onclick="switchTrack('matrix')">🧬 MATRIX CODE ANATOMY</button>
+    <a class="tab" href="/">🎨 SWITCH TO KNOWLEDGE CENTER (ART + UNIVERSE) ↗</a>
+  {% else %}
+    <button class="tab active" id="tab-art" onclick="switchTrack('art')">🎨 ART ENDURANCE</button>
+    <button class="tab" id="tab-universe" onclick="switchTrack('universe')">🌌 PHYSICS OF TIME</button>
+    <a class="tab" href="/matrix" style="border-color:#3fb950;color:#3fb950;">🧬 OPEN MATRIX CENTER ↗</a>
+  {% endif %}
+</div>
+<div class="wrap" id="feed"></div>
 
-  <div class="bar">
-    <div class="tabs">
-      {% for k, tr in data.tracks.items() %}
-      <button class="tab-btn" id="tab-{{ k }}" onclick="selectTrack('{{ k }}')">{{ tr.icon }} {{ tr.title }} ({{ tr.lessons|length }})</button>
-      {% endfor %}
-    </div>
-    <div class="controls">
-      <input class="search-in" id="q-in" type="text" placeholder="Filter lessons/tags..." oninput="filterCards()">
-      <button class="study-btn" id="study-btn" onclick="toggleStudy()">📚 Study Mode: Expand All</button>
-    </div>
-  </div>
-
-  {% for k, tr in data.tracks.items() %}
-  <div class="track-pane" id="pane-{{ k }}" style="display:none;">
-    <div class="track-desc" style="border-left-color: {{ tr.accent }};">
-      <strong>{{ tr.icon }} {{ tr.title }}:</strong> {{ tr.description }}
-    </div>
-    {% for item in tr.lessons|reverse %}
-    <details class="lesson-card" data-search="{{ (item.title ~ ' ' ~ item.core ~ ' ' ~ item.maker ~ ' ' ~ (item.tags|join(' ')))|lower }}">
-      <summary>
-        <span>
-          <span style="color:{{ tr.accent }};">#{{ "%03d"|format(item.seq) }}</span> &nbsp;{{ item.title }}
-          {% for tg in item.tags %}<span class="tag-pill">#{{ tg }}</span>{% endfor %}
-        </span>
-        <span>
-          <span style="color:#8b949e;font-weight:400;font-size:0.78rem;margin-right:6px;">{{ item.date }}</span>
-          <span class="amber-pill">{{ item.model }}</span>
-        </span>
-      </summary>
-      <div class="l-body">
-        <div><strong>📖 Core Mechanics:</strong> {{ item.core }}</div>
-        <div class="maker-box"><strong>🧵 Studio &amp; Systems Lens:</strong> {{ item.maker }}</div>
-      </div>
-    </details>
-    {% endfor %}
-  </div>
-  {% endfor %}
+<div id="lightbox" onclick="this.style.display='none'">
+  <img id="lb-img" src="">
+  <p id="lb-cap"></p>
 </div>
 
 <script>
-var tracks = {{ data.tracks.keys()|list|tojson }};
-function selectTrack(k) {
-  localStorage.setItem("kc_track", k);
-  tracks.forEach(function(t) {
-    document.getElementById("pane-" + t).style.display = (t === k) ? "block" : "none";
-    document.getElementById("tab-" + t).classList.toggle("active", t === k);
-  });
-  filterCards();
+let DATA = null;
+let CUR_TRACK = "{{ default_track }}";
+let OPEN_DD = {};
+let OPEN_GAL = {};
+
+function zoomImg(url, cap) {
+  document.getElementById('lb-img').src = url;
+  document.getElementById('lb-cap').textContent = cap || '';
+  document.getElementById('lightbox').style.display = 'flex';
 }
-function applyStudy() {
-  var on = localStorage.getItem("kc_study") === "1";
-  var btn = document.getElementById("study-btn");
-  btn.classList.toggle("active", on);
-  btn.textContent = on ? "📚 Study Mode: ON (Collapse All)" : "📚 Study Mode: Expand All";
-  document.querySelectorAll(".lesson-card").forEach(function(c) { c.open = on; });
+
+async function loadState() {
+  const r = await fetch('/state');
+  const j = await r.json();
+  DATA = j.curriculum;
+  document.getElementById('sched').textContent = j.scheduler.status + '  |  Last Check: ' + j.scheduler.last_check;
+  if (document.getElementById('tab-art') && DATA.tracks.art) {
+    document.getElementById('tab-art').textContent = `🎨 ART ENDURANCE (${DATA.tracks.art.lessons.length})`;
+    document.getElementById('tab-universe').textContent = `🌌 PHYSICS OF TIME (${DATA.tracks.universe.lessons.length})`;
+  }
+  renderFeed();
 }
-function toggleStudy() {
-  localStorage.setItem("kc_study", localStorage.getItem("kc_study") === "1" ? "0" : "1");
-  applyStudy();
+
+function switchTrack(t) {
+  CUR_TRACK = t;
+  document.querySelectorAll('button.tab').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('tab-' + t);
+  if (btn) btn.classList.add('active');
+  renderFeed();
 }
-function filterCards() {
-  var q = document.getElementById("q-in").value.toLowerCase().trim();
-  document.querySelectorAll(".lesson-card").forEach(function(c) {
-    var hay = c.getAttribute("data-search") || "";
-    c.style.display = (!q || hay.indexOf(q) !== -1) ? "block" : "none";
-  });
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-var savedTrack = localStorage.getItem("kc_track");
-selectTrack(tracks.indexOf(savedTrack) !== -1 ? savedTrack : tracks[0]);
-applyStudy();
+
+function renderFeed() {
+  const feed = document.getElementById('feed');
+  const lessons = ((DATA.tracks[CUR_TRACK] || {}).lessons || []).slice().reverse();
+  feed.innerHTML = lessons.map(l => {
+    const key = CUR_TRACK + '_' + l.seq;
+    const plate = l.image_url ? `
+      <div class="plate-box" onclick="zoomImg('${esc(l.image_url)}', '${esc(l.image_caption || l.title)}')">
+        <img src="${esc(l.image_url)}" loading="lazy">
+        <div class="plate-cap">📸 ${esc(l.image_caption || l.title)} • 🔍 Zoom</div>
+      </div>` : '';
+    const codeBlk = l.code_snippet ? `<pre class="code">${esc(l.code_snippet)}</pre>` : '';
+    const decodes = (OPEN_DD[key] && l.line_decode) ? l.line_decode.map(d =>
+      `<div class="decode-row"><span class="decode-code">${esc(d.code)}</span> → ${esc(d.meaning)}</div>`
+    ).join('') : '';
+    const ddBlk = (OPEN_DD[key] && l.deep_dive) ? `<div class="drawer"><strong>📖 MONOGRAPH / ARCHITECT DECODE:</strong>\n\n${esc(l.deep_dive)}</div>${decodes}` : '';
+    const galBlk = (OPEN_GAL[key] && l.gallery && l.gallery.length) ? `<div class="gal-strip">${l.gallery.map(g => `
+      <div class="gal-item" onclick="zoomImg('${esc(g.url)}','${esc((g.caption||'') + (g.study_note ? ' — ' + g.study_note : ''))}')">
+        <img src="${esc(g.url)}" loading="lazy">
+        <div>${esc(g.caption || '')}${g.study_note ? '<br><span style="color:#fbbf24">' + esc(g.study_note) + '</span>' : ''}</div>
+      </div>`).join('')}</div>` : '';
+    const qas = (l.qa_log || []).map(q => `<div class="qa-item"><strong style="color:#d2a8ff">Q: ${esc(q.q)}</strong> <span class="pill">[ ${esc(q.model)} ]</span>\n${esc(q.a)}</div>`).join('');
+
+    return `<div class="card" id="card-${key}">
+      <div class="card-grid">
+        <div class="card-main">
+          <div class="meta">
+            <span>#${String(l.seq).padStart(3,'0')} • ${esc(l.date)}</span>
+            <span class="pill">[ ${esc(l.model || 'ARCHIVE')} ]</span>
+            ${l.file_ref ? `<span style="color:#3fb950">📂 ${esc(l.file_ref)}</span>` : ''}
+          </div>
+          <div class="title">${esc(l.title)}</div>
+          <div class="core">${esc(l.core)}</div>
+          <div class="maker">🧵 Studio / Craft Lens: ${esc(l.maker)}</div>
+          ${codeBlk}
+        </div>
+        ${plate}
+      </div>
+      <div class="actions">
+        <button class="btn" id="ddbtn-${key}" onclick="toggleDeepDive('${CUR_TRACK}', ${l.seq})">📖 ${l.deep_dive ? (OPEN_DD[key] ? 'Hide Deep Dive' : 'Deep Dive') : 'Generate Deep Dive (Gemini)'}</button>
+        ${CUR_TRACK !== 'matrix' ? `<button class="btn" id="galbtn-${key}" onclick="toggleGallery('${CUR_TRACK}', ${l.seq})">🖼️ ${(l.gallery && l.gallery.length >= 3) ? (OPEN_GAL[key] ? 'Hide Plates' : `More Plates (${l.gallery.length})`) : 'Curate 5 Plates'}</button>` : ''}
+      </div>
+      ${ddBlk}
+      ${galBlk}
+      ${qas}
+      <div class="ask-bar">
+        <input id="ask-${key}" placeholder="Ask Gemini Architect anything about #${String(l.seq).padStart(3,'0')}..." onkeydown="if(event.key==='Enter')sendAsk('${CUR_TRACK}',${l.seq})">
+        <button class="btn" id="askbtn-${key}" onclick="sendAsk('${CUR_TRACK}', ${l.seq})" style="border-color:#d2a8ff;color:#d2a8ff;">💬 Ask Gemini</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateLessonInMem(track, updated) {
+  const arr = DATA.tracks[track].lessons;
+  const idx = arr.findIndex(x => x.seq === updated.seq);
+  if (idx >= 0) arr[idx] = updated;
+}
+
+async function toggleDeepDive(track, seq) {
+  const key = track + '_' + seq;
+  const les = DATA.tracks[track].lessons.find(x => x.seq === seq);
+  if (les.deep_dive && les.deep_dive.length > 120) {
+    OPEN_DD[key] = !OPEN_DD[key];
+    renderFeed();
+    return;
+  }
+  const btn = document.getElementById('ddbtn-' + key);
+  btn.textContent = '⏳ Synthesizing Deep Dive via Gemini...';
+  const r = await fetch('/api/deep_dive', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq})});
+  const j = await r.json();
+  if (j.ok) { updateLessonInMem(track, j.lesson); OPEN_DD[key] = true; renderFeed(); }
+  else { btn.textContent = '⚠️ Retry Deep Dive'; alert(j.error); }
+}
+
+async function toggleGallery(track, seq) {
+  const key = track + '_' + seq;
+  const les = DATA.tracks[track].lessons.find(x => x.seq === seq);
+  if (les.gallery && les.gallery.length >= 3) {
+    OPEN_GAL[key] = !OPEN_GAL[key];
+    renderFeed();
+    return;
+  }
+  const btn = document.getElementById('galbtn-' + key);
+  btn.textContent = '⏳ Pulling Museum & Commons Plates...';
+  const r = await fetch('/api/gallery', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq})});
+  const j = await r.json();
+  if (j.ok) { updateLessonInMem(track, j.lesson); OPEN_GAL[key] = true; renderFeed(); }
+  else { btn.textContent = '⚠️ Retry Plates'; }
+}
+
+async function sendAsk(track, seq) {
+  const key = track + '_' + seq;
+  const inp = document.getElementById('ask-' + key);
+  const q = inp.value.trim();
+  if (!q) return;
+  const btn = document.getElementById('askbtn-' + key);
+  btn.textContent = '⏳ Thinking...';
+  inp.disabled = true;
+  const r = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq, question: q})});
+  const j = await r.json();
+  if (j.ok) { updateLessonInMem(track, j.lesson); renderFeed(); }
+  else { btn.textContent = '💬 Ask Gemini'; inp.disabled = false; alert(j.error); }
+}
+
+loadState();
 </script>
 </body>
-</html>
-"""
+</html>"""
 
 
 @app.route("/")
 def index():
-    return render_template_string(HTML, data=ke.load_data(), sched=scheduler_state)
+    return render_template_string(
+        WEB_TEMPLATE,
+        mode="knowledge",
+        default_track="art",
+        page_title="KNOWLEDGE COMMAND CENTER // KEYSHAWN",
+        header_icon="🧠",
+        accent="#fbbf24",
+    )
+
+
+@app.route("/matrix")
+def matrix_portal():
+    return render_template_string(
+        WEB_TEMPLATE,
+        mode="matrix",
+        default_track="matrix",
+        page_title="MATRIX SYSTEMS COMMAND CENTER // KEYSHAWN",
+        header_icon="🧬",
+        accent="#3fb950",
+    )
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10001))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5055")))
