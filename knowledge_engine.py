@@ -8,9 +8,10 @@ _LOCK = threading.Lock()
 _UA = "KnowledgeMatrixHub/2.0 (https://knowledge-center-dsog.onrender.com; educational)"
 
 MODELS_CASCADE = [
+    ("gemini-3.8-flash", "3.8-FLASH"),
+    ("gemini-3.5-flash-lite", "3.5-FLASH-LITE"),
+    ("gemini-3-flash-preview", "3-FLASH"),
     ("gemini-2.5-flash", "2.5-FLASH"),
-    ("gemini-2.5-flash-lite", "2.5-FLASH-LITE"),
-    ("gemini-2.0-flash", "2.0-FLASH"),
 ]
 
 
