@@ -87,40 +87,104 @@ def _http_json(url):
 
 
 def resolve_visual_plates(query, count=1, track="art", exclude_urls=None):
-    """Resolves verified HTTPS plates across 6 sources: Wiki PageImages, ArtIC, Commons, Wiki REST Summary, Open Library & iTunes."""
+    """Intent-aware 6-source visual resolver: routes album/book/cover queries to iTunes, Open Library & Wiki REST before generic keyword search."""
     plates = []
     seen = set(exclude_urls or [])
     q_raw = (query or "").strip()
     if not q_raw:
         return plates
     q_clean = q_raw.split("—")[0].split("(")[0].strip() if "—" in q_raw and len(q_raw) > 38 else q_raw
+    q_low = q_clean.lower()
 
-    # 1) Wikipedia PageImages Search (Primary high-precision match)
-    try:
-        wq = urllib.parse.quote(q_clean)
-        wurl = f"https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch={wq}&gsrlimit={max(8, count*3)}&prop=pageimages|pageterms&piprop=thumbnail&pithumbsize=960&format=json"
-        pages = _http_json(wurl).get("query", {}).get("pages", {})
-        for p in sorted(pages.values(), key=lambda x: x.get("index", 99)):
-            src = (p.get("thumbnail") or {}).get("source", "")
-            if src and src not in seen and not src.lower().endswith(".svg"):
-                seen.add(src)
-                desc = ((p.get("terms") or {}).get("description") or [""])[0]
-                cap = f"{p.get('title', q_clean)}" + (f" — {desc}" if desc else "")
-                plates.append({"url": src, "caption": cap, "source": "Wikipedia Archive"})
-                if len(plates) >= count:
-                    return plates
-        for p in sorted(pages.values(), key=lambda x: x.get("index", 99)):
-            src = (p.get("thumbnail") or {}).get("source", "")
-            if src and src not in seen:
-                seen.add(src)
-                plates.append({"url": src, "caption": p.get("title", q_clean), "source": "Wikimedia Diagram"})
-                if len(plates) >= count:
-                    return plates
-    except Exception:
-        pass
+    album_intent = any(w in q_low for w in ("album", "vinyl", "lp", "single", "soundtrack", "sleeve", "discography", "record", "huncho", "music")) or ("cover" in q_low and "book" not in q_low)
+    book_intent = any(w in q_low for w in ("book", "novel", "edition", "monograph", "jacket", "illustrated", "gonzo", "fear and loathing", "animal farm", "treasure island"))
 
-    # 2) Art Institute of Chicago Open Access (Fine art & textile closeups)
-    if track == "art" and len(plates) < count:
+    # Strip meta-words like 'album cover' or 'book cover' when querying strict catalog APIs (iTunes / Open Library)
+    q_catalog = re.sub(r"\b(album\s+cover|book\s+cover|cover\s+art|album\s+art|sleeve\s+art|cover|album|artwork)\b", " ", q_clean, flags=re.I)
+    q_catalog = " ".join(q_catalog.split()).strip() or q_clean
+
+    def run_itunes():
+        try:
+            iq = urllib.parse.quote(q_catalog)
+            for entity in ("album", "musicTrack"):
+                iurl = f"https://itunes.apple.com/search?term={iq}&entity={entity}&limit={max(8, count*3)}"
+                for item in _http_json(iurl).get("results", []):
+                    art100 = item.get("artworkUrl100", "")
+                    if art100:
+                        hi = art100.replace("100x100bb", "1000x1000bb").replace("100x100", "1000x1000")
+                        if hi not in seen:
+                            seen.add(hi)
+                            cname = item.get("collectionName") or item.get("trackName") or q_catalog
+                            aname = item.get("artistName", "")
+                            plates.append({
+                                "url": hi,
+                                "caption": f"{cname} — {aname}".strip(" —")[:100],
+                                "source": "iTunes 1000px Sleeve Archive"
+                            })
+                            if len(plates) >= count:
+                                return
+        except Exception:
+            pass
+
+    def run_openlibrary():
+        try:
+            oq = urllib.parse.quote(q_catalog)
+            ourl = f"https://openlibrary.org/search.json?q={oq}&limit={max(8, count*3)}"
+            for doc in _http_json(ourl).get("docs", []):
+                cid = doc.get("cover_i")
+                if cid:
+                    ou = f"https://covers.openlibrary.org/b/id/{cid}-L.jpg"
+                    if ou not in seen:
+                        seen.add(ou)
+                        auth = ", ".join((doc.get("author_name") or [])[:2])
+                        yr = doc.get("first_publish_year", "")
+                        cap = f"{doc.get('title', q_catalog)}" + (f" ({yr})" if yr else "") + (f" — {auth}" if auth else "")
+                        plates.append({"url": ou, "caption": cap[:100], "source": "Open Library Monographs"})
+                        if len(plates) >= count:
+                            return
+        except Exception:
+            pass
+
+    def run_wiki_rest_lead():
+        # Search top 3 exact Wikipedia titles, then hit REST /page/summary/ which DOES expose fair-use album/book cover lead images
+        try:
+            sq = urllib.parse.quote(q_catalog)
+            s_hits = _http_json(f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={sq}&srlimit=3&format=json").get("query", {}).get("search", [])
+            titles = [h.get("title", "") for h in s_hits if h.get("title")] or [q_catalog]
+            for ttl in titles:
+                slug = urllib.parse.quote(ttl.replace(" ", "_"))
+                sdata = _http_json(f"https://en.wikipedia.org/api/rest_v1/page/summary/{slug}")
+                orig = (sdata.get("originalimage") or {}).get("source") or (sdata.get("thumbnail") or {}).get("source", "")
+                if orig and orig not in seen and not orig.lower().endswith(".svg"):
+                    seen.add(orig)
+                    desc = sdata.get("description", "")
+                    cap = f"{sdata.get('title', ttl)}" + (f" — {desc}" if desc else "")
+                    plates.append({"url": orig, "caption": cap[:100], "source": "Wikipedia Lead Plate"})
+                    if len(plates) >= count:
+                        return
+        except Exception:
+            pass
+
+    def run_wiki_pageimages():
+        try:
+            wq = urllib.parse.quote(q_clean)
+            wurl = f"https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch={wq}&gsrlimit={max(8, count*3)}&prop=pageimages|pageterms&piprop=thumbnail&pithumbsize=960&format=json"
+            pages = _http_json(wurl).get("query", {}).get("pages", {})
+            for p in sorted(pages.values(), key=lambda x: x.get("index", 99)):
+                src = (p.get("thumbnail") or {}).get("source", "")
+                if src and src not in seen and not src.lower().endswith(".svg"):
+                    seen.add(src)
+                    desc = ((p.get("terms") or {}).get("description") or [""])[0]
+                    cap = f"{p.get('title', q_clean)}" + (f" — {desc}" if desc else "")
+                    plates.append({"url": src, "caption": cap, "source": "Wikipedia Archive"})
+                    if len(plates) >= count:
+                        return
+        except Exception:
+            pass
+
+    def run_artic():
+        if track != "art" or album_intent:
+            return
         try:
             aq = urllib.parse.quote(q_clean)
             aurl = f"https://api.artic.edu/api/v1/artworks/search?q={aq}&fields=id,title,artist_title,image_id,date_display&limit={max(8, count*3)}"
@@ -138,12 +202,11 @@ def resolve_visual_plates(query, count=1, track="art", exclude_urls=None):
                             "source": "Art Institute Open Access"
                         })
                         if len(plates) >= count:
-                            return plates
+                            return
         except Exception:
             pass
 
-    # 3) Wikimedia Commons Direct File Search
-    if len(plates) < count:
+    def run_commons():
         try:
             cq = urllib.parse.quote(q_clean)
             curl = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch={cq}&gsrlimit={max(12, count*4)}&prop=imageinfo&iiprop=url&iiurlwidth=960&format=json"
@@ -156,70 +219,21 @@ def resolve_visual_plates(query, count=1, track="art", exclude_urls=None):
                     ttl = cp.get("title", "").replace("File:", "").rsplit(".", 1)[0].replace("_", " ")
                     plates.append({"url": tu, "caption": ttl[:95], "source": "Wikimedia Commons"})
                     if len(plates) >= count:
-                        return plates
+                        return
         except Exception:
             pass
 
-    # 4) Wikipedia REST Page Summary (Pulls high-res original fair-use/editorial lead image)
-    if len(plates) < count:
-        try:
-            sq = urllib.parse.quote(q_clean.replace(" ", "_"))
-            sdata = _http_json(f"https://en.wikipedia.org/api/rest_v1/page/summary/{sq}")
-            orig = (sdata.get("originalimage") or {}).get("source") or (sdata.get("thumbnail") or {}).get("source", "")
-            if orig and orig not in seen:
-                seen.add(orig)
-                desc = sdata.get("description", "")
-                cap = f"{sdata.get('title', q_clean)}" + (f" — {desc}" if desc else "")
-                plates.append({"url": orig, "caption": cap[:100], "source": "Wikipedia Lead Plate"})
-                if len(plates) >= count:
-                    return plates
-        except Exception:
-            pass
+    # Dynamic pipeline routing based on query intent
+    if album_intent:
+        pipeline = [run_itunes, run_wiki_rest_lead, run_commons, run_wiki_pageimages, run_openlibrary]
+    elif book_intent:
+        pipeline = [run_openlibrary, run_wiki_rest_lead, run_commons, run_wiki_pageimages, run_artic, run_itunes]
+    else:
+        pipeline = [run_wiki_rest_lead, run_wiki_pageimages, run_artic, run_commons, run_openlibrary, run_itunes]
 
-    # 5) Open Library Archive (Monographs, illustrated editions & book covers)
-    if len(plates) < count:
-        try:
-            oq = urllib.parse.quote(q_clean)
-            ourl = f"https://openlibrary.org/search.json?q={oq}&limit={max(8, count*2)}"
-            odocs = _http_json(ourl).get("docs", [])
-            for doc in odocs:
-                cid = doc.get("cover_i")
-                if cid:
-                    ou = f"https://covers.openlibrary.org/b/id/{cid}-L.jpg"
-                    if ou not in seen:
-                        seen.add(ou)
-                        auth = ", ".join((doc.get("author_name") or [])[:2])
-                        yr = doc.get("first_publish_year", "")
-                        cap = f"{doc.get('title', q_clean)}" + (f" ({yr})" if yr else "") + (f" — {auth}" if auth else "")
-                        plates.append({"url": ou, "caption": cap[:100], "source": "Open Library Monographs"})
-                        if len(plates) >= count:
-                            return plates
-        except Exception:
-            pass
-
-    # 6) iTunes High-Res Editorial & Album Art (1000x1000 fair-use sleeve/cover artwork)
-    if len(plates) < count:
-        try:
-            iq = urllib.parse.quote(q_clean)
-            iurl = f"https://itunes.apple.com/search?term={iq}&limit={max(6, count*2)}"
-            ires = _http_json(iurl).get("results", [])
-            for item in ires:
-                art100 = item.get("artworkUrl100", "")
-                if art100:
-                    hi = art100.replace("100x100bb", "1000x1000bb").replace("100x100", "1000x1000")
-                    if hi not in seen:
-                        seen.add(hi)
-                        cname = item.get("collectionName") or item.get("trackName") or q_clean
-                        aname = item.get("artistName", "")
-                        plates.append({
-                            "url": hi,
-                            "caption": f"{cname} — {aname}".strip(" —")[:100],
-                            "source": "iTunes High-Res Archive"
-                        })
-                        if len(plates) >= count:
-                            return plates
-        except Exception:
-            pass
+    for stage in pipeline:
+        if len(plates) < count:
+            stage()
 
     return plates
 
@@ -295,7 +309,7 @@ def generate_gallery_for_lesson(track_key, seq, append=False, custom_query=""):
                 p["study_note"] = f"Custom target: {custom_q}"
                 new_plates.append(p)
 
-    focus_line = f"Focus specifically on Keyshawn's custom target: '{custom_q}'." if custom_q else f"Avoid already-shown plates: {existing_caps}. Dig into fresh masterworks, closeups, editions, sketches, or apparatus."
+    focus_line = f"CRITICAL: Every query MUST directly retrieve '{custom_q}' (use exact album/book/work titles, e.g. 'Huncho Jack, Jack Huncho' or 'Fear and Loathing in Las Vegas', NEVER generic artist portrait pages)." if custom_q else f"Avoid already-shown plates: {existing_caps}. Dig into fresh masterworks, closeups, editions, sketches, or apparatus."
     prompt = f"""Give me 6 specific search queries across Wikipedia, Art Institute, Wikimedia Commons, Open Library, or iTunes to pull real visual plates for:
 Track: {track_key}
 Lesson Title: {les['title']}
