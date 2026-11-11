@@ -95,6 +95,16 @@ def api_favorite():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/delete_plate", methods=["POST"])
+def api_delete_plate():
+    b = request.get_json(force=True)
+    try:
+        res = ke.delete_gallery_plate(b.get("track", "art"), int(b.get("seq", 1)), b.get("url", ""))
+        return jsonify({"ok": True, "lesson": res["lesson"], "favorites": res["favorites"], "capacity": ke.get_capacity_telemetry()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/ask", methods=["POST"])
 def api_ask():
     b = request.get_json(force=True)
@@ -170,6 +180,8 @@ WEB_TEMPLATE = """<!doctype html>
   #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:999; align-items:center; justify-content:center; flex-direction:column; padding:18px; }
   #lightbox img { max-width:94vw; max-height:80vh; border:1px solid var(--border); border-radius:6px; }
   #lightbox p { color:var(--fg); font-size:0.82rem; max-width:760px; text-align:center; margin-top:10px; }
+  .del-btn { position:absolute; top:8px; left:8px; width:28px; height:28px; border-radius:50%; background:rgba(9,13,19,0.84); border:1px solid #30363d; color:#8b949e; font-size:15px; font-weight:bold; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:4; transition:all 0.15s ease; }
+  .del-btn:hover { background:#f85149; border-color:#ff7b72; color:#fff; transform:scale(1.08); }
 </style>
 </head>
 <body>
@@ -332,6 +344,24 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+async function deletePlateIdx(ev, idx) {
+  ev.stopPropagation();
+  const p = PLATE_REG[idx];
+  if (!p) return;
+  if (ev.currentTarget) { ev.currentTarget.textContent = "…"; }
+  const r = await fetch("/api/delete_plate", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({track: p.track, seq: p.seq, url: p.url}) });
+  const j = await r.json();
+  if (j.ok) {
+    const target = ((DATA.tracks[p.track] || {}).lessons || []).find(x => Number(x.seq) === Number(p.seq));
+    if (target && j.lesson) target.gallery = j.lesson.gallery || [];
+    DATA.favorites = j.favorites || [];
+    if (j.capacity) CAP = j.capacity;
+    GALLERY_OPEN[p.track + "_" + p.seq] = true;
+    renderHeaderStats();
+    renderFeed();
+  }
+}
+
 async function toggleStarIdx(ev, idx) {
   ev.stopPropagation();
   const p = PLATE_REG[idx];
@@ -430,7 +460,7 @@ ${esc(l.deep_dive)}</div>${decodes}` : '';
         });
         const gst = isStarred(g.url);
         return `<div class="gal-item" onclick="zoomReg(${gIdx})">
-          <button class="star-btn ${gst ? 'starred' : ''}" title="${gst ? 'Saved in Favorites' : 'Star to Key&#39;s Favorites'}" onclick="toggleStarIdx(event, ${gIdx})">${gst ? '⭐' : '☆'}</button>
+          <button class="del-btn" title="Prune plate" onclick="deletePlateIdx(event, ${gIdx})">&times;</button><button class="star-btn ${gst ? 'starred' : ''}" title="${gst ? 'Saved in Favorites' : 'Star to Key&#39;s Favorites'}" onclick="toggleStarIdx(event, ${gIdx})">${gst ? '⭐' : '☆'}</button>
           <img src="${esc(g.url)}" loading="lazy">
           <div class="gal-cap">
             ${esc(g.caption || '')}

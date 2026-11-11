@@ -354,6 +354,18 @@ Return JSON: {{"queries": [{{"q": "exact search term (artist + specific work, bo
     return les
 
 
+def delete_gallery_plate(track_key, seq, url):
+    url_clean = (url or "").strip()
+    if not url_clean:
+        raise ValueError("Missing plate URL")
+    data = load_curriculum()
+    les = find_lesson(data, track_key, int(seq))
+    les["gallery"] = [g for g in (les.get("gallery") or []) if (g.get("url") or "").strip() != url_clean]
+    data["favorites"] = [f for f in data.setdefault("favorites", []) if (f.get("url") or "").strip() != url_clean]
+    save_curriculum(data, f"Prune gallery plate from {track_key} #{int(seq):03d}")
+    return {"lesson": les, "favorites": data["favorites"]}
+
+
 def toggle_favorite_plate(track_key, seq, url, caption="", study_note="", source=""):
     url_clean = (url or "").strip()
     if not url_clean:
