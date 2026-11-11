@@ -394,7 +394,7 @@ def get_capacity_telemetry(data=None):
     except Exception:
         pass
 
-    d = data if isinstance(data, dict) else {}
+    d = data if isinstance(data, dict) else load_curriculum()
     tracks = d.get("tracks", {})
     total_lessons = sum(len(tracks.get(t, {}).get("lessons", [])) for t in ("art", "universe", "matrix"))
     avg_bytes = max(3800, raw_bytes / max(1, total_lessons))
