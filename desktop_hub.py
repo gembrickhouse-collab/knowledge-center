@@ -128,14 +128,17 @@ class KnowledgeDesktopHub(tk.Tk):
         self.bind_all("<Button-5>", lambda e: self.cv.yview_scroll(1, "units"))
         self.bind("<Configure>", self._on_window_configure)
 
-        self._pack_nav_for_width(1260)
         self._load_local()
+        self.update_idletasks()
+        self._pack_nav_for_width(self._get_win_w())
         self.render_cards()
+        self.after(120, self._handle_resize)
         threading.Thread(target=self._cloud_sync_loop, daemon=True).start()
 
     def _get_win_w(self):
+        self.update_idletasks()
         w = self.winfo_width()
-        return w if w > 200 else 1260
+        return w if w > 200 else 900
 
     def _pack_nav_for_width(self, w):
         for child in (self.btn_art, self.btn_uni, self.btn_fav, self.filter_lbl, self.filter_ent, self.sync_btn, self.matrix_btn):
@@ -176,16 +179,16 @@ class KnowledgeDesktopHub(tk.Tk):
 
     def _handle_resize(self):
         w = self._get_win_w()
-        hdr_wrap = max(300, w - 36)
+        hdr_wrap = max(240, w - 56)
         self.title_lbl.config(wraplength=hdr_wrap)
         self.sub_lbl.config(wraplength=hdr_wrap)
-        self.cap_pill.config(wraplength=max(280, w - 52))
+        self.cap_pill.config(wraplength=max(220, w - 76))
         self._pack_nav_for_width(w)
 
         cw = self.cv.winfo_width()
         if cw < 200:
             cw = w - 40
-        mode = "wide" if cw >= 780 else "narrow"
+        mode = "wide" if cw >= 860 else "narrow"
         gal_cols = max(1, min(5, (cw - 36) // 215))
         bucket = (mode, gal_cols)
         if self._last_layout_bucket is not None and bucket != self._last_layout_bucket:
@@ -201,11 +204,11 @@ class KnowledgeDesktopHub(tk.Tk):
     def _apply_dynamic_wraps(self, canvas_w):
         if canvas_w < 200:
             canvas_w = self._get_win_w() - 40
-        is_wide = canvas_w >= 780
+        is_wide = canvas_w >= 860
         # Subtract right-side 265px plate column when side-by-side; use full card width when stacked narrow!
-        body_w = max(240, (canvas_w - 315) if is_wide else (canvas_w - 48))
-        maker_w = max(220, body_w - 22)
-        full_w = max(240, canvas_w - 58)
+        body_w = max(200, (canvas_w - 365) if is_wide else (canvas_w - 64))
+        maker_w = max(180, body_w - 32)
+        full_w = max(200, canvas_w - 72)
         fav_w = max(220, (canvas_w - 275) if canvas_w >= 640 else (canvas_w - 54))
 
         alive = []
@@ -281,7 +284,7 @@ class KnowledgeDesktopHub(tk.Tk):
             )
         w = self._get_win_w()
         self.sub_lbl.config(wraplength=max(300, w - 36))
-        self.cap_pill.config(wraplength=max(280, w - 52))
+        self.cap_pill.config(wraplength=max(220, w - 76))
         self._update_tab_counts()
         if rerender:
             self.render_cards()
@@ -519,7 +522,7 @@ class KnowledgeDesktopHub(tk.Tk):
         cw = self.cv.winfo_width()
         if cw < 200:
             cw = self._get_win_w() - 40
-        is_wide = cw >= 780
+        is_wide = cw >= 860
         gal_cols = max(1, min(5, (cw - 36) // 215))
         self._last_layout_bucket = ("wide" if is_wide else "narrow", gal_cols)
 
