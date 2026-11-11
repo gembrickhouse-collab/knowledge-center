@@ -406,7 +406,7 @@ function renderFeed() {
       const st = isStarred(l.image_url);
       plate = `
       <div class="plate-box" onclick="zoomReg(${pIdx})">
-        <button class="star-btn ${st ? 'starred' : ''}" title="${st ? 'Saved in Favorites' : 'Star to Key\'s Favorites'}" onclick="toggleStarIdx(event, ${pIdx})">${st ? '⭐' : '☆'}</button>
+        <button class="star-btn ${st ? 'starred' : ''}" title="${st ? 'Saved in Favorites' : 'Star to Key&#39;s Favorites'}" onclick="toggleStarIdx(event, ${pIdx})">${st ? '⭐' : '☆'}</button>
         <img src="${esc(l.image_url)}" loading="lazy">
         <div class="plate-cap">📸 ${esc(l.image_caption || l.title)} • 🔍 Zoom</div>
       </div>`;
@@ -430,7 +430,7 @@ ${esc(l.deep_dive)}</div>${decodes}` : '';
         });
         const gst = isStarred(g.url);
         return `<div class="gal-item" onclick="zoomReg(${gIdx})">
-          <button class="star-btn ${gst ? 'starred' : ''}" title="${gst ? 'Saved in Favorites' : 'Star to Key\'s Favorites'}" onclick="toggleStarIdx(event, ${gIdx})">${gst ? '⭐' : '☆'}</button>
+          <button class="star-btn ${gst ? 'starred' : ''}" title="${gst ? 'Saved in Favorites' : 'Star to Key&#39;s Favorites'}" onclick="toggleStarIdx(event, ${gIdx})">${gst ? '⭐' : '☆'}</button>
           <img src="${esc(g.url)}" loading="lazy">
           <div class="gal-cap">
             ${esc(g.caption || '')}
