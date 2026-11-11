@@ -8,10 +8,41 @@ _LOCK = threading.Lock()
 _UA = "KnowledgeMatrixHub/2.0 (https://knowledge-center-dsog.onrender.com; educational)"
 
 MODELS_CASCADE = [
-    ("gemini-3.8-flash", "3.8-FLASH"),
-    ("gemini-3.6-flash", "3.6-FLASH"),
-    ("gemini-3.5-flash-lite", "3.5-FLASH-LITE"),
+    ("gemini-2.5-flash", "2.5-FLASH"),
+    ("gemini-2.5-flash-lite", "2.5-FLASH-LITE"),
+    ("gemini-2.0-flash", "2.0-FLASH"),
 ]
+
+
+_DROP_LOCK = threading.Lock()
+
+
+def sync_curriculum_from_github():
+    """Pull newest curriculum.json from GitHub on container boot so deploys never clobber cloud drops/stars."""
+    tok = os.getenv("GITHUB_TOKEN", "").strip()
+    repo = os.getenv("GITHUB_REPO", "").strip()
+    if not tok or not repo:
+        return False
+    url = f"https://api.github.com/repos/{repo}/contents/curriculum.json"
+    hdrs = {"Authorization": f"Bearer {tok}", "Accept": "application/vnd.github+json", "User-Agent": _UA}
+    try:
+        req = urllib.request.Request(url, headers=hdrs)
+        cur = json.loads(urllib.request.urlopen(req, timeout=12).read().decode())
+        b64 = cur.get("content", "")
+        if b64:
+            raw = base64.b64decode(b64).decode("utf-8")
+            cloud_data = json.loads(raw)
+            local_data = load_curriculum()
+            c_tot = sum(len(v.get("lessons", [])) for v in cloud_data.get("tracks", {}).values())
+            l_tot = sum(len(v.get("lessons", [])) for v in local_data.get("tracks", {}).values())
+            if c_tot >= l_tot:
+                with _LOCK:
+                    with open(CURRICULUM_FILE, "w") as f:
+                        json.dump(cloud_data, f, indent=2)
+                return True
+    except Exception as e:
+        print(f"[GitHub Boot Pull Warn] {e}", flush=True)
+    return False
 
 
 def load_curriculum():
@@ -543,30 +574,34 @@ Return JSON:
     return entry
 
 
-def check_and_run_daily_drop():
-    now_mt = datetime.now(MT_ZONE)
-    if (now_mt.hour, now_mt.minute) < (8, 30):
-        return False
-    today_str = now_mt.strftime("%Y-%m-%d")
-    data = load_curriculum()
-    changed = []
-    for t_key in ("art", "universe", "matrix"):
-        track = data.get("tracks", {}).get(t_key)
-        if not track:
-            continue
-        lessons = track.get("lessons", [])
-        if any(l.get("date") == today_str for l in lessons):
-            continue
-        try:
-            new_l = _generate_next_lesson(t_key, lessons, today_str)
-            lessons.append(new_l)
-            tag = f"{t_key} #{new_l['seq']:03d}"
-            changed.append(tag)
-            save_curriculum(data, f"08:30 MT Auto-Drop: {tag}")
-            time.sleep(4)
-        except Exception as e:
-            print(f"[Auto-Drop Error {t_key}] {e}", flush=True)
-    if changed:
-        return True
-    return False
-
+def check_and_run_daily_drop(force=False):
+    if not _DROP_LOCK.acquire(blocking=False):
+        return {"ran": False, "changed": [], "reason": "already_running"}
+    try:
+        now_mt = datetime.now(MT_ZONE)
+        if not force and (now_mt.hour, now_mt.minute) < (8, 30):
+            return {"ran": False, "changed": [], "reason": "before_0830_mt"}
+        today_str = now_mt.strftime("%Y-%m-%d")
+        data = load_curriculum()
+        changed = []
+        errors = {}
+        for t_key in ("art", "universe", "matrix"):
+            track = data.get("tracks", {}).get(t_key)
+            if not track:
+                continue
+            lessons = track.get("lessons", [])
+            if any(l.get("date") == today_str for l in lessons):
+                continue
+            try:
+                new_l = _generate_next_lesson(t_key, lessons, today_str)
+                lessons.append(new_l)
+                tag = f"{t_key} #{new_l['seq']:03d}"
+                changed.append(tag)
+                save_curriculum(data, f"Daily Drop ({today_str}): {tag}")
+                time.sleep(2)
+            except Exception as e:
+                errors[t_key] = str(e)
+                print(f"[Auto-Drop Error {t_key}] {e}", flush=True)
+        return {"ran": bool(changed), "changed": changed, "errors": errors, "date": today_str}
+    finally:
+        _DROP_LOCK.release()

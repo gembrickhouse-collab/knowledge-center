@@ -1,4 +1,4 @@
-import os, io, json, hashlib, threading, urllib.request
+import os, io, json, time, hashlib, threading, webbrowser, urllib.request
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -8,7 +8,7 @@ CURRICULUM_FILE = os.path.join(BASE_DIR, "curriculum.json")
 CLOUD_URL_FILE = os.path.join(BASE_DIR, "cloud_url.txt")
 IMG_CACHE_DIR = os.path.expanduser("~/.cache/knowledge_hub_plates")
 os.makedirs(IMG_CACHE_DIR, exist_ok=True)
-_UA = "KnowledgeDesktopHub/2.0 (Ubuntu; educational)"
+_UA = "KnowledgeDesktopHub/2.2 (Ubuntu; educational)"
 
 
 def get_cloud_url():
@@ -38,37 +38,59 @@ def fetch_cached_pil(url, max_size):
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
         super().__init__(className="knowledge-hub")
-        self.title("Knowledge Command Center // Art Endurance & Physics of Time")
-        self.geometry("1260x780")
+        self.title("Knowledge Command Center // Art Endurance, Physics of Time & Favorites Vault")
+        self.geometry("1280x810")
         self.configure(bg="#0d1117")
         self.cur_track = "art"
-        self.data = {"tracks": {"art": {"lessons": []}, "universe": {"lessons": []}}}
+        self.data = {"tracks": {"art": {"lessons": []}, "universe": {"lessons": []}}, "favorites": []}
+        self.capacity = {}
         self.open_dd = set()
         self.open_gal = set()
         self._photo_refs = []
         self.sched_status = "Syncing Render cloud..."
 
-        top = tk.Frame(self, bg="#090d13", pady=10)
+        top = tk.Frame(self, bg="#090d13", pady=9)
         top.pack(fill="x")
         tk.Label(top, text="🧠 KNOWLEDGE COMMAND CENTER // VISUAL MONOGRAPH ARCHIVE",
                  fg="#fbbf24", bg="#090d13", font=("Monospace", 13, "bold")).pack()
         self.sub_lbl = tk.Label(top, text=self.sched_status, fg="#8b949e", bg="#090d13", font=("Monospace", 9))
-        self.sub_lbl.pack(pady=(3, 0))
+        self.sub_lbl.pack(pady=(2, 3))
+
+        # v2 Runway Telemetry Pill right inside Desktop Header
+        self.cap_pill = tk.Label(
+            top,
+            text="💾 GitHub Vault: -- KB   •   ⚡ Cloud RAM: --   •   🛣️ Auto-Drop Runway: ~18.9 yrs",
+            fg="#3fb950", bg="#111822", font=("Monospace", 8, "bold"),
+            padx=12, pady=4, highlightbackground="#238636", highlightthickness=1
+        )
+        self.cap_pill.pack(pady=(2, 0))
 
         nav = tk.Frame(self, bg="#0d1117", pady=8)
         nav.pack(fill="x", padx=16)
         self.btn_art = tk.Button(nav, text="🎨 ART ENDURANCE", command=lambda: self.switch_track("art"),
-                                 bg="#fbbf24", fg="#090d13", relief="flat", font=("Monospace", 9, "bold"), padx=14, pady=5, cursor="hand2")
-        self.btn_art.pack(side="left", padx=(0, 8))
+                                 bg="#fbbf24", fg="#090d13", relief="flat", font=("Monospace", 9, "bold"), padx=12, pady=5, cursor="hand2")
+        self.btn_art.pack(side="left", padx=(0, 6))
         self.btn_uni = tk.Button(nav, text="🌌 PHYSICS OF TIME", command=lambda: self.switch_track("universe"),
-                                 bg="#21262d", fg="#c9d1d9", relief="flat", font=("Monospace", 9, "bold"), padx=14, pady=5, cursor="hand2")
-        self.btn_uni.pack(side="left", padx=(0, 12))
+                                 bg="#21262d", fg="#c9d1d9", relief="flat", font=("Monospace", 9, "bold"), padx=12, pady=5, cursor="hand2")
+        self.btn_uni.pack(side="left", padx=(0, 6))
+        self.btn_fav = tk.Button(nav, text="⭐ KEY'S FAVORITES (0)", command=lambda: self.switch_track("favorites"),
+                                 bg="#21262d", fg="#fbbf24", relief="flat", font=("Monospace", 9, "bold"), padx=12, pady=5, cursor="hand2")
+        self.btn_fav.pack(side="left", padx=(0, 10))
 
         tk.Label(nav, text="🔍 Filter:", fg="#8b949e", bg="#0d1117", font=("Monospace", 9)).pack(side="left")
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.render_cards())
         tk.Entry(nav, textvariable=self.search_var, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24",
-                 relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 9), width=28).pack(side="left", padx=6, ipady=3)
+                 relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 9), width=22).pack(side="left", padx=6, ipady=3)
+
+        # Right-side action buttons: Matrix Web + Manual Sync Daily Drop
+        self.sync_btn = tk.Button(nav, text="⚡ Sync Daily Drop", command=self._manual_sync_drop,
+                                  bg="#192b20", fg="#3fb950", activebackground="#238636", relief="flat",
+                                  font=("Monospace", 8, "bold"), padx=11, pady=5, cursor="hand2")
+        self.sync_btn.pack(side="right", padx=(6, 0))
+
+        tk.Button(nav, text="🧬 Matrix ↗", command=lambda: webbrowser.open(get_cloud_url() + "/matrix"),
+                  bg="#21262d", fg="#58a6ff", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=5, cursor="hand2").pack(side="right")
 
         wrap = tk.Frame(self, bg="#0d1117")
         wrap.pack(fill="both", expand=True, padx=16, pady=(0, 10))
@@ -92,6 +114,7 @@ class KnowledgeDesktopHub(tk.Tk):
         if os.path.exists(CURRICULUM_FILE):
             try:
                 self.data = json.load(open(CURRICULUM_FILE))
+                self.data.setdefault("favorites", [])
             except Exception:
                 pass
 
@@ -102,53 +125,144 @@ class KnowledgeDesktopHub(tk.Tk):
         except Exception:
             pass
 
+    def _is_starred(self, url):
+        return any(f.get("url") == url for f in (self.data.get("favorites") or []))
+
     def _cloud_sync_loop(self):
         while True:
             try:
                 u = get_cloud_url() + "/state"
                 req = urllib.request.Request(u, headers={"User-Agent": _UA})
-                j = json.loads(urllib.request.urlopen(req, timeout=20).read().decode())
+                j = json.loads(urllib.request.urlopen(req, timeout=22).read().decode())
                 if j.get("curriculum"):
-                    old_counts = (
+                    old_sig = (
                         len(self.data.get("tracks", {}).get("art", {}).get("lessons", [])),
                         len(self.data.get("tracks", {}).get("universe", {}).get("lessons", [])),
+                        len(self.data.get("favorites") or []),
                     )
                     self.data = j["curriculum"]
+                    self.data.setdefault("favorites", [])
+                    if j.get("capacity"):
+                        self.capacity = j["capacity"]
                     self._save_local()
-                    new_counts = (
+                    new_sig = (
                         len(self.data.get("tracks", {}).get("art", {}).get("lessons", [])),
                         len(self.data.get("tracks", {}).get("universe", {}).get("lessons", [])),
+                        len(self.data.get("favorites") or []),
                     )
                     st = j.get("scheduler", {}).get("status", "ONLINE")
                     lc = j.get("scheduler", {}).get("last_check", "--")
-                    self.after(0, lambda s=st, l=lc, rerender=(old_counts != new_counts): self._apply_sync_hdr(s, l, rerender))
+                    self.after(0, lambda s=st, l=lc, rr=(old_sig != new_sig): self._apply_sync_hdr(s, l, rr))
             except Exception:
                 pass
-            import time
             time.sleep(35)
 
     def _apply_sync_hdr(self, st, lc, rerender):
         self.sub_lbl.config(text=f"{st}   |   Last Check: {lc}")
+        c = self.capacity
+        if c:
+            ram_part = f"⚡ Render RAM: {c.get('ram_mb', 0)}/{c.get('ram_limit_mb', 512)} MB ({c.get('ram_pct', 0)}%)" if c.get("ram_mb") else "⚡ Cloud State: Synced"
+            self.cap_pill.config(
+                text=f"💾 GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)   •   {ram_part}   •   🛣️ Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
+            )
         self._update_tab_counts()
         if rerender:
             self.render_cards()
 
+    def _manual_sync_drop(self):
+        self.sync_btn.config(text="⏳ Generating Drop...", state="disabled")
+        self.sub_lbl.config(text="ONLINE • Triggering Missed/Daily Drop on Render (Art + Universe + Matrix)...")
+
+        def _worker():
+            try:
+                u = get_cloud_url() + "/api/sync_drop"
+                req = urllib.request.Request(
+                    u, data=json.dumps({"force": True}).encode(),
+                    headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST"
+                )
+                j = json.loads(urllib.request.urlopen(req, timeout=135).read().decode())
+                if j.get("ok"):
+                    if j.get("curriculum"):
+                        self.data = j["curriculum"]
+                        self.data.setdefault("favorites", [])
+                        self._save_local()
+                    if j.get("capacity"):
+                        self.capacity = j["capacity"]
+                    st = j.get("scheduler", {}).get("status", "ONLINE")
+                    lc = j.get("scheduler", {}).get("last_check", "--")
+                    added = (j.get("result") or {}).get("changed") or []
+                    btn_lbl = f"✅ +{len(added)} Dropped!" if added else "✅ Up to Date"
+                    self.after(0, lambda: (
+                        self._apply_sync_hdr(st, lc, True),
+                        self.sync_btn.config(text=btn_lbl, state="normal"),
+                        self.after(3500, lambda: self.sync_btn.config(text="⚡ Sync Daily Drop"))
+                    ))
+                else:
+                    self.after(0, lambda: self.sync_btn.config(text="⚠️ Sync Retry", state="normal"))
+            except Exception:
+                self.after(0, lambda: self.sync_btn.config(text="⚠️ Wake Render & Retry", state="normal"))
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _toggle_star(self, track, seq, url, caption="", study_note="", source=""):
+        def _worker():
+            try:
+                u = get_cloud_url() + "/api/favorite"
+                payload = {"track": track, "seq": seq, "url": url, "caption": caption, "study_note": study_note, "source": source}
+                req = urllib.request.Request(u, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+                if j.get("ok"):
+                    self.data["favorites"] = j.get("favorites", [])
+                    if j.get("capacity"):
+                        self.capacity = j["capacity"]
+                    self._save_local()
+                    self.after(0, lambda: (self._apply_sync_hdr(self.sched_status, "Synced", False), self.render_cards()))
+            except Exception:
+                pass
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _delete_plate(self, track, seq, url):
+        def _worker():
+            try:
+                u = get_cloud_url() + "/api/delete_plate"
+                req = urllib.request.Request(u, data=json.dumps({"track": track, "seq": seq, "url": url}).encode(),
+                                             headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+                if j.get("ok"):
+                    arr = self.data["tracks"][track]["lessons"]
+                    for idx, item in enumerate(arr):
+                        if int(item["seq"]) == int(seq) and j.get("lesson"):
+                            arr[idx] = j["lesson"]
+                            break
+                    self.data["favorites"] = j.get("favorites", [])
+                    if j.get("capacity"):
+                        self.capacity = j["capacity"]
+                    self._save_local()
+                    self.open_gal.add((track, int(seq)))
+                    self.after(0, lambda: (self._apply_sync_hdr(self.sched_status, "Pruned", False), self.render_cards()))
+            except Exception:
+                pass
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _update_tab_counts(self):
         a_n = len(self.data.get("tracks", {}).get("art", {}).get("lessons", []))
         u_n = len(self.data.get("tracks", {}).get("universe", {}).get("lessons", []))
+        f_n = len(self.data.get("favorites") or [])
         self.btn_art.config(text=f"🎨 ART ENDURANCE ({a_n})")
         self.btn_uni.config(text=f"🌌 PHYSICS OF TIME ({u_n})")
+        self.btn_fav.config(text=f"⭐ KEY'S FAVORITES ({f_n})")
 
     def switch_track(self, t):
         self.cur_track = t
-        if t == "art":
-            self.btn_art.config(bg="#fbbf24", fg="#090d13")
-            self.btn_uni.config(bg="#21262d", fg="#c9d1d9")
-        else:
-            self.btn_uni.config(bg="#58a6ff", fg="#090d13")
-            self.btn_art.config(bg="#21262d", fg="#c9d1d9")
+        self.btn_art.config(bg="#fbbf24" if t == "art" else "#21262d", fg="#090d13" if t == "art" else "#c9d1d9")
+        self.btn_uni.config(bg="#58a6ff" if t == "universe" else "#21262d", fg="#090d13" if t == "universe" else "#c9d1d9")
+        self.btn_fav.config(bg="#fbbf24" if t == "favorites" else "#21262d", fg="#090d13" if t == "favorites" else "#fbbf24")
         self.cv.yview_moveto(0)
         self.render_cards()
+
+    def _jump_to_lesson(self, track, seq):
+        self.search_var.set(f"#{int(seq):03d}" if False else "")
+        self.cur_track = track
+        self.switch_track(track)
 
     def _open_lightbox(self, url, caption):
         if not url:
@@ -197,20 +311,58 @@ class KnowledgeDesktopHub(tk.Tk):
                 u = get_cloud_url() + endpoint
                 req = urllib.request.Request(u, data=json.dumps(payload).encode(),
                                              headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
-                j = json.loads(urllib.request.urlopen(req, timeout=55).read().decode())
+                j = json.loads(urllib.request.urlopen(req, timeout=65).read().decode())
                 if j.get("ok") and j.get("lesson"):
                     arr = self.data["tracks"][payload["track"]]["lessons"]
                     for idx, item in enumerate(arr):
                         if int(item["seq"]) == int(payload["seq"]):
                             arr[idx] = j["lesson"]
                             break
+                    if j.get("capacity"):
+                        self.capacity = j["capacity"]
                     self._save_local()
                     self.after(0, done_cb)
                 else:
                     self.after(0, lambda: btn.config(text="⚠️ Cloud Busy - Retry", state="normal"))
-            except Exception as e:
-                self.after(0, lambda: btn.config(text=f"⚠️ Wake Render & Retry", state="normal"))
+            except Exception:
+                self.after(0, lambda: btn.config(text="⚠️ Wake Render & Retry", state="normal"))
         threading.Thread(target=_worker, daemon=True).start()
+
+    def _render_favorites(self):
+        favs = self.data.get("favorites") or []
+        if not favs:
+            empty = tk.Frame(self.inner, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=28)
+            empty.pack(fill="x", pady=12, padx=4)
+            tk.Label(empty, text="⭐ Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("Monospace", 11, "bold")).pack()
+            tk.Label(empty, text="Click ☆ on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("Monospace", 9), pady=6).pack()
+            return
+        for f in favs:
+            card = tk.Frame(self.inner, bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
+            card.pack(fill="x", pady=6, padx=2)
+            row = tk.Frame(card, bg="#161b22")
+            row.pack(fill="x", padx=12, pady=10)
+            p_card = tk.Frame(row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
+            p_card.pack(side="left", padx=(0, 14))
+            il = tk.Label(p_card, text="⏳", fg="#8b949e", bg="#090d13", width=26, height=8, cursor="hand2")
+            il.pack()
+            il.bind("<Button-1>", lambda e, u=f.get("url",""), c=f.get("caption",""): self._open_lightbox(u, c))
+            self._load_thumb_async(il, f.get("url", ""), size=(210, 140))
+
+            info = tk.Frame(row, bg="#161b22")
+            info.pack(side="left", fill="both", expand=True)
+            tk.Label(info, text=f"{str(f.get('track','art')).upper()} #{int(f.get('seq',1)):03d}  •  {f.get('source','Archive')}  •  Saved {f.get('saved_at','')}",
+                     fg="#8b949e", bg="#161b22", font=("Monospace", 8, "bold"), anchor="w").pack(fill="x")
+            tk.Label(info, text=f.get("caption", "Visual Plate"), fg="#f0f6fc", bg="#161b22", font=("Monospace", 10, "bold"), anchor="w", justify="left", wraplength=820).pack(fill="x", pady=(4, 2))
+            if f.get("study_note"):
+                tk.Label(info, text=f.get("study_note", ""), fg="#fbbf24", bg="#161b22", font=("Monospace", 8), anchor="w", justify="left", wraplength=820).pack(fill="x", pady=(0, 6))
+            b_row = tk.Frame(info, bg="#161b22")
+            b_row.pack(fill="x", pady=(4, 0))
+            tk.Button(b_row, text=f"↗ Open {str(f.get('track','art')).upper()} Track (#{int(f.get('seq',1)):03d})",
+                      command=lambda tr=f.get("track","art"), sq=f.get("seq",1): self._jump_to_lesson(tr, sq),
+                      bg="#21262d", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=4, cursor="hand2").pack(side="left", padx=(0, 8))
+            tk.Button(b_row, text="★ Unstar",
+                      command=lambda tr=f.get("track","art"), sq=f.get("seq",1), u=f.get("url",""): self._toggle_star(tr, sq, u),
+                      bg="#2d2208", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=4, cursor="hand2").pack(side="left")
 
     def render_cards(self):
         self._update_tab_counts()
@@ -218,10 +370,14 @@ class KnowledgeDesktopHub(tk.Tk):
         for w in self.inner.winfo_children():
             w.destroy()
 
+        if self.cur_track == "favorites":
+            self._render_favorites()
+            return
+
         q = self.search_var.get().strip().lower()
         lessons = list(reversed(self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])))
         for les in lessons:
-            blob = f"{les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
+            blob = f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
             if q and q not in blob:
                 continue
 
@@ -250,26 +406,32 @@ class KnowledgeDesktopHub(tk.Tk):
             maker_box.pack(fill="x", pady=(2, 4))
             tk.Label(maker_box, text=f"🧵 Studio Craft Lens: {les.get('maker', '')}", fg="#fbbf24", bg="#0f141b", font=("Monospace", 8), anchor="w", justify="left", wraplength=800, padx=8, pady=6).pack(fill="x")
 
-            # Right-Side Primary Visual Plate
             img_url = les.get("image_url", "")
             if img_url:
                 p_card = tk.Frame(top_row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
                 p_card.pack(side="right", anchor="n")
                 img_lbl = tk.Label(p_card, text="⏳ Loading Plate...", fg="#8b949e", bg="#090d13", font=("Monospace", 8), width=30, height=10, cursor="hand2")
                 img_lbl.pack()
-                cap_txt = (les.get("image_caption") or les.get("title", ""))[:42]
-                cap_lbl = tk.Label(p_card, text=f"📸 {cap_txt} • 🔍 Zoom", fg="#8b949e", bg="#161b22", font=("Monospace", 7, "bold"), padx=6, pady=3, cursor="hand2")
-                cap_lbl.pack(fill="x")
-                for w_click in (p_card, img_lbl, cap_lbl):
+                starred = self._is_starred(img_url)
+                b_bar = tk.Frame(p_card, bg="#161b22")
+                b_bar.pack(fill="x")
+                cap_txt = (les.get("image_caption") or les.get("title", ""))[:34]
+                cap_lbl = tk.Label(b_bar, text=f"📸 {cap_txt} 🔍", fg="#8b949e", bg="#161b22", font=("Monospace", 7, "bold"), padx=5, pady=3, cursor="hand2")
+                cap_lbl.pack(side="left")
+                tk.Button(
+                    b_bar, text="★" if starred else "☆",
+                    fg="#fbbf24" if starred else "#8b949e", bg="#161b22", relief="flat", font=("Monospace", 9, "bold"), padx=4, pady=0, cursor="hand2",
+                    command=lambda tr=self.cur_track, sq=seq, u=img_url, cp=les.get("image_caption") or les.get("title",""): self._toggle_star(tr, sq, u, cp, "", "Lead Plate")
+                ).pack(side="right")
+                for w_click in (img_lbl, cap_lbl):
                     w_click.bind("<Button-1>", lambda e, u=img_url, c=les.get("image_caption") or les.get("title", ""): self._open_lightbox(u, c))
                 self._load_thumb_async(img_lbl, img_url)
 
-            # Interactive Action Bar (Deep Dive + Curated Multi-Plates + Ask Gemini)
             act_bar = tk.Frame(card, bg="#161b22")
             act_bar.pack(fill="x", padx=12, pady=(2, 8))
 
             has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 120)
-            dd_txt = ("📖 Hide Deep Dive" if key in self.open_dd else "📖 Read Deep Dive") if has_dd else "📖 Generate Deep Dive (Gemini)"
+            dd_txt = ("📖 Hide Deep Dive" if key in self.open_dd else "📖 Read Deep Dive") if has_dd else "📖 Generate Deep Dive"
             dd_btn = tk.Button(act_bar, text=dd_txt, bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=4, cursor="hand2")
             dd_btn.pack(side="left", padx=(0, 8))
 
@@ -279,12 +441,12 @@ class KnowledgeDesktopHub(tk.Tk):
                     else: self.open_dd.add(k)
                     self.render_cards()
                 else:
-                    self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "⏳ Gemini Writing Monograph...", lambda: (self.open_dd.add(k), self.render_cards()))
+                    self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "⏳ Writing...", lambda: (self.open_dd.add(k), self.render_cards()))
             dd_btn.config(command=_on_dd)
 
             gal_list = les.get("gallery") or []
-            has_gal = len(gal_list) >= 3
-            gal_txt = (f"🖼️ Hide Plates ({len(gal_list)})" if key in self.open_gal else f"🖼️ More Plates ({len(gal_list)})") if has_gal else "🖼️ Curate 5 Extra Plates"
+            has_gal = len(gal_list) >= 1
+            gal_txt = (f"🖼️ Hide Plates ({len(gal_list)})" if key in self.open_gal else f"🖼️ More Plates ({len(gal_list)})") if has_gal else "🖼️ Curate 5 Plates"
             gal_btn = tk.Button(act_bar, text=gal_txt, bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=4, cursor="hand2")
             gal_btn.pack(side="left", padx=(0, 12))
 
@@ -294,12 +456,11 @@ class KnowledgeDesktopHub(tk.Tk):
                     else: self.open_gal.add(k)
                     self.render_cards()
                 else:
-                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "⏳ Fetching Archival Plates...", lambda: (self.open_gal.add(k), self.render_cards()))
+                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "⏳ Curating...", lambda: (self.open_gal.add(k), self.render_cards()))
             gal_btn.config(command=_on_gal)
 
-            # On-Demand Ask Gemini Bar
             ask_ent = tk.Entry(act_bar, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat",
-                               highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=42)
+                               highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=40)
             ask_ent.pack(side="left", padx=(4, 6), ipady=3)
             ask_btn = tk.Button(act_bar, text="💬 Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=4, cursor="hand2")
             ask_btn.pack(side="left")
@@ -308,37 +469,66 @@ class KnowledgeDesktopHub(tk.Tk):
                 q_str = ent.get().strip()
                 if not q_str:
                     return
-                self._call_cloud_action("/api/ask", {"track": t, "seq": s, "question": q_str}, b, "⏳ Asking Gemini...", self.render_cards)
+                self._call_cloud_action("/api/ask", {"track": t, "seq": s, "question": q_str}, b, "⏳ Asking...", self.render_cards)
             ask_btn.config(command=_on_ask)
             ask_ent.bind("<Return>", lambda e, fn=_on_ask: fn())
 
-            # Expanded Deep Dive Drawer
             if key in self.open_dd and les.get("deep_dive"):
                 dd_frame = tk.Frame(card, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
                 dd_frame.pack(fill="x", padx=12, pady=(0, 8))
                 tk.Label(dd_frame, text="📖 DEEP DIVE MONOGRAPH", fg="#58a6ff", bg="#090d13", font=("Monospace", 8, "bold"), anchor="w", padx=10, pady=6).pack(fill="x")
-                tk.Label(dd_frame, text=les["deep_dive"], fg="#d0d7de", bg="#090d13", font=("Monospace", 9), justify="left", anchor="w", wraplength=1120, padx=10, pady=6).pack(fill="x")
+                tk.Label(dd_frame, text=les["deep_dive"], fg="#d0d7de", bg="#090d13", font=("Monospace", 9), justify="left", anchor="w", wraplength=1140, padx=10, pady=6).pack(fill="x")
 
-            # Expanded Multi-Plate Strip
-            if key in self.open_gal and gal_list:
+            if key in self.open_gal:
                 g_strip = tk.Frame(card, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
                 g_strip.pack(fill="x", padx=12, pady=(0, 8))
-                row_g = tk.Frame(g_strip, bg="#090d13")
-                row_g.pack(fill="x", padx=8, pady=8)
-                for g_item in gal_list[:5]:
+
+                # Multi-row grid (5 columns per row) with × Prune + ☆ Star buttons
+                grid_f = tk.Frame(g_strip, bg="#090d13")
+                grid_f.pack(fill="x", padx=8, pady=(8, 4))
+                for idx_g, g_item in enumerate(gal_list):
+                    r_i, c_i = divmod(idx_g, 5)
                     gu = g_item.get("url", "")
                     gc = f"{g_item.get('caption', '')} — {g_item.get('study_note', '')}".strip(" —")
-                    cell = tk.Frame(row_g, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
-                    cell.pack(side="left", padx=5, anchor="n")
-                    gl = tk.Label(cell, text="⏳", fg="#8b949e", bg="#090d13", width=22, height=7, cursor="hand2")
-                    gl.pack()
-                    cl = tk.Label(cell, text=(g_item.get("caption") or "Plate")[:24] + " 🔍", fg="#c9d1d9", bg="#161b22", font=("Monospace", 7), pady=2, cursor="hand2")
-                    cl.pack(fill="x")
-                    for wg in (cell, gl, cl):
-                        wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
-                    self._load_thumb_async(gl, gu, size=(185, 125))
+                    gs = g_item.get("source", "Archive")
+                    g_star = self._is_starred(gu)
+                    cell = tk.Frame(grid_f, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
+                    cell.grid(row=r_i, column=c_i, padx=5, pady=5, sticky="n")
 
-            # Saved Q&A Thread
+                    hdr_c = tk.Frame(cell, bg="#161b22")
+                    hdr_c.pack(fill="x")
+                    tk.Button(hdr_c, text="×", fg="#f85149", bg="#161b22", activebackground="#f85149", activeforeground="#fff",
+                              relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2",
+                              command=lambda tr=self.cur_track, sq=seq, u=gu: self._delete_plate(tr, sq, u)).pack(side="left")
+                    tk.Label(hdr_c, text=gs[:18], fg="#58a6ff", bg="#161b22", font=("Monospace", 6)).pack(side="left", padx=2)
+                    tk.Button(hdr_c, text="★" if g_star else "☆", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22",
+                              relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2",
+                              command=lambda tr=self.cur_track, sq=seq, u=gu, cp=g_item.get("caption",""), sn=g_item.get("study_note",""), sr=gs: self._toggle_star(tr, sq, u, cp, sn, sr)).pack(side="right")
+
+                    gl = tk.Label(cell, text="⏳", fg="#8b949e", bg="#090d13", width=24, height=7, cursor="hand2")
+                    gl.pack()
+                    cl = tk.Label(cell, text=(g_item.get("caption") or "Plate")[:26] + " 🔍", fg="#c9d1d9", bg="#161b22", font=("Monospace", 7), pady=3, cursor="hand2")
+                    cl.pack(fill="x")
+                    for wg in (gl, cl):
+                        wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
+                    self._load_thumb_async(gl, gu, size=(195, 130))
+
+                # Custom Target Search Bar right inside Desktop Gallery Strip!
+                cur_bar = tk.Frame(g_strip, bg="#090d13")
+                cur_bar.pack(fill="x", padx=10, pady=(4, 8))
+                c_ent = tk.Entry(cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat",
+                                 highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=56)
+                c_ent.pack(side="left", padx=(0, 8), ipady=3)
+                c_btn = tk.Button(cur_bar, text="+ Curate 5 More Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=4, cursor="hand2")
+                c_btn.pack(side="left")
+                tk.Label(cur_bar, text="(Optional target: e.g. 'Huncho Jack, Jack Huncho album')", fg="#8b949e", bg="#090d13", font=("Monospace", 7)).pack(side="left", padx=8)
+
+                def _on_more_gal(t=self.cur_track, s=seq, ent=c_ent, b=c_btn, k=key):
+                    cq = ent.get().strip()
+                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s, "append": True, "query": cq}, b, "⏳ Routing Archives...", lambda: (self.open_gal.add(k), self.render_cards()))
+                c_btn.config(command=_on_more_gal)
+                c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
+
             for qa in les.get("qa_log") or []:
                 qa_box = tk.Frame(card, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
                 qa_box.pack(fill="x", padx=12, pady=(0, 6))

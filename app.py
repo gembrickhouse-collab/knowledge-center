@@ -6,29 +6,54 @@ import knowledge_engine as ke
 
 app = Flask(__name__)
 MT_ZONE = ZoneInfo("America/Denver")
-SCHED_STATE = {"last_check": "--", "status": "BOOTING"}
+SCHED_STATE = {"last_check": "--", "status": "BOOTING", "worker_pid": 0}
+_SCHED_PID_LOCK = threading.Lock()
 
 
 def _bg_scheduler():
+    ke.sync_curriculum_from_github()
     while True:
         try:
             now_s = datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
             has_key = bool(os.getenv("GEMINI_API_KEY", "").strip())
+            SCHED_STATE["last_check"] = now_s
             if has_key:
-                SCHED_STATE["last_check"] = now_s
-                if SCHED_STATE["status"] == "BOOTING":
-                    SCHED_STATE["status"] = "ONLINE • Generating Daily Drop (Art + Universe + Matrix)..."
-                ke.check_and_run_daily_drop()
-                SCHED_STATE["status"] = "ONLINE • 08:30 MT Auto-Drop Armed (Art + Universe + Matrix)"
+                today_s = datetime.now(MT_ZONE).strftime("%Y-%m-%d")
+                curr = ke.load_curriculum()
+                missing = [
+                    tk for tk in ("art", "universe", "matrix")
+                    if not any(l.get("date") == today_s for l in curr.get("tracks", {}).get(tk, {}).get("lessons", []))
+                ]
+                now_hm = (datetime.now(MT_ZONE).hour, datetime.now(MT_ZONE).minute)
+                if missing and now_hm >= (8, 30):
+                    SCHED_STATE["status"] = f"ONLINE • Generating {today_s} Drop ({', '.join(missing)})..."
+                    res = ke.check_and_run_daily_drop(force=False)
+                    if res.get("errors"):
+                        err_preview = "; ".join(f"{k}:{v[:40]}" for k, v in res["errors"].items())
+                        SCHED_STATE["status"] = f"WARN • Drop Issue ({err_preview})"
+                    else:
+                        SCHED_STATE["status"] = "ONLINE • 08:30 MT Auto-Drop Complete & Armed"
+                else:
+                    SCHED_STATE["status"] = "ONLINE • 08:30 MT Auto-Drop Armed (Art + Universe + Matrix)"
             else:
                 SCHED_STATE["status"] = "STANDBY • Missing GEMINI_API_KEY"
-            SCHED_STATE["last_check"] = now_s
+            SCHED_STATE["last_check"] = datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
         except Exception as e:
             SCHED_STATE["status"] = f"WARN: {e}"
         time.sleep(60)
 
 
-threading.Thread(target=_bg_scheduler, daemon=True).start()
+def ensure_scheduler_started():
+    pid = os.getpid()
+    with _SCHED_PID_LOCK:
+        if SCHED_STATE.get("worker_pid") != pid:
+            SCHED_STATE["worker_pid"] = pid
+            threading.Thread(target=_bg_scheduler, daemon=True).start()
+
+
+@app.before_request
+def _hook_sched():
+    ensure_scheduler_started()
 
 
 @app.route("/health")
@@ -42,6 +67,29 @@ def state():
     curr.setdefault("favorites", [])
     return jsonify({
         "ok": True,
+        "scheduler": SCHED_STATE,
+        "curriculum": curr,
+        "capacity": ke.get_capacity_telemetry(curr),
+    })
+
+
+@app.route("/api/sync_drop", methods=["POST"])
+def api_sync_drop():
+    ensure_scheduler_started()
+    b = request.get_json(silent=True) or {}
+    force_flag = bool(b.get("force", True))
+    SCHED_STATE["status"] = "ONLINE • Running Manual Sync Drop..."
+    res = ke.check_and_run_daily_drop(force=force_flag)
+    SCHED_STATE["last_check"] = datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
+    if res.get("errors"):
+        SCHED_STATE["status"] = "WARN • Partial Drop: " + "; ".join(res["errors"].keys())
+    else:
+        SCHED_STATE["status"] = "ONLINE • 08:30 MT Auto-Drop Complete & Armed"
+    curr = ke.load_curriculum()
+    curr.setdefault("favorites", [])
+    return jsonify({
+        "ok": True,
+        "result": res,
         "scheduler": SCHED_STATE,
         "curriculum": curr,
         "capacity": ke.get_capacity_telemetry(curr),
