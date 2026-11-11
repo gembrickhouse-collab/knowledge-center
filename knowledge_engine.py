@@ -86,16 +86,19 @@ def _http_json(url):
     return json.loads(urllib.request.urlopen(req, timeout=10).read().decode())
 
 
-def resolve_visual_plates(query, count=1, track="art"):
-    """Resolves verified HTTPS Wikimedia/Wikipedia or Art Institute plates (zero hallucinated URLs)."""
+def resolve_visual_plates(query, count=1, track="art", exclude_urls=None):
+    """Resolves verified HTTPS plates across 6 sources: Wiki PageImages, ArtIC, Commons, Wiki REST Summary, Open Library & iTunes."""
     plates = []
-    seen = set()
-    q_clean = query.split("—")[0].split("(")[0].strip() if "—" in query and len(query) > 38 else query.strip()
+    seen = set(exclude_urls or [])
+    q_raw = (query or "").strip()
+    if not q_raw:
+        return plates
+    q_clean = q_raw.split("—")[0].split("(")[0].strip() if "—" in q_raw and len(q_raw) > 38 else q_raw
 
     # 1) Wikipedia PageImages Search (Primary high-precision match)
     try:
         wq = urllib.parse.quote(q_clean)
-        wurl = f"https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch={wq}&gsrlimit={max(4, count*2)}&prop=pageimages|pageterms&piprop=thumbnail&pithumbsize=900&format=json"
+        wurl = f"https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch={wq}&gsrlimit={max(8, count*3)}&prop=pageimages|pageterms&piprop=thumbnail&pithumbsize=960&format=json"
         pages = _http_json(wurl).get("query", {}).get("pages", {})
         for p in sorted(pages.values(), key=lambda x: x.get("index", 99)):
             src = (p.get("thumbnail") or {}).get("source", "")
@@ -103,10 +106,9 @@ def resolve_visual_plates(query, count=1, track="art"):
                 seen.add(src)
                 desc = ((p.get("terms") or {}).get("description") or [""])[0]
                 cap = f"{p.get('title', q_clean)}" + (f" — {desc}" if desc else "")
-                plates.append({"url": src, "caption": cap, "source": "Wikimedia Archive"})
+                plates.append({"url": src, "caption": cap, "source": "Wikipedia Archive"})
                 if len(plates) >= count:
                     return plates
-        # Allow SVG diagrams for Universe/Matrix if raster wasn't enough
         for p in sorted(pages.values(), key=lambda x: x.get("index", 99)):
             src = (p.get("thumbnail") or {}).get("source", "")
             if src and src not in seen:
@@ -117,11 +119,11 @@ def resolve_visual_plates(query, count=1, track="art"):
     except Exception:
         pass
 
-    # 2) Art Institute of Chicago Open Access Fallback (Great for fine art closeups)
+    # 2) Art Institute of Chicago Open Access (Fine art & textile closeups)
     if track == "art" and len(plates) < count:
         try:
             aq = urllib.parse.quote(q_clean)
-            aurl = f"https://api.artic.edu/api/v1/artworks/search?q={aq}&fields=id,title,artist_title,image_id,date_display&limit={count+3}"
+            aurl = f"https://api.artic.edu/api/v1/artworks/search?q={aq}&fields=id,title,artist_title,image_id,date_display&limit={max(8, count*3)}"
             adata = _http_json(aurl)
             iiif = (adata.get("config") or {}).get("iiif_url", "https://www.artic.edu/iiif/2")
             for item in adata.get("data", []):
@@ -144,12 +146,12 @@ def resolve_visual_plates(query, count=1, track="art"):
     if len(plates) < count:
         try:
             cq = urllib.parse.quote(q_clean)
-            curl = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch={cq}&gsrlimit={count*3}&prop=imageinfo&iiprop=url&iiurlwidth=900&format=json"
+            curl = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch={cq}&gsrlimit={max(12, count*4)}&prop=imageinfo&iiprop=url&iiurlwidth=960&format=json"
             cpages = _http_json(curl).get("query", {}).get("pages", {})
             for cp in cpages.values():
                 ii = (cp.get("imageinfo") or [{}])[0]
                 tu = ii.get("thumburl") or ii.get("url", "")
-                if tu and tu not in seen and any(ext in tu.lower() for ext in [".jpg", ".jpeg", ".png"]):
+                if tu and tu not in seen and any(ext in tu.lower() for ext in [".jpg", ".jpeg", ".png", ".webp"]):
                     seen.add(tu)
                     ttl = cp.get("title", "").replace("File:", "").rsplit(".", 1)[0].replace("_", " ")
                     plates.append({"url": tu, "caption": ttl[:95], "source": "Wikimedia Commons"})
@@ -158,8 +160,68 @@ def resolve_visual_plates(query, count=1, track="art"):
         except Exception:
             pass
 
-    return plates
+    # 4) Wikipedia REST Page Summary (Pulls high-res original fair-use/editorial lead image)
+    if len(plates) < count:
+        try:
+            sq = urllib.parse.quote(q_clean.replace(" ", "_"))
+            sdata = _http_json(f"https://en.wikipedia.org/api/rest_v1/page/summary/{sq}")
+            orig = (sdata.get("originalimage") or {}).get("source") or (sdata.get("thumbnail") or {}).get("source", "")
+            if orig and orig not in seen:
+                seen.add(orig)
+                desc = sdata.get("description", "")
+                cap = f"{sdata.get('title', q_clean)}" + (f" — {desc}" if desc else "")
+                plates.append({"url": orig, "caption": cap[:100], "source": "Wikipedia Lead Plate"})
+                if len(plates) >= count:
+                    return plates
+        except Exception:
+            pass
 
+    # 5) Open Library Archive (Monographs, illustrated editions & book covers)
+    if len(plates) < count:
+        try:
+            oq = urllib.parse.quote(q_clean)
+            ourl = f"https://openlibrary.org/search.json?q={oq}&limit={max(8, count*2)}"
+            odocs = _http_json(ourl).get("docs", [])
+            for doc in odocs:
+                cid = doc.get("cover_i")
+                if cid:
+                    ou = f"https://covers.openlibrary.org/b/id/{cid}-L.jpg"
+                    if ou not in seen:
+                        seen.add(ou)
+                        auth = ", ".join((doc.get("author_name") or [])[:2])
+                        yr = doc.get("first_publish_year", "")
+                        cap = f"{doc.get('title', q_clean)}" + (f" ({yr})" if yr else "") + (f" — {auth}" if auth else "")
+                        plates.append({"url": ou, "caption": cap[:100], "source": "Open Library Monographs"})
+                        if len(plates) >= count:
+                            return plates
+        except Exception:
+            pass
+
+    # 6) iTunes High-Res Editorial & Album Art (1000x1000 fair-use sleeve/cover artwork)
+    if len(plates) < count:
+        try:
+            iq = urllib.parse.quote(q_clean)
+            iurl = f"https://itunes.apple.com/search?term={iq}&limit={max(6, count*2)}"
+            ires = _http_json(iurl).get("results", [])
+            for item in ires:
+                art100 = item.get("artworkUrl100", "")
+                if art100:
+                    hi = art100.replace("100x100bb", "1000x1000bb").replace("100x100", "1000x1000")
+                    if hi not in seen:
+                        seen.add(hi)
+                        cname = item.get("collectionName") or item.get("trackName") or q_clean
+                        aname = item.get("artistName", "")
+                        plates.append({
+                            "url": hi,
+                            "caption": f"{cname} — {aname}".strip(" —")[:100],
+                            "source": "iTunes High-Res Archive"
+                        })
+                        if len(plates) >= count:
+                            return plates
+        except Exception:
+            pass
+
+    return plates
 
 def find_lesson(data, track_key, seq):
     lessons = data.get("tracks", {}).get(track_key, {}).get("lessons", [])
@@ -211,45 +273,147 @@ Return JSON: {{"deep_dive": "paragraph1\\n\\nparagraph2\\n\\nparagraph3\\n\\npar
     return les
 
 
-def generate_gallery_for_lesson(track_key, seq):
+def generate_gallery_for_lesson(track_key, seq, append=False, custom_query=""):
     data = load_curriculum()
     les = find_lesson(data, track_key, seq)
-    if les.get("gallery") and len(les["gallery"]) >= 3:
+    existing = list(les.get("gallery") or [])
+    custom_q = (custom_query or "").strip()
+
+    if not append and not custom_q and len(existing) >= 3:
         return les
 
-    prompt = f"""Give me 5 specific Wikipedia/Wikimedia/Museum search queries to pull real archival photos or diagrams for:
+    seen = {les.get("image_url", "")} | {p.get("url", "") for p in existing if p.get("url")}
+    existing_caps = [p.get("caption", "")[:45] for p in existing[-12:]]
+    new_plates = []
+
+    # Direct fast-path + Gemini query expansion when custom_query is given or infinite "Curate 5 More" is clicked
+    if custom_q:
+        direct = resolve_visual_plates(custom_q, count=3, track=track_key, exclude_urls=seen)
+        for p in direct:
+            if p["url"] not in seen:
+                seen.add(p["url"])
+                p["study_note"] = f"Custom target: {custom_q}"
+                new_plates.append(p)
+
+    focus_line = f"Focus specifically on Keyshawn's custom target: '{custom_q}'." if custom_q else f"Avoid already-shown plates: {existing_caps}. Dig into fresh masterworks, closeups, editions, sketches, or apparatus."
+    prompt = f"""Give me 6 specific search queries across Wikipedia, Art Institute, Wikimedia Commons, Open Library, or iTunes to pull real visual plates for:
 Track: {track_key}
-Title: {les['title']}
+Lesson Title: {les['title']}
 Summary: {les['core']}
-Return JSON: {{"queries": [{{"q": "exact search term (artist + specific work, or specific physics diagram)", "note": "1-sentence guide on what structural detail to look for"}}]}}"""
-    plates = []
-    seen = {les.get("image_url", "")}
+Directive: {focus_line}
+Return JSON: {{"queries": [{{"q": "exact search term (artist + specific work, book title, or specific physics diagram)", "note": "1-sentence guide on what structural detail to look for"}}]}}"""
+
     try:
         res, _ = call_gemini_json(prompt, expect_json=True)
-        for item in res.get("queries", [])[:6]:
-            found = resolve_visual_plates(item.get("q", ""), count=2, track=track_key)
+        for item in res.get("queries", [])[:7]:
+            if len(new_plates) >= 5:
+                break
+            found = resolve_visual_plates(item.get("q", ""), count=2, track=track_key, exclude_urls=seen)
             for p in found:
                 if p["url"] not in seen:
                     seen.add(p["url"])
-                    p["study_note"] = item.get("note", "")
-                    plates.append(p)
+                    p["study_note"] = item.get("note", "") or (f"Target: {custom_q}" if custom_q else "")
+                    new_plates.append(p)
                     break
-            if len(plates) >= 5:
-                break
     except Exception:
         pass
 
-    if len(plates) < 3:
-        extra = resolve_visual_plates(les["title"].split("—")[0].strip(), count=5, track=track_key)
+    if len(new_plates) < 5:
+        fallback_q = custom_q if custom_q else les["title"].split("—")[0].strip()
+        extra = resolve_visual_plates(fallback_q, count=8, track=track_key, exclude_urls=seen)
         for p in extra:
             if p["url"] not in seen:
                 seen.add(p["url"])
-                plates.append(p)
+                if custom_q and not p.get("study_note"):
+                    p["study_note"] = f"Target: {custom_q}"
+                new_plates.append(p)
+                if len(new_plates) >= 5:
+                    break
 
-    les["gallery"] = plates[:6]
-    save_curriculum(data, f"Cache Gallery Plates for {track_key} #{seq:03d}")
+    if append or custom_q or existing:
+        les["gallery"] = existing + new_plates[:5]
+    else:
+        les["gallery"] = new_plates[:5]
+
+    action_lbl = f"Curate +{len(new_plates[:5])} Plates" + (f" [{custom_q[:24]}]" if custom_q else "")
+    save_curriculum(data, f"{action_lbl} for {track_key} #{seq:03d}")
     return les
 
+
+def toggle_favorite_plate(track_key, seq, url, caption="", study_note="", source=""):
+    url_clean = (url or "").strip()
+    if not url_clean:
+        raise ValueError("Missing plate URL")
+    data = load_curriculum()
+    favs = data.setdefault("favorites", [])
+    for idx, f_item in enumerate(favs):
+        if f_item.get("url") == url_clean:
+            favs.pop(idx)
+            save_curriculum(data, f"Unstar plate from {track_key} #{int(seq):03d}")
+            return {"favorited": False, "favorites": favs}
+
+    les_title = ""
+    try:
+        les_title = find_lesson(data, track_key, int(seq)).get("title", "")
+    except Exception:
+        pass
+
+    entry = {
+        "url": url_clean,
+        "caption": (caption or les_title or "Visual Plate")[:160],
+        "study_note": (study_note or "")[:200],
+        "source": (source or "Archive")[:60],
+        "track": track_key,
+        "seq": int(seq),
+        "lesson_title": les_title,
+        "saved_at": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M MT"),
+    }
+    favs.insert(0, entry)
+    save_curriculum(data, f"Star plate to Key's Favorites ({track_key} #{int(seq):03d})")
+    return {"favorited": True, "favorites": favs}
+
+
+def get_capacity_telemetry(data=None):
+    try:
+        raw_bytes = os.path.getsize(CURRICULUM_FILE)
+    except Exception:
+        raw_bytes = len(json.dumps(data or {}).encode("utf-8"))
+
+    # GitHub Contents API blob limit via base64 PUT is 100 MB (~75 MB raw JSON safe ceiling)
+    gh_limit_mb = 75.0
+    used_mb = raw_bytes / (1024 * 1024)
+    gh_pct = round((used_mb / gh_limit_mb) * 100, 2)
+
+    ram_mb = 0.0
+    try:
+        with open("/proc/self/status", "r") as sf:
+            for line in sf:
+                if line.startswith("VmRSS:"):
+                    ram_mb = int(line.split()[1]) / 1024.0
+                    break
+    except Exception:
+        pass
+
+    d = data if isinstance(data, dict) else {}
+    tracks = d.get("tracks", {})
+    total_lessons = sum(len(tracks.get(t, {}).get("lessons", [])) for t in ("art", "universe", "matrix"))
+    avg_bytes = max(3800, raw_bytes / max(1, total_lessons))
+    daily_bytes = avg_bytes * 3.0
+    remaining_bytes = max(0, (gh_limit_mb * 1024 * 1024) - raw_bytes)
+    runway_years = round((remaining_bytes / daily_bytes) / 365.25, 1)
+
+    return {
+        "json_kb": round(raw_bytes / 1024.0, 1),
+        "json_mb": round(used_mb, 2),
+        "gh_limit_mb": gh_limit_mb,
+        "gh_pct": gh_pct,
+        "ram_mb": round(ram_mb, 1),
+        "ram_limit_mb": 512,
+        "ram_pct": round((ram_mb / 512.0) * 100, 1) if ram_mb else 0.0,
+        "total_lessons": total_lessons,
+        "favorites_count": len(d.get("favorites", [])),
+        "runway_years": runway_years,
+    }
 
 def ask_architect_on_lesson(track_key, seq, question):
     data = load_curriculum()
