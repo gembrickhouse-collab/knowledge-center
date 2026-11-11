@@ -536,6 +536,39 @@
               "source": "Wikimedia Archive"
             }
           ]
+        },
+        {
+          "seq": 29,
+          "date": "2026-11-11",
+          "model": "3.5-FLASH-LITE",
+          "title": "Iris van Herpen \u2014 Magnetism, 3D-Printing & Laser-Cut Kinetic Couture",
+          "tags": [
+            "Iris van Herpen",
+            "Kinetic Couture",
+            "Wearable Architecture"
+          ],
+          "core": "Iris van Herpen fuses high-technology engineering with haute couture, employing 3D printing, laser cutting, and vacuum-forming to build hyper-complex, skeletal exoskeletons. Her rigorous process demands an extreme patience for algorithmic geometry, hand-assembly of micro-components, and materials that mimic the mechanics of biological life. Every garment functions as a kinetic architectural structure that responds dynamically to the body's motion.",
+          "maker": "Her meticulous layering of delicate synthetic polymers and complex geometries informs the structural assembly of heavy multi-layered denim and stiffened felt. By treating raw fabrics with the architectural precision of her laser-cut skins, your hand-stitching and zig-zag topstitching can anchor rigid, multi-dimensional textile reliefs onto wearable, breathable Climalite foundations.",
+          "deep_dive": "Born in the Netherlands, Iris van Herpen established her avant-garde design ethos by rejecting conventional tailoring in favor of cross-disciplinary collaborations with architects, scientists, and kinetic sculptors. Her origin is rooted in classical ballet and contemporary dance, giving her an innate obsession with how clothing sculpts, restricts, and liberates the moving human form. This foundational awareness drives her to treat fabric not merely as surface decoration, but as an active, responsive structural exoskeleton.\n\nHer physical material technique bridges the gap between digital fabrication and ancestral handcraft. Van Herpen utilizes SLS (Selective Laser Sintering) and stereolithography 3D printing to create skeletal frameworks so fine they resemble biological lace or microscopic marine skeletons. These rigid plastics are meticulously hand-stitched, woven, or heat-bonded onto featherlight sheer tulles and organza bases, achieving a volatile equilibrium between structural weight and ethereal fluidity.\n\nHer landmark work, 'Magnetism' (2015) and subsequent collections like 'Syntopia' and 'Earthrise', pushed the boundaries of kinetic garment engineering. In 'Magnetism', she collaborated with the Dutch artist J\u00f3lan van der Wiel to literally grow iron filings into chaotic, spiky architectural forms using magnetic fields, permanently capturing invisible physical forces into the very fiber of the garments. The resulting pieces challenge the viewer's perception of gravity and material stability, standing as monuments to wearable physics.\n\nIn studio craft synthesis, van Herpen's methodology offers an extraordinary roadmap for multidisciplinary garment construction. By treating heavy structural textiles like felt, denim, and fleece as dynamic architectural components rather than flat surfaces, makers can replicate her tension between hard and soft. Applying intense hand-stitching and aggressive zig-zag reinforcement allows irregular, rigid sculptural elements to integrate seamlessly with soft, moisture-wicking linings, achieving high-end kinetic wearability.",
+          "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Iris_van_Herpen_-_snapshot_during_the_Haute_Couture_Spring_Summer_2012.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+          "image_caption": "Iris van Herpen \u2014 Dutch fashion designer (born 1984)",
+          "gallery": [
+            {
+              "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Smartwatches.jpg/3840px-Smartwatches.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+              "caption": "Wearable technology \u2014 Clothing and accessories incorporating computer and advanced electronic techno",
+              "source": "Wikipedia Lead Plate"
+            },
+            {
+              "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/Smartwatches.jpg/960px-Smartwatches.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+              "caption": "Wearable technology \u2014 clothing and accessories incorporating computer and advanced electronic technologies",
+              "source": "Wikipedia Archive"
+            },
+            {
+              "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/30/Metropolitan_Museum_of_Art_%28The_Met%29_-_Central_Park%2C_NYC.jpg/960px-Metropolitan_Museum_of_Art_%28The_Met%29_-_Central_Park%2C_NYC.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+              "caption": "Manus x Machina: Fashion in an Age of Technology \u2014 2016 exhibition at the Metropolitan Museum of Art",
+              "source": "Wikipedia Archive"
+            }
+          ]
         }
       ],
       "title": "Art Endurance & Structural Craft"
