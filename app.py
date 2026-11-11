@@ -15,6 +15,9 @@ def _bg_scheduler():
             now_s = datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
             has_key = bool(os.getenv("GEMINI_API_KEY", "").strip())
             if has_key:
+                SCHED_STATE["last_check"] = now_s
+                if SCHED_STATE["status"] == "BOOTING":
+                    SCHED_STATE["status"] = "ONLINE • Generating Daily Drop (Art + Universe + Matrix)..."
                 ke.check_and_run_daily_drop()
                 SCHED_STATE["status"] = "ONLINE • 08:30 MT Auto-Drop Armed (Art + Universe + Matrix)"
             else:

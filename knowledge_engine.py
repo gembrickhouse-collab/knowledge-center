@@ -9,8 +9,8 @@ _UA = "KnowledgeMatrixHub/2.0 (https://knowledge-center-dsog.onrender.com; educa
 
 MODELS_CASCADE = [
     ("gemini-3.8-flash", "3.8-FLASH"),
+    ("gemini-3.6-flash", "3.6-FLASH"),
     ("gemini-3.5-flash-lite", "3.5-FLASH-LITE"),
-    ("gemini-2.5-flash", "2.5-FLASH"),
 ]
 
 
@@ -61,12 +61,12 @@ def call_gemini_json(prompt, expect_json=True):
     for model_id, badge in MODELS_CASCADE:
         try:
             u = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={key}"
-            cfg = {"temperature": 0.65}
+            cfg = {}
             if expect_json:
                 cfg["responseMimeType"] = "application/json"
             body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": cfg}).encode()
             req = urllib.request.Request(u, data=body, headers={"Content-Type": "application/json"}, method="POST")
-            resp = json.loads(urllib.request.urlopen(req, timeout=35).read().decode())
+            resp = json.loads(urllib.request.urlopen(req, timeout=75).read().decode())
             txt = resp["candidates"][0]["content"]["parts"][0]["text"].strip()
             if expect_json:
                 if txt.startswith("```"):
@@ -74,7 +74,9 @@ def call_gemini_json(prompt, expect_json=True):
                 return json.loads(txt), badge
             return txt, badge
         except Exception as e:
-            last_err = e
+            print(f'[Gemini Try {model_id}] {e}', flush=True)
+            last_err = f'{model_id}: {e}'
+            time.sleep(2)
             continue
     raise RuntimeError(f"Gemini cascade exhausted: {last_err}")
 
@@ -367,11 +369,13 @@ def check_and_run_daily_drop():
             continue
         try:
             new_l = _generate_next_lesson(t_key, lessons, today_str)
-            lessons.append(new_l)
-            changed.append(f"{t_key} #{new_l['seq']:03d}")
-        except Exception as e:
-            print(f"[Auto-Drop Error {t_key}] {e}")
+                lessons.append(new_l)
+                tag = f"{t_key} #{new_l['seq']:03d}"
+                changed.append(tag)
+                save_curriculum(data, f"08:30 MT Auto-Drop: {tag}")
+                time.sleep(4)
+            except Exception as e:
+                print(f"[Auto-Drop Error {t_key}] {e}", flush=True)
     if changed:
-        save_curriculum(data, f"08:30 MT Auto-Drop: {', '.join(changed)}")
         return True
     return False
