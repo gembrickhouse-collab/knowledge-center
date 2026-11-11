@@ -369,6 +369,28 @@ def check_and_run_daily_drop():
             continue
         try:
             new_l = _generate_next_lesson(t_key, lessons, today_str)
+            lessons.append(new_l)
+            tag = f"{t_key} #{new_l['seq']:03d}"
+            changed.append(tag)
+            save_curriculum(data, f"08:30 MT Auto-Drop: {tag}")
+            time.sleep(4)
+        except Exception as e:
+            print(f"[Auto-Drop Error {t_key}] {e}", flush=True)
+    if changed:
+        return True
+    return False
+    today_str = now_mt.strftime("%Y-%m-%d")
+    data = load_curriculum()
+    changed = []
+    for t_key in ("art", "universe", "matrix"):
+        track = data.get("tracks", {}).get(t_key)
+        if not track:
+            continue
+        lessons = track.get("lessons", [])
+        if any(l.get("date") == today_str for l in lessons):
+            continue
+        try:
+            new_l = _generate_next_lesson(t_key, lessons, today_str)
                 lessons.append(new_l)
                 tag = f"{t_key} #{new_l['seq']:03d}"
                 changed.append(tag)
