@@ -408,7 +408,39 @@
           "core": "Rejecting polite pencil underdrawings entirely, Ralph Steadman attacks heavy paper directly with steel nib pens, razor blades, and hurled blots of India ink\u2014letting accidental splatter dictate the anatomy before carving ferocious, razor-sharp crosshatching out of the chaos.",
           "maker": "Letting frayed denim threads, raw scissor slashes, and aggressive high-contrast black-and-yellow shifts stay wild inside tight structural seams channels Steadman's controlled fury onto cloth.",
           "image_url": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Me_and_Ralph_Steadman.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
-          "image_caption": "Ralph Steadman \u2014 British cartoonist (born 1936)"
+          "image_caption": "Ralph Steadman \u2014 British cartoonist (born 1936)",
+          "gallery": [
+            {
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Fear_and_Loathing_on_the_Campaign_Trail_%2772_%281973_1st_ed_jacket_cover%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+              "caption": "Fear and Loathing on the Campaign Trail '72 \u2014 collection of articles covering the 1972 presidential campaign",
+              "source": "Wikipedia Archive",
+              "study_note": "Look for explosive centrifugal ink splatters and razor-sharp steel-nib crosshatching that define Raoul Duke's distorted, manic facial anatomy."
+            },
+            {
+              "url": "https://upload.wikimedia.org/wikipedia/commons/6/63/Alice_par_John_Tenniel_04.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+              "caption": "Alice (Alice's Adventures in Wonderland) \u2014 fictional character from Alice's Adventures in Wonderland",
+              "source": "Wikipedia Archive",
+              "study_note": "Examine the biting satire and jagged, drip-spattered ink linework that aggressively dismantled traditional Victorian storybook illustration."
+            },
+            {
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Animal_Farm_-_1st_edition.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+              "caption": "Animal Farm \u2014 1945 novella by George Orwell",
+              "source": "Wikipedia Archive",
+              "study_note": "Observe how hurled blots of black India ink and razor-blade scraped highlights establish the grotesque, predatory mass of the pigs."
+            },
+            {
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Hunter_S._Thompson%2C_Las_Vegas_1971.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+              "caption": "Hunter S. Thompson \u2014 American journalist and author (1937\u20132005)",
+              "source": "Wikipedia Archive",
+              "study_note": "Inspect high-velocity blown-ink trails layered over saturated color washes to capture chaotic, hallucinatory movement."
+            },
+            {
+              "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Greek_uc_psi_icon.svg/960px-Greek_uc_psi_icon.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+              "caption": "Psychology of religion \u2014 analytic approach to religion",
+              "source": "Wikipedia Archive",
+              "study_note": "Look for psychological tension manifested through deliberate ink puddle ruptures and frenetic, uncorrected dip-pen contours."
+            }
+          ]
         },
         {
           "seq": 28,
