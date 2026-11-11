@@ -1062,5 +1062,17 @@
         }
       ]
     }
-  }
+  },
+  "favorites": [
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/9/96/TehchingHsiehExhibitMOMA.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+      "caption": "Tehching Hsieh \u2014 American artist (born 1950)",
+      "study_note": "",
+      "source": "Lead Plate",
+      "track": "art",
+      "seq": 6,
+      "lesson_title": "Tehching Hsieh \u2014 One Year Performance (Time Clock Piece)",
+      "saved_at": "2026-11-10 22:12 MT"
+    }
+  ]
 }
