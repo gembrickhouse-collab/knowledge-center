@@ -1,7 +1,6 @@
 import os, sys, io, json, time, queue, hashlib, threading, webbrowser, urllib.request, urllib.error
 _T0 = time.perf_counter()
 import tkinter as tk
-from tkinter import ttk
 from PIL import Image, ImageTk, ImageOps
 
 def _log_t(msg):
@@ -75,7 +74,7 @@ class KnowledgeDesktopHub(tk.Tk):
         _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
         _log_t("tk.Tk.__init__ complete")
-        self.title("Knowledge Command Center // v3.8 Instant Slot-Pool Engine")
+        self.title("Knowledge Command Center // v3.9 Zero-Emoji Native-Xft Speed Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
@@ -110,23 +109,23 @@ class KnowledgeDesktopHub(tk.Tk):
 
         self.title_lbl = tk.Label(
             self.top_hdr,
-            text="🧠 KNOWLEDGE COMMAND CENTER // VISUAL MONOGRAPH ARCHIVE",
-            fg="#fbbf24", bg="#090d13", font=("Monospace", 12, "bold"),
+            text="[KCC] KNOWLEDGE COMMAND CENTER // VISUAL MONOGRAPH ARCHIVE",
+            fg="#fbbf24", bg="#090d13", font=("DejaVu Sans Mono", 12, "bold"),
             justify="center", anchor="center", wraplength=900
         )
         self.title_lbl.pack(fill="x")
 
         self.sub_lbl = tk.Label(
             self.top_hdr, text=self.sched_status,
-            fg="#8b949e", bg="#090d13", font=("Monospace", 8),
+            fg="#8b949e", bg="#090d13", font=("DejaVu Sans Mono", 8),
             justify="center", anchor="center", wraplength=900
         )
         self.sub_lbl.pack(fill="x", pady=(3, 4))
 
         self.cap_pill = tk.Label(
             self.top_hdr,
-            text="💾 GitHub Vault: -- KB  •  ⚡ Cloud RAM: --  •  🛣️ Auto-Drop Runway: ~18.9 yrs",
-            fg="#3fb950", bg="#111822", font=("Monospace", 8, "bold"),
+            text="GitHub Vault: -- KB  •  Cloud RAM: --  •  Auto-Drop Runway: ~18.9 yrs",
+            fg="#3fb950", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"),
             padx=10, pady=4, highlightbackground="#238636", highlightthickness=1,
             justify="center", anchor="center", wraplength=880
         )
@@ -140,36 +139,36 @@ class KnowledgeDesktopHub(tk.Tk):
         self.nav_row2 = tk.Frame(self.nav_outer, bg="#0d1117")
 
         self.btn_art = tk.Button(
-            self.nav_row1, text="🎨 ART (0)", command=lambda: self.switch_track("art"),
-            bg="#fbbf24", fg="#090d13", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            self.nav_row1, text="ART (0)", command=lambda: self.switch_track("art"),
+            bg="#fbbf24", fg="#090d13", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.btn_uni = tk.Button(
-            self.nav_row1, text="🌌 PHYSICS (0)", command=lambda: self.switch_track("universe"),
-            bg="#21262d", fg="#c9d1d9", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            self.nav_row1, text="PHYSICS (0)", command=lambda: self.switch_track("universe"),
+            bg="#21262d", fg="#c9d1d9", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.btn_fav = tk.Button(
-            self.nav_row1, text="⭐ FAVS (0)", command=lambda: self.switch_track("favorites"),
-            bg="#21262d", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            self.nav_row1, text="* FAVS (0)", command=lambda: self.switch_track("favorites"),
+            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
 
-        self.filter_lbl = tk.Label(self.nav_row1, text="🔍", fg="#8b949e", bg="#0d1117", font=("Monospace", 9))
+        self.filter_lbl = tk.Label(self.nav_row1, text="Search:", fg="#8b949e", bg="#0d1117", font=("DejaVu Sans Mono", 9))
         self.search_var = tk.StringVar()
         self._search_timer = None
         self.search_var.trace_add("write", self._on_search_type)
         self.filter_ent = tk.Entry(
             self.nav_row1, textvariable=self.search_var, bg="#161b22", fg="#e6edf3",
             insertbackground="#fbbf24", relief="flat", highlightbackground="#30363d",
-            highlightthickness=1, font=("Monospace", 9), width=16
+            highlightthickness=1, font=("DejaVu Sans Mono", 9), width=16
         )
 
         self.sync_btn = tk.Button(
-            self.nav_row1, text="⚡ Sync Drop", command=self._manual_sync_drop,
+            self.nav_row1, text="Sync Drop", command=self._manual_sync_drop,
             bg="#192b20", fg="#3fb950", activebackground="#238636", relief="flat",
-            font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.matrix_btn = tk.Button(
-            self.nav_row1, text="🧬 Matrix ↗", command=lambda: webbrowser.open(get_cloud_url() + "/matrix"),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("Monospace", 8, "bold"), padx=8, pady=4, cursor="hand2"
+            self.nav_row1, text="Matrix ↗", command=lambda: webbrowser.open(get_cloud_url() + "/matrix"),
+            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=4, cursor="hand2"
         )
 
         # Instant Page Bar
@@ -177,16 +176,16 @@ class KnowledgeDesktopHub(tk.Tk):
         self.page_bar.pack(fill="x", padx=12, pady=(0, 6))
         self.prev_btn = tk.Button(
             self.page_bar, text="◀ Newer 5", command=lambda: self._step_page(-1),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=2, cursor="hand2"
+            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
         )
         self.prev_btn.pack(side="left")
         self.page_lbl = tk.Label(
-            self.page_bar, text="Loading Archive...", fg="#e6edf3", bg="#111822", font=("Monospace", 8, "bold")
+            self.page_bar, text="Loading Archive...", fg="#e6edf3", bg="#111822", font=("DejaVu Sans Mono", 8, "bold")
         )
         self.page_lbl.pack(side="left", expand=True)
         self.next_btn = tk.Button(
             self.page_bar, text="Older 5 ▶", command=lambda: self._step_page(1),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=2, cursor="hand2"
+            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
         )
         self.next_btn.pack(side="right")
 
@@ -194,7 +193,7 @@ class KnowledgeDesktopHub(tk.Tk):
         wrap = tk.Frame(self, bg="#0d1117")
         wrap.pack(fill="both", expand=True, padx=12, pady=(0, 8))
         self.cv = tk.Canvas(wrap, bg="#0d1117", highlightthickness=0)
-        self.sb = ttk.Scrollbar(wrap, orient="vertical", command=self.cv.yview)
+        self.sb = tk.Scrollbar(wrap, orient="vertical", command=self.cv.yview, bg="#161b22", troughcolor="#0d1117", activebackground="#30363d", highlightthickness=0, bd=0)
         self.inner = tk.Frame(self.cv, bg="#0d1117")
 
         # Every page (Art Page 0, Art Page 1, Physics Page 0, etc.) gets cached in its own persistent frame once viewed!
@@ -224,10 +223,11 @@ class KnowledgeDesktopHub(tk.Tk):
     def _fast_boot(self):
         _log_t("Loading curriculum.json...")
         self._load_local()
-        _log_t("Rendering Art Page 1...")
+        _log_t("Building Art Page 1 widgets...")
         self.render_cards()
+        _log_t("Widgets built! Mapping to X11 display...")
         self.update_idletasks()
-        _log_t("Art Page 1 rendered on screen!")
+        _log_t("Art Page 1 mapped on screen!")
         # Wait 3 seconds before starting cloud sync so network SSL handshake NEVER competes with initial UI or tab clicks!
         self.after(250, self._background_prebuild_pages)
         self.after(4000, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
@@ -306,7 +306,7 @@ class KnowledgeDesktopHub(tk.Tk):
                             l.config(image=ph, text="", width=sz[0], height=sz[1])
                     self.after(0, _paint)
                 elif not self._closing:
-                    self.after(0, lambda l=lbl: l.config(text="🖼️ Plate Offline") if l.winfo_exists() else None)
+                    self.after(0, lambda l=lbl: l.config(text="Plate Offline") if l.winfo_exists() else None)
             except Exception:
                 pass
 
@@ -511,9 +511,9 @@ class KnowledgeDesktopHub(tk.Tk):
         self.sub_lbl.config(text=f"{st}  •  Last Check: {lc}")
         c = self.capacity
         if c:
-            ram_part = f"⚡ Render RAM: {c.get('ram_mb', 0)}/{c.get('ram_limit_mb', 512)} MB ({c.get('ram_pct', 0)}%)" if c.get("ram_mb") else "⚡ Cloud: Synced"
+            ram_part = f"Render RAM: {c.get('ram_mb', 0)}/{c.get('ram_limit_mb', 512)} MB ({c.get('ram_pct', 0)}%)" if c.get("ram_mb") else "Cloud: Synced"
             self.cap_pill.config(
-                text=f"💾 GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)  •  {ram_part}  •  🛣️ Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
+                text=f"GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)  •  {ram_part}  •  Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
             )
         self._update_tab_counts()
         if rerender:
@@ -521,7 +521,7 @@ class KnowledgeDesktopHub(tk.Tk):
             self.render_cards()
 
     def _manual_sync_drop(self):
-        self.sync_btn.config(text="⏳ Dropping...", state="disabled")
+        self.sync_btn.config(text="... Dropping...", state="disabled")
         self.sub_lbl.config(text="ONLINE • Triggering Missed/Daily Drop on Render (Art + Universe + Matrix)...")
 
         def _worker():
@@ -543,16 +543,16 @@ class KnowledgeDesktopHub(tk.Tk):
                     lc = j.get("scheduler", {}).get("last_check", "--")
                     added = (j.get("result") or {}).get("changed") or []
                     errs = (j.get("result") or {}).get("errors") or {}
-                    btn_lbl = f"✅ +{len(added)} Dropped!" if added else ("⚠️ Check Warn" if errs else "✅ Up to Date")
+                    btn_lbl = f"[OK] +{len(added)} Dropped!" if added else ("[!] Check Warn" if errs else "[OK] Up to Date")
                     self.after(0, lambda: (
                         self._apply_sync_hdr(st, lc, bool(added)),
                         self.sync_btn.config(text=btn_lbl, state="normal"),
-                        self.after(3500, lambda: self.sync_btn.config(text="⚡ Sync Drop"))
+                        self.after(3500, lambda: self.sync_btn.config(text="Sync Drop"))
                     ))
                 else:
-                    self.after(0, lambda: self.sync_btn.config(text="⚠️ Retry", state="normal"))
+                    self.after(0, lambda: self.sync_btn.config(text="[!] Retry", state="normal"))
             except Exception:
-                self.after(0, lambda: self.sync_btn.config(text="⚠️ Wake & Retry", state="normal"))
+                self.after(0, lambda: self.sync_btn.config(text="[!] Wake & Retry", state="normal"))
         threading.Thread(target=_worker, daemon=True).start()
 
     def _toggle_star(self, track, seq, url, caption="", study_note="", source="", star_btn=None):
@@ -588,7 +588,7 @@ class KnowledgeDesktopHub(tk.Tk):
         if reg:
             self._regrid_gallery_cells(reg)
             rem_n = len(reg.get("gal_cells") or [])
-            reg["gal_btn"].config(text=f"🖼️ Hide Plates ({rem_n})")
+            reg["gal_btn"].config(text=f"Hide Plates ({rem_n})")
             self._throttled_scrollregion()
 
         les = self._get_lesson_obj(track, seq)
@@ -624,13 +624,13 @@ class KnowledgeDesktopHub(tk.Tk):
         f_n = len(self.data.get("favorites") or [])
         w = explicit_w if explicit_w else (self._last_cw + 38)
         if w >= 940:
-            self.btn_art.config(text=f"🎨 ART ENDURANCE ({a_n})")
-            self.btn_uni.config(text=f"🌌 PHYSICS OF TIME ({u_n})")
-            self.btn_fav.config(text=f"⭐ KEY'S FAVORITES ({f_n})")
+            self.btn_art.config(text=f"ART ENDURANCE ({a_n})")
+            self.btn_uni.config(text=f"PHYSICS OF TIME ({u_n})")
+            self.btn_fav.config(text=f"* KEY'S FAVORITES ({f_n})")
         else:
-            self.btn_art.config(text=f"🎨 ART ({a_n})")
-            self.btn_uni.config(text=f"🌌 PHYSICS ({u_n})")
-            self.btn_fav.config(text=f"⭐ FAVS ({f_n})")
+            self.btn_art.config(text=f"ART ({a_n})")
+            self.btn_uni.config(text=f"PHYSICS ({u_n})")
+            self.btn_fav.config(text=f"* FAVS ({f_n})")
 
     def switch_track(self, t):
         self.cur_track = t
@@ -657,9 +657,9 @@ class KnowledgeDesktopHub(tk.Tk):
         top.title("Visual Plate Lightbox // Full Resolution")
         top.geometry("900x680")
         top.configure(bg="#090d13")
-        lbl_img = tk.Label(top, text="⏳ Loading high-resolution archival plate...", fg="#fbbf24", bg="#090d13", font=("Monospace", 10))
+        lbl_img = tk.Label(top, text="... Loading high-resolution archival plate...", fg="#fbbf24", bg="#090d13", font=("DejaVu Sans Mono", 10))
         lbl_img.pack(expand=True, fill="both", padx=14, pady=(14, 6))
-        cap_l = tk.Label(top, text=caption, fg="#e6edf3", bg="#090d13", font=("Monospace", 9), pady=8, wraplength=840)
+        cap_l = tk.Label(top, text=caption, fg="#e6edf3", bg="#090d13", font=("DejaVu Sans Mono", 9), pady=8, wraplength=840)
         cap_l.pack(fill="x", padx=12)
 
         def _load():
@@ -735,10 +735,10 @@ class KnowledgeDesktopHub(tk.Tk):
                 except Exception as e:
                     last_err = str(e)
                 if attempt == 0:
-                    self.after(0, lambda: btn.config(text="⏳ Retrying...") if btn.winfo_exists() else None)
+                    self.after(0, lambda: btn.config(text="... Retrying...") if btn.winfo_exists() else None)
                     time.sleep(2)
             print(f"[Cloud Action Warn {endpoint}] {last_err}", flush=True)
-            self.after(0, lambda: btn.config(text="⚠️ Tap to Retry", state="normal") if btn.winfo_exists() else None)
+            self.after(0, lambda: btn.config(text="[!] Tap to Retry", state="normal") if btn.winfo_exists() else None)
         threading.Thread(target=_worker, daemon=True).start()
 
     def _build_favorites_deck(self, cw):
@@ -747,8 +747,8 @@ class KnowledgeDesktopHub(tk.Tk):
         if not favs:
             empty = tk.Frame(frm, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
             empty.pack(fill="x", pady=12, padx=4)
-            self._make_lbl(empty, "full", text="⭐ Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("Monospace", 10, "bold")).pack(fill="x")
-            self._make_lbl(empty, "full", text="Click ☆ on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("Monospace", 9), pady=6).pack(fill="x")
+            self._make_lbl(empty, "full", text="* Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 10, "bold")).pack(fill="x")
+            self._make_lbl(empty, "full", text="Click ☆ on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 9), pady=6).pack(fill="x")
             return frm
 
         stack_fav = cw < 660
@@ -763,7 +763,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 p_card.pack(anchor="w", pady=(0, 8))
             else:
                 p_card.pack(side="left", padx=(0, 14), anchor="n")
-            il = tk.Label(p_card, text="⏳", fg="#8b949e", bg="#1c232d", width=26, height=8, cursor="hand2")
+            il = tk.Label(p_card, text="...", fg="#8b949e", bg="#1c232d", width=26, height=8, cursor="hand2")
             il.pack()
             il.bind("<Button-1>", lambda e, u=f.get("url", ""), c=f.get("caption", ""): self._open_lightbox(u, c))
             self._load_thumb_async(il, f.get("url", ""), size=(205, 138))
@@ -772,18 +772,18 @@ class KnowledgeDesktopHub(tk.Tk):
             info.pack(side="left", fill="both", expand=True)
             self._make_lbl(
                 info, "fav", text=f"{str(f.get('track','art')).upper()} #{int(f.get('seq',1)):03d}  •  {f.get('source','Archive')}  •  Saved {f.get('saved_at','')}",
-                fg="#8b949e", bg="#161b22", font=("Monospace", 8, "bold"), anchor="w", justify="left"
+                fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left"
             ).pack(fill="x")
 
             self._make_lbl(
                 info, "fav", text=f.get("caption", "Visual Plate"), fg="#f0f6fc", bg="#161b22",
-                font=("Monospace", 10, "bold"), anchor="w", justify="left"
+                font=("DejaVu Sans Mono", 10, "bold"), anchor="w", justify="left"
             ).pack(fill="x", pady=(4, 2))
 
             if f.get("study_note"):
                 self._make_lbl(
                     info, "fav", text=f.get("study_note", ""), fg="#fbbf24", bg="#161b22",
-                    font=("Monospace", 8), anchor="w", justify="left"
+                    font=("DejaVu Sans Mono", 8), anchor="w", justify="left"
                 ).pack(fill="x", pady=(0, 6))
 
             b_row = tk.Frame(info, bg="#161b22")
@@ -791,12 +791,12 @@ class KnowledgeDesktopHub(tk.Tk):
             tk.Button(
                 b_row, text=f"↗ Open {str(f.get('track','art')).upper()} (#{int(f.get('seq',1)):03d})",
                 command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1): self._jump_to_lesson(tr, sq),
-                bg="#21262d", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
+                bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
             ).pack(side="left", padx=(0, 8))
             tk.Button(
                 b_row, text="★ Unstar",
                 command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1), u=f.get("url", ""): self._toggle_star(tr, sq, u),
-                bg="#2d2208", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
+                bg="#2d2208", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
             ).pack(side="left")
         return frm
 
@@ -838,13 +838,13 @@ class KnowledgeDesktopHub(tk.Tk):
             tk.Button(
                 bot_nav, text="◀ Newer 5 Lessons", command=lambda: self._step_page(-1),
                 state="normal" if cur_p > 0 else "disabled",
-                bg="#21262d", fg="#fbbf24" if cur_p > 0 else "#484f58", relief="flat", font=("Monospace", 8, "bold"), padx=12, pady=4, cursor="hand2"
+                bg="#21262d", fg="#fbbf24" if cur_p > 0 else "#484f58", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
             ).pack(side="left")
-            tk.Label(bot_nav, text=f"Page {cur_p + 1} of {max_page + 1}", fg="#8b949e", bg="#111822", font=("Monospace", 8, "bold")).pack(side="left", expand=True)
+            tk.Label(bot_nav, text=f"Page {cur_p + 1} of {max_page + 1}", fg="#8b949e", bg="#111822", font=("DejaVu Sans Mono", 8, "bold")).pack(side="left", expand=True)
             tk.Button(
                 bot_nav, text="Older 5 Lessons ▶", command=lambda: self._step_page(1),
                 state="normal" if end_i < total else "disabled",
-                bg="#21262d", fg="#fbbf24" if end_i < total else "#484f58", relief="flat", font=("Monospace", 8, "bold"), padx=12, pady=4, cursor="hand2"
+                bg="#21262d", fg="#fbbf24" if end_i < total else "#484f58", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
             ).pack(side="right")
 
         deck_info = {"frame": deck_frm, "meta_txt": meta_txt, "has_prev": cur_p > 0, "has_next": end_i < total}
@@ -866,7 +866,7 @@ class KnowledgeDesktopHub(tk.Tk):
             self._active_deck.pack_forget()
 
         if self.cur_track == "favorites":
-            self.page_lbl.config(text=f"⭐ KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
+            self.page_lbl.config(text=f"* KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
             self.prev_btn.config(state="disabled")
             self.next_btn.config(state="disabled")
             fav_frm = self._build_favorites_deck(cw)
@@ -922,7 +922,7 @@ class KnowledgeDesktopHub(tk.Tk):
         ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
 
         if key in self.open_dd and has_dd:
-            dd_btn.config(text=f"📖 Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "📖 Minimize Deep Dive", bg="#1f2937", fg="#fbbf24", state="normal")
+            dd_btn.config(text=f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive", bg="#1f2937", fg="#fbbf24", state="normal")
             if force_rebuild and dd_frame and dd_frame.winfo_exists():
                 dd_frame.destroy()
                 dd_frame = None
@@ -931,26 +931,26 @@ class KnowledgeDesktopHub(tk.Tk):
                 hdr_bar = tk.Frame(dd_frame, bg="#111822")
                 hdr_bar.pack(fill="x", padx=1, pady=1)
                 tk.Label(
-                    hdr_bar, text=f"📖 DEEP DIVE MONOGRAPH  •  {ch_count} CHAPTER(S) ARCHIVED",
-                    fg="#58a6ff", bg="#111822", font=("Monospace", 8, "bold"), anchor="w", padx=10, pady=6
+                    hdr_bar, text=f"DEEP DIVE MONOGRAPH  •  {ch_count} CHAPTER(S) ARCHIVED",
+                    fg="#58a6ff", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", padx=10, pady=6
                 ).pack(side="left")
 
                 tk.Button(
                     hdr_bar, text="▲ Minimize Deep Dive",
                     command=lambda k=key: (self.open_dd.discard(k), self._toggle_dd_drawer(k, False)),
                     bg="#21262d", fg="#fbbf24", activebackground="#30363d", relief="flat",
-                    font=("Monospace", 8, "bold"), padx=9, pady=3, cursor="hand2"
+                    font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2"
                 ).pack(side="right", padx=6, pady=3)
 
                 deeper_btn = tk.Button(
-                    hdr_bar, text=f"🔥 + Deeper Dive (Ch.{ch_count + 1})",
+                    hdr_bar, text=f"+ Deeper Dive (Ch.{ch_count + 1})",
                     bg="#251736", fg="#d2a8ff", activebackground="#3b2354", relief="flat",
-                    font=("Monospace", 8, "bold"), padx=9, pady=3, cursor="hand2"
+                    font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2"
                 )
                 deeper_btn.config(
                     command=lambda k=key, t=track, s=seq, b=deeper_btn: self._call_cloud_action(
                         "/api/deep_dive", {"track": t, "seq": s, "append": True},
-                        b, "⏳ Diving Deeper...",
+                        b, "... Diving Deeper...",
                         lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True))
                     )
                 )
@@ -958,7 +958,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
                 self._make_lbl(
                     dd_frame, "full", text=les["deep_dive"],
-                    fg="#d0d7de", bg="#090d13", font=("Monospace", 9),
+                    fg="#d0d7de", bg="#090d13", font=("DejaVu Sans Mono", 9),
                     justify="left", anchor="w", padx=12, pady=8
                 ).pack(fill="x")
 
@@ -967,12 +967,12 @@ class KnowledgeDesktopHub(tk.Tk):
                 tk.Button(
                     bot_bar, text="▲ Minimize Deep Dive",
                     command=lambda k=key: (self.open_dd.discard(k), self._toggle_dd_drawer(k, False)),
-                    bg="#21262d", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=3, cursor="hand2"
+                    bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=3, cursor="hand2"
                 ).pack(side="right")
 
                 reg["dd_frame"] = dd_frame
         else:
-            lbl_closed = (f"📖 Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "📖 Read Deep Dive") if has_dd else "📖 Generate Deep Dive"
+            lbl_closed = (f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive"
             dd_btn.config(text=lbl_closed, bg="#21262d", fg="#58a6ff", state="normal")
 
         self._sync_drawer_order(reg)
@@ -989,7 +989,7 @@ class KnowledgeDesktopHub(tk.Tk):
         g_strip = reg.get("g_strip")
 
         if key in self.open_gal and has_gal:
-            gal_btn.config(text=f"🖼️ Hide Plates ({len(gal_list)})", state="normal")
+            gal_btn.config(text=f"Hide Plates ({len(gal_list)})", state="normal")
             if force_rebuild and g_strip and g_strip.winfo_exists():
                 g_strip.destroy()
                 g_strip = None
@@ -1013,20 +1013,20 @@ class KnowledgeDesktopHub(tk.Tk):
                     hdr_c.pack(fill="x")
                     tk.Button(
                         hdr_c, text="×", fg="#f85149", bg="#161b22", activebackground="#f85149", activeforeground="#fff",
-                        relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2",
+                        relief="flat", font=("DejaVu Sans Mono", 9, "bold"), padx=5, pady=0, cursor="hand2",
                         command=lambda tr=track, sq=seq, u=gu, cw_ref=cell: self._delete_plate(tr, sq, u, cw_ref)
                     ).pack(side="left")
-                    tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("Monospace", 6)).pack(side="left", padx=2)
+                    tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 6)).pack(side="left", padx=2)
                     st_btn = tk.Button(
                         hdr_c, text="★" if g_star else "☆", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22",
-                        relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2"
+                        relief="flat", font=("DejaVu Sans Mono", 9, "bold"), padx=5, pady=0, cursor="hand2"
                     )
                     st_btn.config(command=lambda tr=track, sq=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs, b_ref=st_btn: self._toggle_star(tr, sq, u, cp, sn, sr, b_ref))
                     st_btn.pack(side="right")
 
-                    gl = tk.Label(cell, text="⏳", fg="#8b949e", bg="#1c232d", width=23, height=7, cursor="hand2")
+                    gl = tk.Label(cell, text="...", fg="#8b949e", bg="#1c232d", width=23, height=7, cursor="hand2")
                     gl.pack()
-                    cl = tk.Label(cell, text=(g_item.get("caption") or "Plate")[:24] + " 🔍", fg="#c9d1d9", bg="#161b22", font=("Monospace", 7), pady=3, cursor="hand2")
+                    cl = tk.Label(cell, text=(g_item.get("caption") or "Plate")[:24] + " Search:", fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 7), pady=3, cursor="hand2")
                     cl.pack(fill="x")
                     for wg in (gl, cl):
                         wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
@@ -1035,22 +1035,22 @@ class KnowledgeDesktopHub(tk.Tk):
 
                 cur_bar = tk.Frame(g_strip, bg="#090d13")
                 cur_bar.pack(fill="x", padx=10, pady=(4, 8))
-                c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+                c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
                 c_ent = tk.Entry(
                     cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat",
-                    highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=16
+                    highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16
                 )
                 c_ent.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=3)
                 c_btn.pack(side="right")
 
                 def _on_more_gal(t=track, s=seq, ent=c_ent, b=c_btn, k=key):
                     cq = ent.get().strip()
-                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s, "append": True, "query": cq}, b, "⏳ Routing...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
+                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s, "append": True, "query": cq}, b, "... Routing...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
                 c_btn.config(command=_on_more_gal)
                 c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
                 reg["g_strip"] = g_strip
         else:
-            gal_btn.config(text=f"🖼️ Plates ({len(gal_list)})" if has_gal else "🖼️ Curate Plates", state="normal")
+            gal_btn.config(text=f"Plates ({len(gal_list)})" if has_gal else "Curate Plates", state="normal")
 
         self._sync_drawer_order(reg)
 
@@ -1071,9 +1071,9 @@ class KnowledgeDesktopHub(tk.Tk):
             qa_hdr.pack(fill="x", padx=12, pady=(0, 4))
             tk.Button(
                 qa_hdr,
-                text=f"💬 Show Saved Q&A ({len(qa_list)}) ▼" if is_minimized else f"💬 Minimize Q&A ({len(qa_list)}) ▲",
+                text=f"Show Saved Q&A ({len(qa_list)}) ▼" if is_minimized else f"Minimize Q&A ({len(qa_list)}) ▲",
                 command=lambda k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self._rebuild_qa_drawer(k)),
-                bg="#251736", fg="#d2a8ff", relief="flat", font=("Monospace", 8, "bold"), padx=8, pady=2, cursor="hand2"
+                bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=2, cursor="hand2"
             ).pack(side="left")
 
             if not is_minimized:
@@ -1081,12 +1081,12 @@ class KnowledgeDesktopHub(tk.Tk):
                     qa_box = tk.Frame(qa_holder, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
                     qa_box.pack(fill="x", padx=12, pady=(0, 6))
                     self._make_lbl(
-                        qa_box, "full", text=f"💬 Q: {qa.get('q','')}   [ {qa.get('model','GEMINI')} • {qa.get('ts','')} ]",
-                        fg="#d2a8ff", bg="#0c131d", font=("Monospace", 8, "bold"), anchor="w", justify="left", padx=10, pady=4
+                        qa_box, "full", text=f"Q: {qa.get('q','')}   [ {qa.get('model','GEMINI')} • {qa.get('ts','')} ]",
+                        fg="#d2a8ff", bg="#0c131d", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left", padx=10, pady=4
                     ).pack(fill="x")
                     self._make_lbl(
                         qa_box, "full", text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d",
-                        font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6
+                        font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=10, pady=6
                     ).pack(fill="x")
         self._sync_drawer_order(reg)
 
@@ -1106,17 +1106,17 @@ class KnowledgeDesktopHub(tk.Tk):
         p_card = None
         if img_url:
             p_card = tk.Frame(top_row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
-            img_lbl = tk.Label(p_card, text="⏳ Loading Plate...", fg="#8b949e", bg="#1c232d", font=("Monospace", 8), width=29, height=10, cursor="hand2")
+            img_lbl = tk.Label(p_card, text="... Loading Plate...", fg="#8b949e", bg="#1c232d", font=("DejaVu Sans Mono", 8), width=29, height=10, cursor="hand2")
             img_lbl.pack()
             starred = self._is_starred(img_url)
             b_bar = tk.Frame(p_card, bg="#161b22")
             b_bar.pack(fill="x")
             cap_txt = (les.get("image_caption") or les.get("title", ""))[:30]
-            cap_lbl = tk.Label(b_bar, text=f"📸 {cap_txt} 🔍", fg="#8b949e", bg="#161b22", font=("Monospace", 7, "bold"), padx=5, pady=3, cursor="hand2")
+            cap_lbl = tk.Label(b_bar, text=f"{cap_txt} Search:", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 7, "bold"), padx=5, pady=3, cursor="hand2")
             cap_lbl.pack(side="left")
             lead_st_btn = tk.Button(
                 b_bar, text="★" if starred else "☆",
-                fg="#fbbf24" if starred else "#8b949e", bg="#161b22", relief="flat", font=("Monospace", 9, "bold"), padx=4, pady=0, cursor="hand2"
+                fg="#fbbf24" if starred else "#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 9, "bold"), padx=4, pady=0, cursor="hand2"
             )
             lead_st_btn.config(command=lambda tr=t_key, sq=seq, url_p=img_url, cp=les.get("image_caption") or les.get("title", ""), b_ref=lead_st_btn: self._toggle_star(tr, sq, url_p, cp, "", "Lead Plate", b_ref))
             lead_st_btn.pack(side="right")
@@ -1130,16 +1130,16 @@ class KnowledgeDesktopHub(tk.Tk):
 
         tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
         meta_txt = f"#{seq:03d} • {les.get('date','')}   [ {str(les.get('model','ARCHIVE')).upper()} ]   {tags_str}".strip()
-        self._make_lbl(left_col, "body", text=meta_txt, fg="#58a6ff", bg="#161b22", font=("Monospace", 8, "bold"), anchor="w", justify="left").pack(fill="x")
-        self._make_lbl(left_col, "body", text=les.get("title", ""), fg="#f0f6fc", bg="#161b22", font=("Monospace", 11, "bold"), anchor="w", justify="left").pack(fill="x", pady=(5, 4))
-        self._make_lbl(left_col, "body", text=les.get("core", ""), fg="#c9d1d9", bg="#161b22", font=("Monospace", 9), anchor="w", justify="left").pack(fill="x", pady=(0, 6))
+        self._make_lbl(left_col, "body", text=meta_txt, fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left").pack(fill="x")
+        self._make_lbl(left_col, "body", text=les.get("title", ""), fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 11, "bold"), anchor="w", justify="left").pack(fill="x", pady=(5, 4))
+        self._make_lbl(left_col, "body", text=les.get("core", ""), fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 9), anchor="w", justify="left").pack(fill="x", pady=(0, 6))
 
         maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
         maker_box.pack(fill="x", pady=(2, 4))
-        lens_lbl = f"⏱️ Temporal & Studio Lens: {les.get('maker', '')}" if t_key == "universe" else f"🧵 Studio Craft Lens: {les.get('maker', '')}"
+        lens_lbl = f">> Temporal & Studio Lens: {les.get('maker', '')}" if t_key == "universe" else f">> Studio Craft Lens: {les.get('maker', '')}"
         self._make_lbl(
             maker_box, "maker", text=lens_lbl,
-            fg="#fbbf24", bg="#0f141b", font=("Monospace", 8), anchor="w", justify="left", padx=8, pady=6
+            fg="#fbbf24", bg="#0f141b", font=("DejaVu Sans Mono", 8), anchor="w", justify="left", padx=8, pady=6
         ).pack(fill="x")
 
         if (not is_wide) and p_card:
@@ -1153,19 +1153,19 @@ class KnowledgeDesktopHub(tk.Tk):
 
         has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
         ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
-        dd_init_txt = (f"📖 Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "📖 Read Deep Dive") if has_dd else "📖 Generate Deep Dive"
-        dd_btn = tk.Button(act_r1, text=dd_init_txt, bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        dd_init_txt = (f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive"
+        dd_btn = tk.Button(act_r1, text=dd_init_txt, bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
         dd_btn.pack(side="left", padx=(0, 6))
 
         gal_list = les.get("gallery") or []
-        gal_init_txt = f"🖼️ Plates ({len(gal_list)})" if gal_list else "🖼️ Curate Plates"
-        gal_btn = tk.Button(act_r1, text=gal_init_txt, bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        gal_init_txt = f"Plates ({len(gal_list)})" if gal_list else "Curate Plates"
+        gal_btn = tk.Button(act_r1, text=gal_init_txt, bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
         gal_btn.pack(side="left", padx=(0, 8))
 
-        ask_btn = tk.Button(act_wrap, text="💬 Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        ask_btn = tk.Button(act_wrap, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
         ask_ent = tk.Entry(
             act_wrap, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat",
-            highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=16
+            highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16
         )
         if is_wide:
             ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
@@ -1195,7 +1195,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     self.open_dd.add(k)
                 self._toggle_dd_drawer(k, force_rebuild=False)
             else:
-                self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "⏳ Writing...", lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True)))
+                self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "... Writing...", lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True)))
         dd_btn.config(command=_on_dd)
 
         def _on_gal(k=key, t=t_key, s=seq, b=gal_btn):
@@ -1208,7 +1208,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     self.open_gal.add(k)
                 self._toggle_gal_drawer(k, force_rebuild=False)
             else:
-                self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "⏳ Curating...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
+                self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "... Curating...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
         gal_btn.config(command=_on_gal)
 
         def _on_ask(k=key, t=t_key, s=seq, ent=ask_ent, b=ask_btn):
@@ -1216,7 +1216,7 @@ class KnowledgeDesktopHub(tk.Tk):
             if not q_str:
                 return
             ent.delete(0, "end")
-            self._call_cloud_action("/api/ask", {"track": t, "seq": s, "question": q_str}, b, "⏳ Asking...", lambda: (b.config(text="💬 Ask Gemini", state="normal"), self._rebuild_qa_drawer(k)))
+            self._call_cloud_action("/api/ask", {"track": t, "seq": s, "question": q_str}, b, "... Asking...", lambda: (b.config(text="Ask Gemini", state="normal"), self._rebuild_qa_drawer(k)))
         ask_btn.config(command=_on_ask)
         ask_ent.bind("<Return>", lambda e, fn=_on_ask: fn())
 
