@@ -376,7 +376,33 @@ function switchTrack(t) {
   renderFeed();
 }
 
+const PAGE_SIZE = 5;
+const PAGE_IDX = {art: 0, universe: 0, matrix: 0, favorites: 0};
+const CLOSED_QA = {};
+let SEARCH_Q = '';
+
+function stepPage(delta) {
+  PAGE_IDX[CUR_TRACK] = Math.max(0, (PAGE_IDX[CUR_TRACK] || 0) + delta);
+  renderFeed();
+  window.scrollTo({top: 0, behavior: 'instant'});
+}
+
+function onSearchInput(val) {
+  SEARCH_Q = (val || '').trim();
+  PAGE_IDX[CUR_TRACK] = 0;
+  renderFeed();
+}
+
+function toggleQaDrawer(key) {
+  CLOSED_QA[key] = !CLOSED_QA[key];
+  renderFeed();
+}
+
 function jumpToLesson(track, seq) {
+  SEARCH_Q = '';
+  const all = ((DATA.tracks[track] || {}).lessons || []).slice().reverse();
+  const idx = all.findIndex(x => Number(x.seq) === Number(seq));
+  if (idx >= 0) PAGE_IDX[track] = Math.floor(idx / PAGE_SIZE);
   switchTrack(track);
   setTimeout(() => {
     const el = document.getElementById('card-' + track + '_' + seq);
@@ -404,7 +430,7 @@ async function deletePlateIdx(ev, idx) {
     if (target && j.lesson) target.gallery = j.lesson.gallery || [];
     DATA.favorites = j.favorites || [];
     if (j.capacity) CAP = j.capacity;
-    GALLERY_OPEN[p.track + "_" + p.seq] = true;
+    OPEN_GAL[p.track + "_" + p.seq] = true;
     renderHeaderStats();
     renderFeed();
   }
@@ -459,6 +485,12 @@ function renderFavoritesView() {
   }).join('')}</div>`;
 }
 
+function countChapters(ddText) {
+  if (!ddText || ddText.length <= 40) return 0;
+  const matches = ddText.match(/=== DEEPER DIVE CHAPTER/g);
+  return 1 + (matches ? matches.length : 0);
+}
+
 function renderFeed() {
   PLATE_REG = [];
   if (CUR_TRACK === 'favorites') {
@@ -466,8 +498,44 @@ function renderFeed() {
     return;
   }
   const feed = document.getElementById('feed');
-  const lessons = ((DATA.tracks[CUR_TRACK] || {}).lessons || []).slice().reverse();
-  feed.innerHTML = lessons.map(l => {
+  const allLessons = ((DATA.tracks[CUR_TRACK] || {}).lessons || []).slice().reverse();
+  const q = SEARCH_Q.toLowerCase();
+  const filtered = allLessons.filter(l => {
+    if (!q) return true;
+    const blob = `#${String(l.seq).padStart(3,'0')} ${l.title || ''} ${l.core || ''} ${(l.tags || []).join(' ')}`.toLowerCase();
+    return blob.includes(q);
+  });
+
+  const total = filtered.length;
+  const maxPage = Math.max(0, Math.ceil(total / PAGE_SIZE) - 1);
+  const curP = Math.min(PAGE_IDX[CUR_TRACK] || 0, maxPage);
+  PAGE_IDX[CUR_TRACK] = curP;
+
+  const startI = curP * PAGE_SIZE;
+  const endI = Math.min(total, startI + PAGE_SIZE);
+  const pageSlice = filtered.slice(startI, endI);
+  const hasPrev = curP > 0;
+  const hasNext = endI < total;
+
+  const tLabel = CUR_TRACK === 'art' ? 'ART ENDURANCE' : (CUR_TRACK === 'universe' ? 'PHYSICS OF TIME' : 'MATRIX ARCHITECTURE');
+  const rangeTxt = total > 0
+    ? `${tLabel} • #${String(pageSlice[0].seq).padStart(3,'0')}–#${String(pageSlice[pageSlice.length-1].seq).padStart(3,'0')} of ${total} (Page ${curP+1}/${maxPage+1})`
+    : `${tLabel} • 0 matching lessons`;
+
+  const topNavHtml = `
+    <div class="card" style="padding:10px 12px;margin-bottom:12px;background:#111822;border-color:#30363d;">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+        <button class="btn" onclick="stepPage(-1)" ${hasPrev ? '' : 'disabled'} style="opacity:${hasPrev ? '1' : '0.4'};border-color:#58a6ff;color:#58a6ff;">◀ Newer 5</button>
+        <div style="font-size:0.78rem;font-weight:bold;color:#e6edf3;text-align:center;flex:1;">${rangeTxt}</div>
+        <button class="btn" onclick="stepPage(1)" ${hasNext ? '' : 'disabled'} style="opacity:${hasNext ? '1' : '0.4'};border-color:#58a6ff;color:#58a6ff;">Older 5 ▶</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;">
+        <input id="feed-search-inp" value="${esc(SEARCH_Q)}" placeholder="🔍 Filter lessons, artists, physicists, or #tags..." oninput="onSearchInput(this.value)" style="flex:1;background:#090d13;color:#e6edf3;border:1px solid #30363d;border-radius:6px;padding:6px 10px;font-family:inherit;font-size:0.8rem;">
+        ${SEARCH_Q ? `<button class="btn" onclick="onSearchInput('')" style="border-color:#f85149;color:#f85149;">✕ Clear</button>` : ''}
+      </div>
+    </div>`;
+
+  const cardsHtml = pageSlice.map(l => {
     const key = CUR_TRACK + '_' + l.seq;
     let plate = '';
     if (CUR_TRACK === 'matrix') {
@@ -494,9 +562,31 @@ function renderFeed() {
     const decodes = (OPEN_DD[key] && l.line_decode) ? l.line_decode.map(d =>
       `<div class="decode-row"><span class="decode-code">${esc(d.code)}</span> → ${esc(d.meaning)}</div>`
     ).join('') : '';
-    const ddBlk = (OPEN_DD[key] && l.deep_dive) ? `<div class="drawer"><strong>📖 MONOGRAPH / ARCHITECT DECODE:</strong>
 
-${esc(l.deep_dive)}</div>${decodes}` : '';
+    const hasDd = Boolean(l.deep_dive && l.deep_dive.length > 40);
+    const chCount = countChapters(l.deep_dive);
+    let ddBtnLabel = '📖 Generate Deep Dive';
+    if (hasDd) {
+      ddBtnLabel = OPEN_DD[key]
+        ? (chCount > 1 ? `📖 Minimize Deep Dive (${chCount} Ch)` : '📖 Minimize Deep Dive')
+        : (chCount > 1 ? `📖 Read Deep Dive (${chCount} Ch)` : '📖 Read Deep Dive');
+    }
+
+    const ddBlk = (OPEN_DD[key] && hasDd) ? `
+      <div class="drawer" style="background:#090d13;border:1px solid #30363d;border-radius:8px;padding:12px;margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:#111822;padding:8px 10px;border-radius:6px;margin-bottom:10px;border:1px solid #21262d;">
+          <strong style="color:#58a6ff;font-size:0.78rem;">📖 DEEP DIVE MONOGRAPH • ${chCount} CHAPTER(S) ARCHIVED</strong>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn" id="moredd-${key}" onclick="deeperDive('${CUR_TRACK}', ${l.seq})" style="background:#251736;border-color:#d2a8ff;color:#d2a8ff;font-size:0.75rem;padding:4px 9px;">🔥 + Deeper Dive (Ch.${chCount + 1})</button>
+            <button class="btn" onclick="minimizeDeepDive('${CUR_TRACK}', ${l.seq})" style="background:#21262d;border-color:#fbbf24;color:#fbbf24;font-size:0.75rem;padding:4px 9px;">▲ Minimize</button>
+          </div>
+        </div>
+        <div style="white-space:pre-wrap;line-height:1.65;color:#d0d7de;font-size:0.88rem;">${esc(l.deep_dive)}</div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;padding-top:8px;border-top:1px solid #21262d;">
+          <button class="btn" onclick="deeperDive('${CUR_TRACK}', ${l.seq})" style="background:#251736;border-color:#d2a8ff;color:#d2a8ff;font-size:0.75rem;padding:4px 10px;">🔥 + Deeper Dive (Ch.${chCount + 1})</button>
+          <button class="btn" onclick="minimizeDeepDive('${CUR_TRACK}', ${l.seq})" style="background:#21262d;border-color:#fbbf24;color:#fbbf24;font-size:0.75rem;padding:4px 10px;">▲ Minimize Deep Dive</button>
+        </div>
+      </div>${decodes}` : '';
 
     const hasGal = l.gallery && l.gallery.length > 0;
     let galBlk = '';
@@ -527,8 +617,22 @@ ${esc(l.deep_dive)}</div>${decodes}` : '';
       `;
     }
 
-    const qas = (l.qa_log || []).map(q => `<div class="qa-item"><strong style="color:#d2a8ff">Q: ${esc(q.q)}</strong> <span class="pill">[ ${esc(q.model)} ]</span>
+    const qaList = l.qa_log || [];
+    let qas = '';
+    if (qaList.length > 0) {
+      const isMinQa = Boolean(CLOSED_QA[key]);
+      const qaItemsHtml = isMinQa ? '' : qaList.map(q => `<div class="qa-item"><strong style="color:#d2a8ff">💬 Q: ${esc(q.q)}</strong> <span class="pill">[ ${esc(q.model)} • ${esc(q.ts || '')} ]</span>
 ${esc(q.a)}</div>`).join('');
+      qas = `
+        <div style="margin-top:8px;">
+          <button class="btn" onclick="toggleQaDrawer('${key}')" style="background:#251736;border-color:#6e40c9;color:#d2a8ff;font-size:0.75rem;padding:3px 9px;margin-bottom:6px;">
+            ${isMinQa ? `💬 Show Saved Q&A (${qaList.length}) ▼` : `💬 Minimize Q&A (${qaList.length}) ▲`}
+          </button>
+          ${qaItemsHtml}
+        </div>`;
+    }
+
+    const lensPrefix = CUR_TRACK === 'universe' ? '⏱️ Temporal & Studio Lens:' : '🧵 Studio / Craft Lens:';
 
     return `<div class="card" id="card-${key}">
       <div class="card-grid">
@@ -540,14 +644,14 @@ ${esc(q.a)}</div>`).join('');
           </div>
           <div class="title">${esc(l.title)}</div>
           <div class="core">${esc(l.core)}</div>
-          <div class="maker">🧵 Studio / Craft Lens: ${esc(l.maker)}</div>
+          <div class="maker">${lensPrefix} ${esc(l.maker)}</div>
           ${codeBlk}
         </div>
         ${plate}
       </div>
       <div class="actions">
-        <button class="btn" id="ddbtn-${key}" onclick="toggleDeepDive('${CUR_TRACK}', ${l.seq})">📖 ${l.deep_dive ? (OPEN_DD[key] ? 'Hide Deep Dive' : 'Deep Dive') : 'Generate Deep Dive (Gemini)'}</button>
-        ${CUR_TRACK !== 'matrix' ? `<button class="btn" id="galbtn-${key}" onclick="toggleGallery('${CUR_TRACK}', ${l.seq})">🖼️ ${hasGal ? (OPEN_GAL[key] ? `Hide Plates (${l.gallery.length})` : `Plates (${l.gallery.length}) • +Curate`) : 'Curate 5 Plates'}</button>` : ''}
+        <button class="btn" id="ddbtn-${key}" onclick="toggleDeepDive('${CUR_TRACK}', ${l.seq})" style="${OPEN_DD[key] && hasDd ? 'border-color:#fbbf24;color:#fbbf24;background:#1f2937;' : 'border-color:#58a6ff;color:#58a6ff;'}">${ddBtnLabel}</button>
+        ${CUR_TRACK !== 'matrix' ? `<button class="btn" id="galbtn-${key}" onclick="toggleGallery('${CUR_TRACK}', ${l.seq})" style="border-color:#3fb950;color:#3fb950;">🖼️ ${hasGal ? (OPEN_GAL[key] ? `Hide Plates (${l.gallery.length})` : `Plates (${l.gallery.length})`) : 'Curate 5 Plates'}</button>` : ''}
       </div>
       ${ddBlk}
       ${galBlk}
@@ -558,46 +662,70 @@ ${esc(q.a)}</div>`).join('');
       </div>
     </div>`;
   }).join('');
+
+  const botNavHtml = total > PAGE_SIZE ? `
+    <div class="card" style="padding:10px 12px;margin-top:8px;background:#111822;border-color:#30363d;display:flex;justify-content:space-between;align-items:center;">
+      <button class="btn" onclick="stepPage(-1)" ${hasPrev ? '' : 'disabled'} style="opacity:${hasPrev ? '1' : '0.4'};border-color:#fbbf24;color:#fbbf24;">◀ Newer 5 Lessons</button>
+      <span style="font-size:0.78rem;color:#8b949e;font-weight:bold;">Page ${curP+1} of ${maxPage+1}</span>
+      <button class="btn" onclick="stepPage(1)" ${hasNext ? '' : 'disabled'} style="opacity:${hasNext ? '1' : '0.4'};border-color:#fbbf24;color:#fbbf24;">Older 5 Lessons ▶</button>
+    </div>` : '';
+
+  feed.innerHTML = topNavHtml + cardsHtml + botNavHtml;
 }
 
 function updateLessonInMem(track, updated, cap) {
   const arr = DATA.tracks[track].lessons;
-  const idx = arr.findIndex(x => x.seq === updated.seq);
+  const idx = arr.findIndex(x => Number(x.seq) === Number(updated.seq));
   if (idx >= 0) arr[idx] = updated;
   if (cap) CAP = cap;
   renderHeaderStats();
 }
 
+function minimizeDeepDive(track, seq) {
+  OPEN_DD[track + '_' + seq] = false;
+  renderFeed();
+}
+
 async function toggleDeepDive(track, seq) {
   const key = track + '_' + seq;
-  const les = DATA.tracks[track].lessons.find(x => x.seq === seq);
-  if (les.deep_dive && les.deep_dive.length > 120) {
+  const les = DATA.tracks[track].lessons.find(x => Number(x.seq) === Number(seq));
+  if (les && les.deep_dive && les.deep_dive.length > 40) {
     OPEN_DD[key] = !OPEN_DD[key];
     renderFeed();
     return;
   }
   const btn = document.getElementById('ddbtn-' + key);
-  btn.textContent = '⏳ Synthesizing Deep Dive via Gemini...';
-  const r = await fetch('/api/deep_dive', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq})});
+  if (btn) { btn.textContent = '⏳ Writing Deep Dive...'; btn.disabled = true; }
+  const r = await fetch('/api/deep_dive', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq, append:false})});
   const j = await r.json();
   if (j.ok) { updateLessonInMem(track, j.lesson, j.capacity); OPEN_DD[key] = true; renderFeed(); }
-  else { btn.textContent = '⚠️ Retry Deep Dive'; alert(j.error); }
+  else { if (btn) { btn.textContent = '⚠️ Tap to Retry'; btn.disabled = false; } }
+}
+
+async function deeperDive(track, seq) {
+  const key = track + '_' + seq;
+  const btn = document.getElementById('moredd-' + key);
+  if (btn) { btn.textContent = '⏳ Diving Deeper...'; btn.disabled = true; }
+  const r = await fetch('/api/deep_dive', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq, append:true})});
+  const j = await r.json();
+  if (j.ok) { updateLessonInMem(track, j.lesson, j.capacity); OPEN_DD[key] = true; renderFeed(); }
+  else { if (btn) { btn.textContent = '⚠️ Retry Deeper Dive'; btn.disabled = false; } }
 }
 
 async function toggleGallery(track, seq) {
   const key = track + '_' + seq;
-  const les = DATA.tracks[track].lessons.find(x => x.seq === seq);
-  if (les.gallery && les.gallery.length >= 1) {
+  const les = DATA.tracks[track].lessons.find(x => Number(x.seq) === Number(seq));
+  if (les && les.gallery && les.gallery.length >= 1) {
     OPEN_GAL[key] = !OPEN_GAL[key];
     renderFeed();
     return;
   }
   const btn = document.getElementById('galbtn-' + key);
-  btn.textContent = '⏳ Pulling Multi-Archive Plates...';
+  if (btn) { btn.textContent = '⏳ Curating Plates...'; btn.disabled = true; }
   const r = await fetch('/api/gallery', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq, append:false})});
   const j = await r.json();
   if (j.ok) { updateLessonInMem(track, j.lesson, j.capacity); OPEN_GAL[key] = true; renderFeed(); }
-  else { btn.textContent = '⚠️ Retry Plates'; }
+  else { if (btn) { btn.textContent = '⚠️ Retry Plates'; btn.disabled = false; } }
 }
 
 async function curateMore(track, seq) {
@@ -620,22 +748,21 @@ async function curateMore(track, seq) {
   } else {
     if (btn) { btn.textContent = '⚠️ Retry +5 Plates'; btn.disabled = false; }
     if (inp) inp.disabled = false;
-    alert(j.error || 'Failed to curate plates');
   }
 }
 
 async function sendAsk(track, seq) {
   const key = track + '_' + seq;
   const inp = document.getElementById('ask-' + key);
-  const q = inp.value.trim();
+  const q = inp ? inp.value.trim() : '';
   if (!q) return;
   const btn = document.getElementById('askbtn-' + key);
-  btn.textContent = '⏳ Thinking...';
+  if (btn) { btn.textContent = '⏳ Asking...'; btn.disabled = true; }
   inp.disabled = true;
   const r = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({track, seq, question: q})});
   const j = await r.json();
-  if (j.ok) { updateLessonInMem(track, j.lesson, j.capacity); renderFeed(); }
-  else { btn.textContent = '💬 Ask Gemini'; inp.disabled = false; alert(j.error); }
+  if (j.ok) { CLOSED_QA[key] = false; updateLessonInMem(track, j.lesson, j.capacity); renderFeed(); }
+  else { if (btn) { btn.textContent = '💬 Ask Gemini'; btn.disabled = false; } inp.disabled = false; }
 }
 
 loadState();
