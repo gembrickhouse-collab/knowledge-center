@@ -112,7 +112,7 @@ def call_gemini_json(prompt, expect_json=True):
     last_err = None
     for model_id, badge in MODELS_CASCADE:
         try:
-            u = f"[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){model_id}:generateContent?key={key}"
+            u = "https://generativelanguage.googleapis.com/v1beta/models/" + model_id + ":generateContent?key=" + key
             cfg = {"temperature": 0.65}
             if expect_json:
                 cfg["responseMimeType"] = "application/json"
