@@ -8,10 +8,10 @@ CURRICULUM_FILE = os.path.join(BASE_DIR, "curriculum.json")
 CLOUD_URL_FILE = os.path.join(BASE_DIR, "cloud_url.txt")
 IMG_CACHE_DIR = os.path.expanduser("~/.cache/knowledge_hub_plates")
 os.makedirs(IMG_CACHE_DIR, exist_ok=True)
-_UA = "KnowledgeDesktopHub/3.1 (Ubuntu; educational)"
+_UA = "KnowledgeDesktopHub/3.2 (Ubuntu; educational)"
 
 _MEM_PIL_CACHE = {}
-_MEM_TK_CACHE = {}   # (url, size) -> ImageTk.PhotoImage (instant 0ms reuse!)
+_MEM_TK_CACHE = {}
 _FAILED_URLS = set()
 
 
@@ -24,11 +24,9 @@ def get_cloud_url():
 
 
 def _normalize_pil_image(raw_im):
-    """Fixes black-square bug on transparent PNG/SVG/WebP logos by compositing alpha over slate studio matte."""
     raw_im = ImageOps.exif_transpose(raw_im)
     if raw_im.mode in ("RGBA", "LA") or (raw_im.mode == "P" and "transparency" in raw_im.info):
         rgba = raw_im.convert("RGBA")
-        # If image is dark/black silhouette with transparency, use a warm gallery parchment-slate matte so it pops!
         bg = Image.new("RGBA", rgba.size, (38, 46, 58, 255))
         bg.alpha_composite(rgba)
         return bg.convert("RGB")
@@ -46,14 +44,17 @@ def fetch_cached_pil(url, max_size):
     try:
         if not os.path.exists(p):
             req = urllib.request.Request(url, headers={"User-Agent": _UA})
-            raw = urllib.request.urlopen(req, timeout=8).read()
+            raw = urllib.request.urlopen(req, timeout=5).read()
             im = _normalize_pil_image(Image.open(io.BytesIO(raw)))
-            im.save(p, "JPEG", quality=88)
+            # Pre-shrink huge multi-megabyte archival scans before saving to disk so future loads take <2ms!
+            im.thumbnail((960, 960), Image.Resampling.BILINEAR)
+            im.save(p, "JPEG", quality=86)
         else:
             im = Image.open(p).convert("RGB")
-        im.thumbnail(max_size, Image.Resampling.BILINEAR)
-        _MEM_PIL_CACHE[cache_key] = im
-        return im
+        thumb = im.copy()
+        thumb.thumbnail(max_size, Image.Resampling.BILINEAR)
+        _MEM_PIL_CACHE[cache_key] = thumb
+        return thumb
     except Exception:
         _FAILED_URLS.add(url)
         return None
@@ -62,12 +63,10 @@ def fetch_cached_pil(url, max_size):
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
         super().__init__(className="knowledge-hub")
-        self.title("Knowledge Command Center // v3.1 Instant Zero-Reload Engine")
+        self.title("Knowledge Command Center // v3.2 Zero-Freeze Stream Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
-
-        # Instant kernel exit on window close so X11/XWayland never freezes Firefox typing (#6)!
         self.protocol("WM_DELETE_WINDOW", self._instant_quit)
 
         self.cur_track = "art"
@@ -78,6 +77,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self._card_registry = {}
         self._wrap_labels = []
         self._pending_lessons = []
+        self._drip_job = None
         self._img_queue = queue.Queue()
         self._last_cw = 920
         self._last_mode = "wide"
@@ -158,29 +158,29 @@ class KnowledgeDesktopHub(tk.Tk):
         wrap = tk.Frame(self, bg="#0d1117")
         wrap.pack(fill="both", expand=True, padx=12, pady=(0, 8))
         self.cv = tk.Canvas(wrap, bg="#0d1117", highlightthickness=0)
-        self.sb = ttk.Scrollbar(wrap, orient="vertical", command=self._on_scrollbar)
+        self.sb = ttk.Scrollbar(wrap, orient="vertical", command=self.cv.yview)
         self.inner = tk.Frame(self.cv, bg="#0d1117")
         self.inner.bind("<Configure>", lambda e: self.cv.configure(scrollregion=self.cv.bbox("all")))
         self.cwin = self.cv.create_window((0, 0), window=self.inner, anchor="nw")
         self.cv.bind("<Configure>", self._on_canvas_configure)
-        self.cv.configure(yscrollcommand=self._on_yscroll)
+        self.cv.configure(yscrollcommand=self.sb.set)
         self.cv.pack(side="left", fill="both", expand=True)
         self.sb.pack(side="right", fill="y")
-        self.bind_all("<Button-4>", lambda e: self._scroll_wheel(-1))
-        self.bind_all("<Button-5>", lambda e: self._scroll_wheel(1))
+        self.bind_all("<Button-4>", lambda e: self.cv.yview_scroll(-1, "units"))
+        self.bind_all("<Button-5>", lambda e: self.cv.yview_scroll(1, "units"))
 
         self._pack_nav_for_width(960)
-
-        # Force X11 window to map and paint on screen IMMEDIATELY (<0.05s) before reading JSON or building cards!
         self.update_idletasks()
         self.deiconify()
         self.update()
 
-        threading.Thread(target=self._image_worker_loop, daemon=True).start()
+        # Spawn 4 parallel image workers so one slow Wikimedia server (#028 Miyake) never blocks #029 or #027!
+        for _ in range(4):
+            threading.Thread(target=self._image_worker_loop, daemon=True).start()
+
         self.after(5, self._boot_sequence)
 
     def _instant_quit(self):
-        """Releases X11 window & exits kernel process immediately so Xorg/Firefox never stalls."""
         self._closing = True
         try:
             self.withdraw()
@@ -199,26 +199,16 @@ class KnowledgeDesktopHub(tk.Tk):
             self.after_cancel(self._search_timer)
         self._search_timer = self.after(180, self.render_cards)
 
-    def _scroll_wheel(self, delta):
-        self.cv.yview_scroll(delta, "units")
-        self._check_infinite_scroll()
-
-    def _on_scrollbar(self, *args):
-        self.cv.yview(*args)
-        self._check_infinite_scroll()
-
-    def _on_yscroll(self, first, last):
-        self.sb.set(first, last)
-        if float(last) > 0.75:
-            self._check_infinite_scroll()
-
-    def _check_infinite_scroll(self):
+    def _background_card_drip(self):
+        """Silently pre-builds 1 off-screen card every 40ms while idle so scrolling past Steadman has ZERO freeze!"""
+        self._drip_job = None
+        if self._closing or not self._pending_lessons:
+            return
+        les = self._pending_lessons.pop(0)
+        is_wide = (self._last_mode == "wide")
+        self._build_single_card(les, is_wide, self._last_gal_cols)
         if self._pending_lessons:
-            batch = self._pending_lessons[:3]
-            self._pending_lessons = self._pending_lessons[3:]
-            is_wide = (self._last_mode == "wide")
-            for les in batch:
-                self._build_single_card(les, is_wide, self._last_gal_cols)
+            self._drip_job = self.after(40, self._background_card_drip)
 
     def _image_worker_loop(self):
         while not self._closing:
@@ -243,10 +233,10 @@ class KnowledgeDesktopHub(tk.Tk):
                             l.config(image=ph, text="", width=sz[0], height=sz[1])
                     self.after(0, _paint)
                 elif not self._closing:
-                    self.after(0, lambda l=lbl: l.config(text="🖼️ Unavailable") if l.winfo_exists() else None)
+                    self.after(0, lambda l=lbl: l.config(text="🖼️ Plate Offline") if l.winfo_exists() else None)
             except Exception:
                 pass
-            time.sleep(0.012)
+            time.sleep(0.008)
 
     def _calc_wraps(self, cw=None):
         if cw is None:
@@ -499,7 +489,6 @@ class KnowledgeDesktopHub(tk.Tk):
         key = (track, int(seq))
         reg = self._card_registry.get(key)
 
-        # 1. Remove ONLY that single cell in 0ms and re-grid remaining cells without touching any other plate (#4)!
         if cell_widget and cell_widget.winfo_exists():
             cell_widget.destroy()
         if reg:
@@ -507,7 +496,6 @@ class KnowledgeDesktopHub(tk.Tk):
             rem_n = len(reg.get("gal_cells") or [])
             reg["gal_btn"].config(text=f"🖼️ Hide Plates ({rem_n})")
 
-        # Also update local curriculum list immediately
         les = self._get_lesson_obj(track, seq)
         if les and les.get("gallery"):
             les["gallery"] = [g for g in les["gallery"] if g.get("url") != url]
@@ -649,7 +637,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 p_card.pack(anchor="w", pady=(0, 8))
             else:
                 p_card.pack(side="left", padx=(0, 14), anchor="n")
-            il = tk.Label(p_card, text="⏳", fg="#8b949e", bg="#090d13", width=26, height=8, cursor="hand2")
+            il = tk.Label(p_card, text="⏳", fg="#8b949e", bg="#1c232d", width=26, height=8, cursor="hand2")
             il.pack()
             il.bind("<Button-1>", lambda e, u=f.get("url", ""), c=f.get("caption", ""): self._open_lightbox(u, c))
             self._load_thumb_async(il, f.get("url", ""), size=(205, 138))
@@ -686,6 +674,10 @@ class KnowledgeDesktopHub(tk.Tk):
             ).pack(side="left")
 
     def render_cards(self):
+        if self._drip_job:
+            self.after_cancel(self._drip_job)
+            self._drip_job = None
+
         cw = self.cv.winfo_width()
         if cw < 120:
             cw = self._last_cw
@@ -713,14 +705,37 @@ class KnowledgeDesktopHub(tk.Tk):
             if not q or q in f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
         ]
 
-        # Build ONLY top 3 cards initially (#029, #028, #027 Steadman) so startup & scrolling past Steadman is instantaneous!
+        # Build top 3 immediately (<0.05s) AND start automatic idle background drip so all 29 build silently in ~1s!
         initial = filtered[:3]
         self._pending_lessons = filtered[3:]
         for les in initial:
             self._build_single_card(les, is_wide, gal_cols)
 
+        if self._pending_lessons:
+            self._drip_job = self.after(40, self._background_card_drip)
+
+    def _sync_drawer_order(self, reg):
+        """Packs ONLY open drawers directly onto the card and completely unmaps closed ones so ZERO blank space remains (#3)!"""
+        for k_frame in ("dd_frame", "g_strip", "qa_holder"):
+            f = reg.get(k_frame)
+            if f and f.winfo_exists():
+                f.pack_forget()
+
+        key = reg["key"]
+        if key in self.open_dd and reg.get("dd_frame") and reg["dd_frame"].winfo_exists():
+            reg["dd_frame"].pack(fill="x", padx=12, pady=(0, 8))
+
+        if key in self.open_gal and reg.get("g_strip") and reg["g_strip"].winfo_exists():
+            reg["g_strip"].pack(fill="x", padx=12, pady=(0, 8))
+
+        if reg.get("has_qa") and reg.get("qa_holder") and reg["qa_holder"].winfo_exists():
+            reg["qa_holder"].pack(fill="x")
+
+        # Force Tkinter canvas scrollregion to recalculate immediately when a drawer collapses
+        self.update_idletasks()
+        self.cv.configure(scrollregion=self.cv.bbox("all"))
+
     def _toggle_dd_drawer(self, key, force_rebuild=False):
-        """Shows/hides Deep Dive in 0ms without destroying existing widgets!"""
         reg = self._card_registry.get(key)
         if not reg:
             return
@@ -736,18 +751,16 @@ class KnowledgeDesktopHub(tk.Tk):
                 dd_frame.destroy()
                 dd_frame = None
             if not dd_frame or not dd_frame.winfo_exists():
-                dd_frame = tk.Frame(reg["dd_holder"], bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
+                dd_frame = tk.Frame(reg["card"], bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
                 tk.Label(dd_frame, text="📖 DEEP DIVE MONOGRAPH", fg="#58a6ff", bg="#090d13", font=("Monospace", 8, "bold"), anchor="w", padx=10, pady=6).pack(fill="x")
                 self._make_lbl(dd_frame, "full", text=les["deep_dive"], fg="#d0d7de", bg="#090d13", font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6).pack(fill="x")
                 reg["dd_frame"] = dd_frame
-            dd_frame.pack(fill="x", padx=12, pady=(0, 8))
         else:
             dd_btn.config(text="📖 Read Deep Dive" if has_dd else "📖 Deep Dive", state="normal")
-            if dd_frame and dd_frame.winfo_exists():
-                dd_frame.pack_forget()
+
+        self._sync_drawer_order(reg)
 
     def _toggle_gal_drawer(self, key, force_rebuild=False):
-        """Shows/hides Gallery Strip in 0ms using pack/pack_forget so plates NEVER reload on Hide/Show (#5)!"""
         reg = self._card_registry.get(key)
         if not reg:
             return
@@ -764,7 +777,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 g_strip.destroy()
                 g_strip = None
             if not g_strip or not g_strip.winfo_exists():
-                g_strip = tk.Frame(reg["gal_holder"], bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
+                g_strip = tk.Frame(reg["card"], bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
                 grid_f = tk.Frame(g_strip, bg="#090d13")
                 grid_f.pack(fill="x", padx=8, pady=(8, 4))
                 cell_widgets = []
@@ -819,12 +832,10 @@ class KnowledgeDesktopHub(tk.Tk):
                 c_btn.config(command=_on_more_gal)
                 c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
                 reg["g_strip"] = g_strip
-
-            g_strip.pack(fill="x", padx=12, pady=(0, 8))
         else:
             gal_btn.config(text=f"🖼️ Plates ({len(gal_list)})" if has_gal else "🖼️ Curate Plates", state="normal")
-            if g_strip and g_strip.winfo_exists():
-                g_strip.pack_forget()
+
+        self._sync_drawer_order(reg)
 
     def _rebuild_qa_drawer(self, key):
         reg = self._card_registry.get(key)
@@ -832,10 +843,12 @@ class KnowledgeDesktopHub(tk.Tk):
             return
         track, seq = key
         les = self._get_lesson_obj(track, seq) or {}
+        qa_list = les.get("qa_log") or []
         qa_holder = reg["qa_holder"]
         for w in qa_holder.winfo_children():
             w.destroy()
-        for qa in les.get("qa_log") or []:
+        reg["has_qa"] = bool(qa_list)
+        for qa in qa_list:
             qa_box = tk.Frame(qa_holder, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
             qa_box.pack(fill="x", padx=12, pady=(0, 6))
             self._make_lbl(
@@ -846,6 +859,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 qa_box, "full", text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d",
                 font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6
             ).pack(fill="x")
+        self._sync_drawer_order(reg)
 
     def _build_single_card(self, les, is_wide, gal_cols):
         seq = les["seq"]
@@ -925,20 +939,15 @@ class KnowledgeDesktopHub(tk.Tk):
             ask_ent.pack(in_=act_r2, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
             ask_btn.pack(in_=act_r2, side="right")
 
-        # Separate persistent sub-containers so Deep Dive, Gallery, and Q&A toggle independently in 0ms!
-        dd_holder = tk.Frame(card, bg="#161b22")
-        dd_holder.pack(fill="x")
-        gal_holder = tk.Frame(card, bg="#161b22")
-        gal_holder.pack(fill="x")
+        # Notice: Drawers pack DIRECTLY onto `card` (no persistent wrapper frames that hold 400px ghost height when hidden!)
         qa_holder = tk.Frame(card, bg="#161b22")
-        qa_holder.pack(fill="x")
 
         self._card_registry[key] = {
+            "key": key, "card": card,
             "p_card": p_card, "top_row": top_row, "left_col": left_col,
             "act_r1": act_r1, "act_r2": act_r2, "ask_ent": ask_ent, "ask_btn": ask_btn,
-            "dd_btn": dd_btn, "gal_btn": gal_btn,
-            "dd_holder": dd_holder, "gal_holder": gal_holder, "qa_holder": qa_holder,
-            "dd_frame": None, "g_strip": None, "gal_cells": []
+            "dd_btn": dd_btn, "gal_btn": gal_btn, "qa_holder": qa_holder,
+            "dd_frame": None, "g_strip": None, "gal_cells": [], "has_qa": False
         }
 
         def _on_dd(k=key, t=self.cur_track, s=seq, b=dd_btn):
