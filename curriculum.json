@@ -500,6 +500,14 @@
               "source": "Wikipedia Archive",
               "study_note": "Target: huncho jack album cover"
             }
+          ],
+          "qa_log": [
+            {
+              "ts": "2026-11-11 17:55 MT",
+              "model": "3-FLASH",
+              "q": "huncho jack album cover",
+              "a": "The 'Huncho Jack, Jack Huncho' cover is the ultimate modern manifestation of Steadman\u2019s 'controlled violence.' He deconstructed Travis Scott and Quavo using his signature steel nib and splattered India ink, rejecting the clean digital aesthetics typical of trap music visuals. The silhouettes are defined by aggressive, explosive blots that mimic the distorted, high-energy sonic landscape of the album, proving that the Gonzo style remains a potent tool for capturing raw, visceral energy.\n\nSteadman utilized his 'Direct Attack' method here, letting accidental ink splatters dictate the volume of the hair and jewelry before carving back into the chaos with surgical crosshatching. The tension lies in how he defines sharp features\u2014like the glint of teeth or the intensity of the eyes\u2014out of a mess of hurled ink. It feels unedited and immediate, treating the artists not as polished icons but as frenzied, ink-drenched caricatures of their own personas.\n\nBy collaborating with Steadman, this project bridged 1970s counter-culture aesthetics with modern hip-hop. The cover illustrates that the same ink-splatter technique used to chronicle the madness of Hunter S. Thompson is perfectly suited for the high-octane energy of modern rap. It is a masterclass in using 'accidental' geometry to build a recognizable anatomy, turning what should be a mess into a definitive cultural artifact."
+            }
           ]
         },
         {
