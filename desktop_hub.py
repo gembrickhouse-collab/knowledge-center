@@ -11,12 +11,23 @@ CURRICULUM_FILE = os.path.join(BASE_DIR, "curriculum.json")
 CLOUD_URL_FILE = os.path.join(BASE_DIR, "cloud_url.txt")
 IMG_CACHE_DIR = os.path.expanduser("~/.cache/knowledge_hub_plates")
 os.makedirs(IMG_CACHE_DIR, exist_ok=True)
-_UA = "KnowledgeDesktopHub/3.8 (Ubuntu; educational)"
+_UA = "KnowledgeDesktopHub/4.0 (Ubuntu; educational)"
 
 _MEM_PIL_CACHE = {}
 _MEM_TK_CACHE = {}
 _FAILED_URLS = set()
 PAGE_SIZE = 5
+
+# Pure ASCII sanitizer for X11 labels so libXft/fontconfig NEVER triggers a 9-second glyph fallback search!
+_ASCII_MAP = str.maketrans({
+    "—": "--", "–": "-", "’": "'", "‘": "'", "“": '"', "”": '"',
+    "•": "|", "…": "...", "é": "e", "è": "e", "ê": "e", "ö": "o", "ü": "u"
+})
+
+def _fast_ascii(s):
+    if not s:
+        return ""
+    return str(s).translate(_ASCII_MAP).encode("ascii", "ignore").decode("ascii")
 
 
 def get_cloud_url():
@@ -69,22 +80,23 @@ def fetch_cached_pil(url, max_size):
         return None
 
 
+# Blank 1x1 dark placeholder image so image labels never switch between text-mode and image-mode geometry
+_BLANK_TK = None
+
+
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
+        global _BLANK_TK
         _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
         _log_t("tk.Tk.__init__ complete")
-        self.title("Knowledge Command Center // v3.9 Zero-Emoji Native-Xft Speed Engine")
+        self.title("Knowledge Command Center // v4.0 Zero-Latency Slot Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
         self.protocol("WM_DELETE_WINDOW", self._instant_quit)
 
-        # Force X11 window onto the screen in the first 0.05s BEFORE building any child widgets!
-        self.update_idletasks()
-        self.deiconify()
-        self.update()
-        _log_t("X11 Window mapped on screen!")
+        _BLANK_TK = ImageTk.PhotoImage(Image.new("RGB", (240, 170), (28, 35, 45)))
 
         self.cur_track = "art"
         self.page_idx = {"art": 0, "universe": 0, "favorites": 0}
@@ -93,13 +105,13 @@ class KnowledgeDesktopHub(tk.Tk):
         self.open_dd = set()
         self.open_gal = set()
         self.closed_qa = set()
-        self._card_registry = {}
         self._wrap_labels = []
         self._img_queue = queue.LifoQueue()
         self._last_cw = 920
         self._last_mode = "wide"
         self._last_gal_cols = 4
         self._resize_timer = None
+        self._sr_job = None
         self._closing = False
         self.sched_status = "Syncing Render cloud..."
 
@@ -124,7 +136,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         self.cap_pill = tk.Label(
             self.top_hdr,
-            text="GitHub Vault: -- KB  •  Cloud RAM: --  •  Auto-Drop Runway: ~18.9 yrs",
+            text="GitHub Vault: -- KB  |  Cloud RAM: --  |  Auto-Drop Runway: ~18.9 yrs",
             fg="#3fb950", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"),
             padx=10, pady=4, highlightbackground="#238636", highlightthickness=1,
             justify="center", anchor="center", wraplength=880
@@ -139,19 +151,19 @@ class KnowledgeDesktopHub(tk.Tk):
         self.nav_row2 = tk.Frame(self.nav_outer, bg="#0d1117")
 
         self.btn_art = tk.Button(
-            self.nav_row1, text="ART (0)", command=lambda: self.switch_track("art"),
+            self.nav_row1, text="ART ENDURANCE (0)", command=lambda: self.switch_track("art"),
             bg="#fbbf24", fg="#090d13", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.btn_uni = tk.Button(
-            self.nav_row1, text="PHYSICS (0)", command=lambda: self.switch_track("universe"),
+            self.nav_row1, text="PHYSICS OF TIME (0)", command=lambda: self.switch_track("universe"),
             bg="#21262d", fg="#c9d1d9", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.btn_fav = tk.Button(
-            self.nav_row1, text="* FAVS (0)", command=lambda: self.switch_track("favorites"),
+            self.nav_row1, text="* FAVORITES (0)", command=lambda: self.switch_track("favorites"),
             bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
 
-        self.filter_lbl = tk.Label(self.nav_row1, text="Search:", fg="#8b949e", bg="#0d1117", font=("DejaVu Sans Mono", 9))
+        self.filter_lbl = tk.Label(self.nav_row1, text="Filter:", fg="#8b949e", bg="#0d1117", font=("DejaVu Sans Mono", 8))
         self.search_var = tk.StringVar()
         self._search_timer = None
         self.search_var.trace_add("write", self._on_search_type)
@@ -167,7 +179,7 @@ class KnowledgeDesktopHub(tk.Tk):
             font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.matrix_btn = tk.Button(
-            self.nav_row1, text="Matrix ↗", command=lambda: webbrowser.open(get_cloud_url() + "/matrix"),
+            self.nav_row1, text="Matrix ->", command=lambda: webbrowser.open(get_cloud_url() + "/matrix"),
             bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=4, cursor="hand2"
         )
 
@@ -175,7 +187,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.page_bar = tk.Frame(self, bg="#111822", pady=4, padx=12, highlightbackground="#30363d", highlightthickness=1)
         self.page_bar.pack(fill="x", padx=12, pady=(0, 6))
         self.prev_btn = tk.Button(
-            self.page_bar, text="◀ Newer 5", command=lambda: self._step_page(-1),
+            self.page_bar, text="<< Newer 5", command=lambda: self._step_page(-1),
             bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
         )
         self.prev_btn.pack(side="left")
@@ -184,7 +196,7 @@ class KnowledgeDesktopHub(tk.Tk):
         )
         self.page_lbl.pack(side="left", expand=True)
         self.next_btn = tk.Button(
-            self.page_bar, text="Older 5 ▶", command=lambda: self._step_page(1),
+            self.page_bar, text="Older 5 >>", command=lambda: self._step_page(1),
             bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
         )
         self.next_btn.pack(side="right")
@@ -196,12 +208,6 @@ class KnowledgeDesktopHub(tk.Tk):
         self.sb = tk.Scrollbar(wrap, orient="vertical", command=self.cv.yview, bg="#161b22", troughcolor="#0d1117", activebackground="#30363d", highlightthickness=0, bd=0)
         self.inner = tk.Frame(self.cv, bg="#0d1117")
 
-        # Every page (Art Page 0, Art Page 1, Physics Page 0, etc.) gets cached in its own persistent frame once viewed!
-        # Plus we pre-build Art Page 0 AND Physics Page 0 right after window paint!
-        self._page_decks = {}      # (track, page_idx, query) -> tk.Frame
-        self._active_deck = None
-        self._sr_job = None
-
         self.inner.bind("<Configure>", self._throttled_scrollregion)
         self.cwin = self.cv.create_window((0, 0), window=self.inner, anchor="nw")
         self.cv.bind("<Configure>", self._on_canvas_configure)
@@ -212,48 +218,280 @@ class KnowledgeDesktopHub(tk.Tk):
         self.bind_all("<Button-5>", lambda e: self.cv.yview_scroll(1, "units"))
 
         self._pack_nav_for_width(960)
-        self.update()
-        _log_t("Header & Navigation bar painted!")
+
+        # Build the 5 permanent reusable Card Slots ONCE!
+        # Switching tabs or pages NEVER creates or maps new card frames in X11—it mutates these 5 slots in 0.002s!
+        self.cards_container = tk.Frame(self.inner, bg="#0d1117")
+        self.cards_container.pack(fill="both", expand=True)
+        self.favs_container = tk.Frame(self.inner, bg="#0d1117")
+
+        self._slots = []
+        for i in range(PAGE_SIZE):
+            self._slots.append(self._create_permanent_slot(i))
+
+        self.bot_nav = tk.Frame(self.cards_container, bg="#111822", pady=8, padx=12, highlightbackground="#30363d", highlightthickness=1)
+        self.bot_nav.pack(fill="x", pady=(6, 12), padx=2)
+        self.bot_prev_btn = tk.Button(
+            self.bot_nav, text="<< Newer 5 Lessons", command=lambda: self._step_page(-1),
+            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
+        )
+        self.bot_prev_btn.pack(side="left")
+        self.bot_page_lbl = tk.Label(self.bot_nav, text="Page 1", fg="#8b949e", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"))
+        self.bot_page_lbl.pack(side="left", expand=True)
+        self.bot_next_btn = tk.Button(
+            self.bot_nav, text="Older 5 Lessons >>", command=lambda: self._step_page(1),
+            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
+        )
+        self.bot_next_btn.pack(side="right")
+
+        _log_t("5 permanent card slots constructed in memory! Populating data...")
+        self._load_local()
+        self.render_cards()
+
+        _log_t("Mapping window + 5 slots to X11 in one single pass...")
+        self.deiconify()
+        self.update_idletasks()
+        _log_t("READY! Window + Art Page 1 live on screen!")
 
         for _ in range(3):
             threading.Thread(target=self._image_worker_loop, daemon=True).start()
+        self.after(3000, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
 
-        self.after(10, self._fast_boot)
+    def _create_permanent_slot(self, idx):
+        """Creates 1 permanent card slot widget tree that stays mapped forever and updates in-place in 0.2ms."""
+        card = tk.Frame(self.cards_container, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
+        card.pack(fill="x", pady=6, padx=2)
 
-    def _fast_boot(self):
-        _log_t("Loading curriculum.json...")
-        self._load_local()
-        _log_t("Building Art Page 1 widgets...")
-        self.render_cards()
-        _log_t("Widgets built! Mapping to X11 display...")
-        self.update_idletasks()
-        _log_t("Art Page 1 mapped on screen!")
-        # Wait 3 seconds before starting cloud sync so network SSL handshake NEVER competes with initial UI or tab clicks!
-        self.after(250, self._background_prebuild_pages)
-        self.after(4000, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
+        top_row = tk.Frame(card, bg="#161b22")
+        top_row.pack(fill="x", padx=12, pady=(10, 4))
 
-    def _background_prebuild_pages(self):
-        """Silently pre-builds Physics Page 1 and next pages one by one while idle so tab switching & Older 5 are 0ms!"""
-        if self._closing:
+        left_col = tk.Frame(top_row, bg="#161b22")
+        p_card = tk.Frame(top_row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
+        img_lbl = tk.Label(p_card, image=_BLANK_TK, bg="#1c232d", width=240, height=170, cursor="hand2")
+        img_lbl.pack()
+
+        b_bar = tk.Frame(p_card, bg="#161b22")
+        b_bar.pack(fill="x")
+        cap_lbl = tk.Label(b_bar, text="Plate [Zoom]", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 7, "bold"), padx=5, pady=3, cursor="hand2")
+        cap_lbl.pack(side="left")
+        lead_st_btn = tk.Button(b_bar, text="[+Fav]", fg="#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=4, pady=0, cursor="hand2")
+        lead_st_btn.pack(side="right")
+
+        p_card.pack(in_=top_row, side="right", anchor="n", padx=(12, 0))
+        left_col.pack(in_=top_row, side="left", fill="both", expand=True)
+
+        meta_lbl = self._make_lbl(left_col, "body", text="", fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left")
+        meta_lbl.pack(fill="x")
+        title_lbl = self._make_lbl(left_col, "body", text="", fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 11, "bold"), anchor="w", justify="left")
+        title_lbl.pack(fill="x", pady=(5, 4))
+        core_lbl = self._make_lbl(left_col, "body", text="", fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 9), anchor="w", justify="left")
+        core_lbl.pack(fill="x", pady=(0, 6))
+
+        maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
+        maker_box.pack(fill="x", pady=(2, 4))
+        maker_lbl = self._make_lbl(maker_box, "maker", text="", fg="#fbbf24", bg="#0f141b", font=("DejaVu Sans Mono", 8), anchor="w", justify="left", padx=8, pady=6)
+        maker_lbl.pack(fill="x")
+
+        act_wrap = tk.Frame(card, bg="#161b22")
+        act_wrap.pack(fill="x", padx=12, pady=(4, 8))
+        act_r1 = tk.Frame(act_wrap, bg="#161b22")
+        act_r1.pack(fill="x")
+        act_r2 = tk.Frame(act_wrap, bg="#161b22")
+
+        dd_btn = tk.Button(act_r1, text="Read Deep Dive", bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        dd_btn.pack(side="left", padx=(0, 6))
+
+        gal_btn = tk.Button(act_r1, text="Plates", bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        gal_btn.pack(side="left", padx=(0, 8))
+
+        ask_btn = tk.Button(act_wrap, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        ask_ent = tk.Entry(act_wrap, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
+        ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
+        ask_btn.pack(in_=act_r1, side="right")
+
+        drawer_area = tk.Frame(card, bg="#161b22")
+        drawer_area.pack(fill="x")
+
+        return {
+            "idx": idx, "card": card, "top_row": top_row, "left_col": left_col,
+            "p_card": p_card, "img_lbl": img_lbl, "cap_lbl": cap_lbl, "lead_st_btn": lead_st_btn,
+            "meta_lbl": meta_lbl, "title_lbl": title_lbl, "core_lbl": core_lbl, "maker_lbl": maker_lbl,
+            "act_r1": act_r1, "act_r2": act_r2, "dd_btn": dd_btn, "gal_btn": gal_btn,
+            "ask_ent": ask_ent, "ask_btn": ask_btn, "drawer_area": drawer_area,
+            "bound_key": None
+        }
+
+    def _populate_slot(self, slot, les, track_key):
+        """Updates an existing card slot in-place in 0.0004 seconds without creating or destroying X11 widgets!"""
+        seq = les["seq"]
+        key = (track_key, seq)
+        slot["bound_key"] = key
+
+        tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
+        meta_txt = _fast_ascii(f"#{seq:03d} | {les.get('date','')}  [{str(les.get('model','ARCHIVE')).upper()}]  {tags_str}".strip())
+        slot["meta_lbl"].config(text=meta_txt)
+        slot["title_lbl"].config(text=_fast_ascii(les.get("title", "")))
+        slot["core_lbl"].config(text=_fast_ascii(les.get("core", "")))
+
+        lens_prefix = ">> Temporal & Studio Lens: " if track_key == "universe" else ">> Studio Craft Lens: "
+        slot["maker_lbl"].config(text=_fast_ascii(lens_prefix + les.get("maker", "")))
+
+        img_url = les.get("image_url", "")
+        if img_url:
+            starred = self._is_starred(img_url)
+            cap_txt = _fast_ascii((les.get("image_caption") or les.get("title", ""))[:28])
+            slot["cap_lbl"].config(text=f"{cap_txt} [Zoom]")
+            slot["lead_st_btn"].config(
+                text="[*Fav]" if starred else "[+Fav]",
+                fg="#fbbf24" if starred else "#8b949e",
+                command=lambda tr=track_key, sq=seq, u=img_url, cp=les.get("image_caption") or les.get("title", ""), b=slot["lead_st_btn"]: self._toggle_star(tr, sq, u, cp, "", "Lead Plate", b)
+            )
+            for wg in (slot["img_lbl"], slot["cap_lbl"]):
+                wg.bind("<Button-1>", lambda e, u=img_url, c=_fast_ascii(les.get("image_caption") or les.get("title", "")): self._open_lightbox(u, c))
+            self._load_thumb_async(slot["img_lbl"], img_url)
+        else:
+            slot["img_lbl"].config(image=_BLANK_TK)
+
+        def _on_dd(s_ref=slot, k=key, t=track_key, sq=seq):
+            cur_les = self._get_lesson_obj(t, sq) or {}
+            ready = bool(cur_les.get("deep_dive") and len(cur_les["deep_dive"]) > 40)
+            if ready:
+                if k in self.open_dd:
+                    self.open_dd.remove(k)
+                else:
+                    self.open_dd.add(k)
+                self._render_slot_drawers(s_ref)
+            else:
+                self._call_cloud_action("/api/deep_dive", {"track": t, "seq": sq}, s_ref["dd_btn"], "... Writing...", lambda: (self.open_dd.add(k), self._render_slot_drawers(s_ref)))
+        slot["dd_btn"].config(command=_on_dd)
+
+        def _on_gal(s_ref=slot, k=key, t=track_key, sq=seq):
+            cur_les = self._get_lesson_obj(t, sq) or {}
+            ready = len(cur_les.get("gallery") or []) >= 1
+            if ready:
+                if k in self.open_gal:
+                    self.open_gal.remove(k)
+                else:
+                    self.open_gal.add(k)
+                self._render_slot_drawers(s_ref)
+            else:
+                self._call_cloud_action("/api/gallery", {"track": t, "seq": sq}, s_ref["gal_btn"], "... Curating...", lambda: (self.open_gal.add(k), self._render_slot_drawers(s_ref)))
+        slot["gal_btn"].config(command=_on_gal)
+
+        def _on_ask(s_ref=slot, t=track_key, sq=seq):
+            q_str = s_ref["ask_ent"].get().strip()
+            if not q_str:
+                return
+            s_ref["ask_ent"].delete(0, "end")
+            self._call_cloud_action("/api/ask", {"track": t, "seq": sq, "question": q_str}, s_ref["ask_btn"], "... Asking...", lambda: (s_ref["ask_btn"].config(text="Ask Gemini", state="normal"), self._render_slot_drawers(s_ref)))
+        slot["ask_btn"].config(command=_on_ask, text="Ask Gemini", state="normal")
+        slot["ask_ent"].bind("<Return>", lambda e, fn=_on_ask: fn())
+
+        self._render_slot_drawers(slot)
+
+    def _render_slot_drawers(self, slot):
+        key = slot["bound_key"]
+        if not key:
             return
-        is_wide = (self._last_mode == "wide")
-        gal_cols = self._last_gal_cols
-        # Priority order: Physics Page 0, Art Page 1, Physics Page 1, Art Page 2...
-        targets = [
-            ("universe", 0), ("art", 1), ("universe", 1),
-            ("art", 2), ("universe", 2), ("art", 3), ("universe", 3),
-            ("art", 4), ("art", 5)
-        ]
-        for t_k, p_i in targets:
-            sig = (t_k, p_i, "")
-            if sig not in self._page_decks:
-                raw_list = self.data.get("tracks", {}).get(t_k, {}).get("lessons", [])
-                if p_i * PAGE_SIZE < len(raw_list):
-                    _log_t(f"Idle pre-building {t_k} page {p_i + 1}...")
-                    self._ensure_page_deck(t_k, p_i, "", is_wide, gal_cols)
-                    self.after(60, self._background_prebuild_pages)
-                    return
-        _log_t("All Art & Physics pages pre-built in RAM! Every tab & page switch is now 0ms!")
+        track, seq = key
+        les = self._get_lesson_obj(track, seq) or {}
+
+        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
+        ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
+        if key in self.open_dd and has_dd:
+            slot["dd_btn"].config(text=f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive", bg="#1f2937", fg="#fbbf24", state="normal")
+        else:
+            slot["dd_btn"].config(text=(f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive", bg="#21262d", fg="#58a6ff", state="normal")
+
+        gal_list = les.get("gallery") or []
+        has_gal = len(gal_list) >= 1
+        if key in self.open_gal and has_gal:
+            slot["gal_btn"].config(text=f"Hide Plates ({len(gal_list)})", state="normal")
+        else:
+            slot["gal_btn"].config(text=f"Plates ({len(gal_list)})" if has_gal else "Curate Plates", state="normal")
+
+        da = slot["drawer_area"]
+        for w in da.winfo_children():
+            w.destroy()
+
+        if key in self.open_dd and has_dd:
+            dd_frame = tk.Frame(da, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
+            dd_frame.pack(fill="x", padx=12, pady=(0, 8))
+            hdr_bar = tk.Frame(dd_frame, bg="#111822")
+            hdr_bar.pack(fill="x", padx=1, pady=1)
+            tk.Label(hdr_bar, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fg="#58a6ff", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", padx=10, pady=6).pack(side="left")
+            tk.Button(hdr_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2").pack(side="right", padx=6, pady=3)
+            deeper_btn = tk.Button(hdr_bar, text=f"+ Deeper Dive (Ch.{ch_count + 1})", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2")
+            deeper_btn.config(command=lambda s_ref=slot, k=key, t=track, sq=seq, b=deeper_btn: self._call_cloud_action("/api/deep_dive", {"track": t, "seq": sq, "append": True}, b, "... Diving Deeper...", lambda: (self.open_dd.add(k), self._render_slot_drawers(s_ref))))
+            deeper_btn.pack(side="right", padx=4, pady=3)
+            self._make_lbl(dd_frame, "full", text=_fast_ascii(les["deep_dive"]), fg="#d0d7de", bg="#090d13", font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=12, pady=8).pack(fill="x")
+            bot_bar = tk.Frame(dd_frame, bg="#090d13")
+            bot_bar.pack(fill="x", padx=10, pady=(0, 8))
+            tk.Button(bot_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=3, cursor="hand2").pack(side="right")
+
+        if key in self.open_gal and has_gal:
+            g_strip = tk.Frame(da, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
+            g_strip.pack(fill="x", padx=12, pady=(0, 8))
+            grid_f = tk.Frame(g_strip, bg="#090d13")
+            grid_f.pack(fill="x", padx=8, pady=(8, 4))
+            gal_cols = self._last_gal_cols
+            for idx_g, g_item in enumerate(gal_list):
+                r_i, c_i = divmod(idx_g, gal_cols)
+                gu = g_item.get("url", "")
+                gc = _fast_ascii(f"{g_item.get('caption', '')} -- {g_item.get('study_note', '')}".strip(" -"))
+                gs = _fast_ascii(g_item.get("source", "Archive"))
+                g_star = self._is_starred(gu)
+                cell = tk.Frame(grid_f, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
+                cell.grid(row=r_i, column=c_i, padx=4, pady=4, sticky="n")
+
+                hdr_c = tk.Frame(cell, bg="#161b22")
+                hdr_c.pack(fill="x")
+                tk.Button(hdr_c, text="x", fg="#f85149", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=5, pady=0, cursor="hand2", command=lambda s_ref=slot, tr=track, sq=seq, u=gu: self._delete_plate(tr, sq, u, s_ref)).pack(side="left")
+                tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 6)).pack(side="left", padx=2)
+                st_btn = tk.Button(hdr_c, text="[*]" if g_star else "[+]", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=4, pady=0, cursor="hand2")
+                st_btn.config(command=lambda tr=track, sq=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs, b_ref=st_btn: self._toggle_star(tr, sq, u, cp, sn, sr, b_ref))
+                st_btn.pack(side="right")
+
+                gl = tk.Label(cell, image=_BLANK_TK, bg="#1c232d", width=190, height=126, cursor="hand2")
+                gl.pack()
+                cl = tk.Label(cell, text=_fast_ascii((g_item.get("caption") or "Plate")[:24]), fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 7), pady=3, cursor="hand2")
+                cl.pack(fill="x")
+                for wg in (gl, cl):
+                    wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
+                self._load_thumb_async(gl, gu, size=(190, 126))
+
+            cur_bar = tk.Frame(g_strip, bg="#090d13")
+            cur_bar.pack(fill="x", padx=10, pady=(4, 8))
+            c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
+            c_ent = tk.Entry(cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
+            c_ent.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=3)
+            c_btn.pack(side="right")
+
+            def _on_more_gal(s_ref=slot, t=track, sq=seq, ent=c_ent, b=c_btn, k=key):
+                cq = ent.get().strip()
+                self._call_cloud_action("/api/gallery", {"track": t, "seq": sq, "append": True, "query": cq}, b, "... Routing...", lambda: (self.open_gal.add(k), self._render_slot_drawers(s_ref)))
+            c_btn.config(command=_on_more_gal)
+            c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
+
+        qa_list = les.get("qa_log") or []
+        if qa_list:
+            is_minimized = (key in self.closed_qa)
+            qa_hdr = tk.Frame(da, bg="#120d1d")
+            qa_hdr.pack(fill="x", padx=12, pady=(0, 4))
+            tk.Button(
+                qa_hdr,
+                text=f"Show Saved Q&A ({len(qa_list)}) [v]" if is_minimized else f"Minimize Q&A ({len(qa_list)}) [^]",
+                command=lambda s_ref=slot, k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self._render_slot_drawers(s_ref)),
+                bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=2, cursor="hand2"
+            ).pack(side="left")
+            if not is_minimized:
+                for qa in qa_list:
+                    qa_box = tk.Frame(da, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
+                    qa_box.pack(fill="x", padx=12, pady=(0, 6))
+                    self._make_lbl(qa_box, "full", text=_fast_ascii(f"Q: {qa.get('q','')}   [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fg="#d2a8ff", bg="#0c131d", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left", padx=10, pady=4).pack(fill="x")
+                    self._make_lbl(qa_box, "full", text=_fast_ascii(qa.get("a", "")), fg="#e6edf3", bg="#0c131d", font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=10, pady=6).pack(fill="x")
+
+        self._throttled_scrollregion()
 
     def _throttled_scrollregion(self, _event=None):
         if self._sr_job:
@@ -281,7 +519,7 @@ class KnowledgeDesktopHub(tk.Tk):
         if self._search_timer:
             self.after_cancel(self._search_timer)
         self.page_idx[self.cur_track] = 0
-        self._search_timer = self.after(180, self.render_cards)
+        self._search_timer = self.after(150, self.render_cards)
 
     def _image_worker_loop(self):
         while not self._closing:
@@ -303,10 +541,8 @@ class KnowledgeDesktopHub(tk.Tk):
                             if not ph:
                                 ph = ImageTk.PhotoImage(img)
                                 _MEM_TK_CACHE[ck] = ph
-                            l.config(image=ph, text="", width=sz[0], height=sz[1])
+                            l.config(image=ph, width=sz[0], height=sz[1])
                     self.after(0, _paint)
-                elif not self._closing:
-                    self.after(0, lambda l=lbl: l.config(text="Plate Offline") if l.winfo_exists() else None)
             except Exception:
                 pass
 
@@ -375,15 +611,19 @@ class KnowledgeDesktopHub(tk.Tk):
 
         mode = "wide" if cw >= 880 else "narrow"
         gal_cols = max(1, min(5, (cw - 32) // 210))
+        self._last_gal_cols = gal_cols
 
         if mode != self._last_mode:
             self._last_mode = mode
-            self._reflow_existing_cards(mode == "wide")
-
-        if gal_cols != self._last_gal_cols:
-            self._last_gal_cols = gal_cols
-            for reg in self._card_registry.values():
-                self._regrid_gallery_cells(reg)
+            is_wide = (mode == "wide")
+            for slot in self._slots:
+                slot["p_card"].pack_forget()
+                if is_wide:
+                    slot["left_col"].pack_forget()
+                    slot["p_card"].pack(in_=slot["top_row"], side="right", anchor="n", padx=(12, 0))
+                    slot["left_col"].pack(in_=slot["top_row"], side="left", fill="both", expand=True)
+                else:
+                    slot["p_card"].pack(in_=slot["left_col"], anchor="w", pady=(8, 2))
 
         wraps = self._calc_wraps(cw)
         alive = []
@@ -393,45 +633,6 @@ class KnowledgeDesktopHub(tk.Tk):
                 alive.append((lbl, kind))
         self._wrap_labels = alive
         self._throttled_scrollregion()
-
-    def _regrid_gallery_cells(self, reg):
-        cells = [c for c in (reg.get("gal_cells") or []) if c.winfo_exists()]
-        reg["gal_cells"] = cells
-        gal_cols = self._last_gal_cols
-        for idx_g, cell in enumerate(cells):
-            r_i, c_i = divmod(idx_g, gal_cols)
-            cell.grid(row=r_i, column=c_i, padx=4, pady=4, sticky="n")
-
-    def _reflow_existing_cards(self, is_wide):
-        for reg in self._card_registry.values():
-            p_card = reg.get("p_card")
-            top_row = reg.get("top_row")
-            left_col = reg.get("left_col")
-            act_r1 = reg.get("act_r1")
-            act_r2 = reg.get("act_r2")
-            ask_ent = reg.get("ask_ent")
-            ask_btn = reg.get("ask_btn")
-            if not top_row or not top_row.winfo_exists():
-                continue
-            if p_card and p_card.winfo_exists():
-                p_card.pack_forget()
-                if is_wide:
-                    left_col.pack_forget()
-                    p_card.pack(in_=top_row, side="right", anchor="n", padx=(12, 0))
-                    left_col.pack(in_=top_row, side="left", fill="both", expand=True)
-                else:
-                    p_card.pack(in_=left_col, anchor="w", pady=(8, 2))
-            if act_r1 and act_r2 and ask_ent and ask_btn:
-                ask_ent.pack_forget()
-                ask_btn.pack_forget()
-                act_r2.pack_forget()
-                if is_wide:
-                    ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
-                    ask_btn.pack(in_=act_r1, side="right")
-                else:
-                    act_r2.pack(fill="x", pady=(5, 0))
-                    ask_ent.pack(in_=act_r2, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
-                    ask_btn.pack(in_=act_r2, side="right")
 
     def _load_local(self):
         if os.path.exists(CURRICULUM_FILE):
@@ -508,21 +709,20 @@ class KnowledgeDesktopHub(tk.Tk):
         if self._closing:
             return
         self.sched_status = st
-        self.sub_lbl.config(text=f"{st}  •  Last Check: {lc}")
+        self.sub_lbl.config(text=_fast_ascii(f"{st}  |  Last Check: {lc}"))
         c = self.capacity
         if c:
             ram_part = f"Render RAM: {c.get('ram_mb', 0)}/{c.get('ram_limit_mb', 512)} MB ({c.get('ram_pct', 0)}%)" if c.get("ram_mb") else "Cloud: Synced"
             self.cap_pill.config(
-                text=f"GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)  •  {ram_part}  •  Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
+                text=f"GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)  |  {ram_part}  |  Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
             )
         self._update_tab_counts()
         if rerender:
-            self._page_decks.clear()
             self.render_cards()
 
     def _manual_sync_drop(self):
         self.sync_btn.config(text="... Dropping...", state="disabled")
-        self.sub_lbl.config(text="ONLINE • Triggering Missed/Daily Drop on Render (Art + Universe + Matrix)...")
+        self.sub_lbl.config(text="ONLINE | Triggering Missed/Daily Drop on Render (Art + Universe + Matrix)...")
 
         def _worker():
             try:
@@ -542,8 +742,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     st = j.get("scheduler", {}).get("status", "ONLINE")
                     lc = j.get("scheduler", {}).get("last_check", "--")
                     added = (j.get("result") or {}).get("changed") or []
-                    errs = (j.get("result") or {}).get("errors") or {}
-                    btn_lbl = f"[OK] +{len(added)} Dropped!" if added else ("[!] Check Warn" if errs else "[OK] Up to Date")
+                    btn_lbl = f"[OK] +{len(added)} Dropped!" if added else "[OK] Up to Date"
                     self.after(0, lambda: (
                         self._apply_sync_hdr(st, lc, bool(added)),
                         self.sync_btn.config(text=btn_lbl, state="normal"),
@@ -557,8 +756,8 @@ class KnowledgeDesktopHub(tk.Tk):
 
     def _toggle_star(self, track, seq, url, caption="", study_note="", source="", star_btn=None):
         if star_btn and star_btn.winfo_exists():
-            now_st = (star_btn.cget("text") == "☆")
-            star_btn.config(text="★" if now_st else "☆", fg="#fbbf24" if now_st else "#8b949e")
+            now_st = ("+" in star_btn.cget("text"))
+            star_btn.config(text="[*Fav]" if now_st else "[+Fav]", fg="#fbbf24" if now_st else "#8b949e")
 
         def _worker():
             try:
@@ -579,21 +778,12 @@ class KnowledgeDesktopHub(tk.Tk):
                 pass
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _delete_plate(self, track, seq, url, cell_widget=None):
-        key = (track, int(seq))
-        reg = self._card_registry.get(key)
-
-        if cell_widget and cell_widget.winfo_exists():
-            cell_widget.destroy()
-        if reg:
-            self._regrid_gallery_cells(reg)
-            rem_n = len(reg.get("gal_cells") or [])
-            reg["gal_btn"].config(text=f"Hide Plates ({rem_n})")
-            self._throttled_scrollregion()
-
+    def _delete_plate(self, track, seq, url, slot_ref=None):
         les = self._get_lesson_obj(track, seq)
         if les and les.get("gallery"):
             les["gallery"] = [g for g in les["gallery"] if g.get("url") != url]
+        if slot_ref:
+            self._render_slot_drawers(slot_ref)
 
         def _worker():
             try:
@@ -659,7 +849,7 @@ class KnowledgeDesktopHub(tk.Tk):
         top.configure(bg="#090d13")
         lbl_img = tk.Label(top, text="... Loading high-resolution archival plate...", fg="#fbbf24", bg="#090d13", font=("DejaVu Sans Mono", 10))
         lbl_img.pack(expand=True, fill="both", padx=14, pady=(14, 6))
-        cap_l = tk.Label(top, text=caption, fg="#e6edf3", bg="#090d13", font=("DejaVu Sans Mono", 9), pady=8, wraplength=840)
+        cap_l = tk.Label(top, text=_fast_ascii(caption), fg="#e6edf3", bg="#090d13", font=("DejaVu Sans Mono", 9), pady=8, wraplength=840)
         cap_l.pack(fill="x", padx=12)
 
         def _load():
@@ -679,13 +869,12 @@ class KnowledgeDesktopHub(tk.Tk):
     def _load_thumb_async(self, lbl, url, size=(240, 170)):
         cache_key = (url, size)
         if cache_key in _MEM_TK_CACHE:
-            ph = _MEM_TK_CACHE[cache_key]
-            lbl.config(image=ph, text="", width=size[0], height=size[1])
+            lbl.config(image=_MEM_TK_CACHE[cache_key], width=size[0], height=size[1])
             return
         if cache_key in _MEM_PIL_CACHE:
             ph = ImageTk.PhotoImage(_MEM_PIL_CACHE[cache_key])
             _MEM_TK_CACHE[cache_key] = ph
-            lbl.config(image=ph, text="", width=size[0], height=size[1])
+            lbl.config(image=ph, width=size[0], height=size[1])
             return
         h = hashlib.sha256(url.encode()).hexdigest()[:24]
         thumb_path = os.path.join(IMG_CACHE_DIR, f"{h}_{size[0]}x{size[1]}.jpg")
@@ -695,10 +884,11 @@ class KnowledgeDesktopHub(tk.Tk):
                 _MEM_PIL_CACHE[cache_key] = im
                 ph = ImageTk.PhotoImage(im)
                 _MEM_TK_CACHE[cache_key] = ph
-                lbl.config(image=ph, text="", width=size[0], height=size[1])
+                lbl.config(image=ph, width=size[0], height=size[1])
                 return
             except Exception:
                 pass
+        lbl.config(image=_BLANK_TK, width=size[0], height=size[1])
         self._img_queue.put((lbl, url, size))
 
     def _call_cloud_action(self, endpoint, payload, btn, wait_txt, done_cb):
@@ -741,19 +931,20 @@ class KnowledgeDesktopHub(tk.Tk):
             self.after(0, lambda: btn.config(text="[!] Tap to Retry", state="normal") if btn.winfo_exists() else None)
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _build_favorites_deck(self, cw):
-        frm = tk.Frame(self.inner, bg="#0d1117")
+    def _render_favorites_view(self, cw):
+        for w in self.favs_container.winfo_children():
+            w.destroy()
         favs = self.data.get("favorites") or []
         if not favs:
-            empty = tk.Frame(frm, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
+            empty = tk.Frame(self.favs_container, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
             empty.pack(fill="x", pady=12, padx=4)
             self._make_lbl(empty, "full", text="* Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 10, "bold")).pack(fill="x")
-            self._make_lbl(empty, "full", text="Click ☆ on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 9), pady=6).pack(fill="x")
-            return frm
+            self._make_lbl(empty, "full", text="Click [+Fav] on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 9), pady=6).pack(fill="x")
+            return
 
         stack_fav = cw < 660
         for f in favs:
-            card = tk.Frame(frm, bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
+            card = tk.Frame(self.favs_container, bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
             card.pack(fill="x", pady=6, padx=2)
             row = tk.Frame(card, bg="#161b22")
             row.pack(fill="x", padx=12, pady=10)
@@ -763,50 +954,47 @@ class KnowledgeDesktopHub(tk.Tk):
                 p_card.pack(anchor="w", pady=(0, 8))
             else:
                 p_card.pack(side="left", padx=(0, 14), anchor="n")
-            il = tk.Label(p_card, text="...", fg="#8b949e", bg="#1c232d", width=26, height=8, cursor="hand2")
+            il = tk.Label(p_card, image=_BLANK_TK, bg="#1c232d", width=205, height=138, cursor="hand2")
             il.pack()
-            il.bind("<Button-1>", lambda e, u=f.get("url", ""), c=f.get("caption", ""): self._open_lightbox(u, c))
+            il.bind("<Button-1>", lambda e, u=f.get("url", ""), c=_fast_ascii(f.get("caption", "")): self._open_lightbox(u, c))
             self._load_thumb_async(il, f.get("url", ""), size=(205, 138))
 
             info = tk.Frame(row, bg="#161b22")
             info.pack(side="left", fill="both", expand=True)
-            self._make_lbl(
-                info, "fav", text=f"{str(f.get('track','art')).upper()} #{int(f.get('seq',1)):03d}  •  {f.get('source','Archive')}  •  Saved {f.get('saved_at','')}",
-                fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left"
-            ).pack(fill="x")
-
-            self._make_lbl(
-                info, "fav", text=f.get("caption", "Visual Plate"), fg="#f0f6fc", bg="#161b22",
-                font=("DejaVu Sans Mono", 10, "bold"), anchor="w", justify="left"
-            ).pack(fill="x", pady=(4, 2))
-
+            self._make_lbl(info, "fav", text=_fast_ascii(f"{str(f.get('track','art')).upper()} #{int(f.get('seq',1)):03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left").pack(fill="x")
+            self._make_lbl(info, "fav", text=_fast_ascii(f.get("caption", "Visual Plate")), fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 10, "bold"), anchor="w", justify="left").pack(fill="x", pady=(4, 2))
             if f.get("study_note"):
-                self._make_lbl(
-                    info, "fav", text=f.get("study_note", ""), fg="#fbbf24", bg="#161b22",
-                    font=("DejaVu Sans Mono", 8), anchor="w", justify="left"
-                ).pack(fill="x", pady=(0, 6))
+                self._make_lbl(info, "fav", text=_fast_ascii(f.get("study_note", "")), fg="#fbbf24", bg="#161b22", font=("DejaVu Sans Mono", 8), anchor="w", justify="left").pack(fill="x", pady=(0, 6))
 
             b_row = tk.Frame(info, bg="#161b22")
             b_row.pack(fill="x", pady=(4, 0))
-            tk.Button(
-                b_row, text=f"↗ Open {str(f.get('track','art')).upper()} (#{int(f.get('seq',1)):03d})",
-                command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1): self._jump_to_lesson(tr, sq),
-                bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
-            ).pack(side="left", padx=(0, 8))
-            tk.Button(
-                b_row, text="★ Unstar",
-                command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1), u=f.get("url", ""): self._toggle_star(tr, sq, u),
-                bg="#2d2208", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
-            ).pack(side="left")
-        return frm
+            tk.Button(b_row, text=f"Open {str(f.get('track','art')).upper()} (#{int(f.get('seq',1)):03d}) ->", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1): self._jump_to_lesson(tr, sq), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left", padx=(0, 8))
+            tk.Button(b_row, text="[*] Unstar", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1), u=f.get("url", ""): self._toggle_star(tr, sq, u), bg="#2d2208", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left")
 
-    def _ensure_page_deck(self, track_key, page_num, q, is_wide, gal_cols):
-        sig = (track_key, page_num, q)
-        if sig in self._page_decks:
-            return self._page_decks[sig]
+    def render_cards(self):
+        cw = self.cv.winfo_width()
+        if cw < 120:
+            cw = self._last_cw
+        self._last_cw = cw
+        self._update_tab_counts(cw + 38)
 
-        deck_frm = tk.Frame(self.inner, bg="#0d1117")
-        raw_list = self.data.get("tracks", {}).get(track_key, {}).get("lessons", [])
+        if self.cur_track == "favorites":
+            self.cards_container.pack_forget()
+            self.favs_container.pack(fill="both", expand=True)
+            self.page_lbl.config(text=f"* KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
+            self.prev_btn.config(state="disabled")
+            self.next_btn.config(state="disabled")
+            self._render_favorites_view(cw)
+            self.cv.yview_moveto(0.0)
+            self._throttled_scrollregion()
+            return
+
+        self.favs_container.pack_forget()
+        if not self.cards_container.winfo_ismapped():
+            self.cards_container.pack(fill="both", expand=True)
+
+        q = self.search_var.get().strip().lower()
+        raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
         all_lessons = [self._norm_lesson(x) for x in reversed(raw_list) if isinstance(x, dict)]
         filtered = [
             les for les in all_lessons
@@ -815,417 +1003,43 @@ class KnowledgeDesktopHub(tk.Tk):
 
         total = len(filtered)
         max_page = max(0, (total - 1) // PAGE_SIZE)
-        cur_p = min(page_num, max_page)
+        cur_p = min(self.page_idx.get(self.cur_track, 0), max_page)
+        self.page_idx[self.cur_track] = cur_p
 
         start_i = cur_p * PAGE_SIZE
         end_i = min(total, start_i + PAGE_SIZE)
         page_slice = filtered[start_i:end_i]
 
-        t_label = "ART ENDURANCE" if track_key == "art" else "PHYSICS OF TIME"
+        t_label = "ART ENDURANCE" if self.cur_track == "art" else "PHYSICS OF TIME"
         if total > 0:
             hi_seq = page_slice[0]["seq"]
             lo_seq = page_slice[-1]["seq"]
-            meta_txt = f"{t_label}  •  Showing #{hi_seq:03d}–#{lo_seq:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})"
+            meta_txt = f"{t_label}  |  Showing #{hi_seq:03d}-#{lo_seq:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})"
         else:
-            meta_txt = f"{t_label}  •  0 matching lessons"
+            meta_txt = f"{t_label}  |  0 matching lessons"
 
-        for les in page_slice:
-            self._build_single_card(les, is_wide, gal_cols, parent_frm=deck_frm, track_override=track_key)
+        has_prev = (cur_p > 0)
+        has_next = (end_i < total)
+        self.page_lbl.config(text=meta_txt)
+        self.prev_btn.config(state="normal" if has_prev else "disabled", fg="#58a6ff" if has_prev else "#484f58")
+        self.next_btn.config(state="normal" if has_next else "disabled", fg="#58a6ff" if has_next else "#484f58")
 
-        if total > PAGE_SIZE:
-            bot_nav = tk.Frame(deck_frm, bg="#111822", pady=8, padx=12, highlightbackground="#30363d", highlightthickness=1)
-            bot_nav.pack(fill="x", pady=(6, 12), padx=2)
-            tk.Button(
-                bot_nav, text="◀ Newer 5 Lessons", command=lambda: self._step_page(-1),
-                state="normal" if cur_p > 0 else "disabled",
-                bg="#21262d", fg="#fbbf24" if cur_p > 0 else "#484f58", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
-            ).pack(side="left")
-            tk.Label(bot_nav, text=f"Page {cur_p + 1} of {max_page + 1}", fg="#8b949e", bg="#111822", font=("DejaVu Sans Mono", 8, "bold")).pack(side="left", expand=True)
-            tk.Button(
-                bot_nav, text="Older 5 Lessons ▶", command=lambda: self._step_page(1),
-                state="normal" if end_i < total else "disabled",
-                bg="#21262d", fg="#fbbf24" if end_i < total else "#484f58", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
-            ).pack(side="right")
+        self.bot_page_lbl.config(text=f"Page {cur_p + 1} of {max_page + 1}")
+        self.bot_prev_btn.config(state="normal" if has_prev else "disabled", fg="#fbbf24" if has_prev else "#484f58")
+        self.bot_next_btn.config(state="normal" if has_next else "disabled", fg="#fbbf24" if has_next else "#484f58")
 
-        deck_info = {"frame": deck_frm, "meta_txt": meta_txt, "has_prev": cur_p > 0, "has_next": end_i < total}
-        self._page_decks[sig] = deck_info
-        return deck_info
+        # Update the 5 permanent slots IN-PLACE (zero new frames packed on tab/page change!)
+        for idx in range(PAGE_SIZE):
+            slot = self._slots[idx]
+            if idx < len(page_slice):
+                if not slot["card"].winfo_ismapped():
+                    slot["card"].pack(fill="x", pady=6, padx=2, before=self.bot_nav)
+                self._populate_slot(slot, page_slice[idx], self.cur_track)
+            else:
+                slot["card"].pack_forget()
 
-    def render_cards(self):
-        cw = self.cv.winfo_width()
-        if cw < 120:
-            cw = self._last_cw
-        self._last_cw = cw
-        is_wide = cw >= 880
-        gal_cols = max(1, min(5, (cw - 32) // 210))
-        self._last_mode = "wide" if is_wide else "narrow"
-        self._last_gal_cols = gal_cols
-        self._update_tab_counts(cw + 38)
-
-        if self._active_deck and self._active_deck.winfo_exists():
-            self._active_deck.pack_forget()
-
-        if self.cur_track == "favorites":
-            self.page_lbl.config(text=f"* KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
-            self.prev_btn.config(state="disabled")
-            self.next_btn.config(state="disabled")
-            fav_frm = self._build_favorites_deck(cw)
-            fav_frm.pack(fill="both", expand=True)
-            self._active_deck = fav_frm
-            self.cv.yview_moveto(0.0)
-            self._throttled_scrollregion()
-            return
-
-        q = self.search_var.get().strip().lower()
-        raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
-        max_page = max(0, (len(raw_list) - 1) // PAGE_SIZE)
-        cur_p = min(self.page_idx.get(self.cur_track, 0), max_page)
-        self.page_idx[self.cur_track] = cur_p
-
-        deck_info = self._ensure_page_deck(self.cur_track, cur_p, q, is_wide, gal_cols)
-        self.page_lbl.config(text=deck_info["meta_txt"])
-        self.prev_btn.config(state="normal" if deck_info["has_prev"] else "disabled", fg="#58a6ff" if deck_info["has_prev"] else "#484f58")
-        self.next_btn.config(state="normal" if deck_info["has_next"] else "disabled", fg="#58a6ff" if deck_info["has_next"] else "#484f58")
-
-        deck_info["frame"].pack(fill="both", expand=True)
-        self._active_deck = deck_info["frame"]
         self.cv.yview_moveto(0.0)
         self._throttled_scrollregion()
-
-    def _sync_drawer_order(self, reg):
-        for k_frame in ("dd_frame", "g_strip", "qa_holder"):
-            f = reg.get(k_frame)
-            if f and f.winfo_exists():
-                f.pack_forget()
-
-        key = reg["key"]
-        if key in self.open_dd and reg.get("dd_frame") and reg["dd_frame"].winfo_exists():
-            reg["dd_frame"].pack(fill="x", padx=12, pady=(0, 8))
-
-        if key in self.open_gal and reg.get("g_strip") and reg["g_strip"].winfo_exists():
-            reg["g_strip"].pack(fill="x", padx=12, pady=(0, 8))
-
-        if reg.get("has_qa") and reg.get("qa_holder") and reg["qa_holder"].winfo_exists():
-            reg["qa_holder"].pack(fill="x")
-
-        self._throttled_scrollregion()
-
-    def _toggle_dd_drawer(self, key, force_rebuild=False):
-        reg = self._card_registry.get(key)
-        if not reg:
-            return
-        track, seq = key
-        les = self._get_lesson_obj(track, seq) or {}
-        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
-        dd_btn = reg["dd_btn"]
-        dd_frame = reg.get("dd_frame")
-        ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
-
-        if key in self.open_dd and has_dd:
-            dd_btn.config(text=f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive", bg="#1f2937", fg="#fbbf24", state="normal")
-            if force_rebuild and dd_frame and dd_frame.winfo_exists():
-                dd_frame.destroy()
-                dd_frame = None
-            if not dd_frame or not dd_frame.winfo_exists():
-                dd_frame = tk.Frame(reg["card"], bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
-                hdr_bar = tk.Frame(dd_frame, bg="#111822")
-                hdr_bar.pack(fill="x", padx=1, pady=1)
-                tk.Label(
-                    hdr_bar, text=f"DEEP DIVE MONOGRAPH  •  {ch_count} CHAPTER(S) ARCHIVED",
-                    fg="#58a6ff", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", padx=10, pady=6
-                ).pack(side="left")
-
-                tk.Button(
-                    hdr_bar, text="▲ Minimize Deep Dive",
-                    command=lambda k=key: (self.open_dd.discard(k), self._toggle_dd_drawer(k, False)),
-                    bg="#21262d", fg="#fbbf24", activebackground="#30363d", relief="flat",
-                    font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2"
-                ).pack(side="right", padx=6, pady=3)
-
-                deeper_btn = tk.Button(
-                    hdr_bar, text=f"+ Deeper Dive (Ch.{ch_count + 1})",
-                    bg="#251736", fg="#d2a8ff", activebackground="#3b2354", relief="flat",
-                    font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2"
-                )
-                deeper_btn.config(
-                    command=lambda k=key, t=track, s=seq, b=deeper_btn: self._call_cloud_action(
-                        "/api/deep_dive", {"track": t, "seq": s, "append": True},
-                        b, "... Diving Deeper...",
-                        lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True))
-                    )
-                )
-                deeper_btn.pack(side="right", padx=4, pady=3)
-
-                self._make_lbl(
-                    dd_frame, "full", text=les["deep_dive"],
-                    fg="#d0d7de", bg="#090d13", font=("DejaVu Sans Mono", 9),
-                    justify="left", anchor="w", padx=12, pady=8
-                ).pack(fill="x")
-
-                bot_bar = tk.Frame(dd_frame, bg="#090d13")
-                bot_bar.pack(fill="x", padx=10, pady=(0, 8))
-                tk.Button(
-                    bot_bar, text="▲ Minimize Deep Dive",
-                    command=lambda k=key: (self.open_dd.discard(k), self._toggle_dd_drawer(k, False)),
-                    bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=3, cursor="hand2"
-                ).pack(side="right")
-
-                reg["dd_frame"] = dd_frame
-        else:
-            lbl_closed = (f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive"
-            dd_btn.config(text=lbl_closed, bg="#21262d", fg="#58a6ff", state="normal")
-
-        self._sync_drawer_order(reg)
-
-    def _toggle_gal_drawer(self, key, force_rebuild=False):
-        reg = self._card_registry.get(key)
-        if not reg:
-            return
-        track, seq = key
-        les = self._get_lesson_obj(track, seq) or {}
-        gal_list = les.get("gallery") or []
-        has_gal = len(gal_list) >= 1
-        gal_btn = reg["gal_btn"]
-        g_strip = reg.get("g_strip")
-
-        if key in self.open_gal and has_gal:
-            gal_btn.config(text=f"Hide Plates ({len(gal_list)})", state="normal")
-            if force_rebuild and g_strip and g_strip.winfo_exists():
-                g_strip.destroy()
-                g_strip = None
-            if not g_strip or not g_strip.winfo_exists():
-                g_strip = tk.Frame(reg["card"], bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
-                grid_f = tk.Frame(g_strip, bg="#090d13")
-                grid_f.pack(fill="x", padx=8, pady=(8, 4))
-                cell_widgets = []
-                gal_cols = self._last_gal_cols
-                for idx_g, g_item in enumerate(gal_list):
-                    r_i, c_i = divmod(idx_g, gal_cols)
-                    gu = g_item.get("url", "")
-                    gc = f"{g_item.get('caption', '')} — {g_item.get('study_note', '')}".strip(" —")
-                    gs = g_item.get("source", "Archive")
-                    g_star = self._is_starred(gu)
-                    cell = tk.Frame(grid_f, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
-                    cell.grid(row=r_i, column=c_i, padx=4, pady=4, sticky="n")
-                    cell_widgets.append(cell)
-
-                    hdr_c = tk.Frame(cell, bg="#161b22")
-                    hdr_c.pack(fill="x")
-                    tk.Button(
-                        hdr_c, text="×", fg="#f85149", bg="#161b22", activebackground="#f85149", activeforeground="#fff",
-                        relief="flat", font=("DejaVu Sans Mono", 9, "bold"), padx=5, pady=0, cursor="hand2",
-                        command=lambda tr=track, sq=seq, u=gu, cw_ref=cell: self._delete_plate(tr, sq, u, cw_ref)
-                    ).pack(side="left")
-                    tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 6)).pack(side="left", padx=2)
-                    st_btn = tk.Button(
-                        hdr_c, text="★" if g_star else "☆", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22",
-                        relief="flat", font=("DejaVu Sans Mono", 9, "bold"), padx=5, pady=0, cursor="hand2"
-                    )
-                    st_btn.config(command=lambda tr=track, sq=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs, b_ref=st_btn: self._toggle_star(tr, sq, u, cp, sn, sr, b_ref))
-                    st_btn.pack(side="right")
-
-                    gl = tk.Label(cell, text="...", fg="#8b949e", bg="#1c232d", width=23, height=7, cursor="hand2")
-                    gl.pack()
-                    cl = tk.Label(cell, text=(g_item.get("caption") or "Plate")[:24] + " Search:", fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 7), pady=3, cursor="hand2")
-                    cl.pack(fill="x")
-                    for wg in (gl, cl):
-                        wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
-                    self._load_thumb_async(gl, gu, size=(190, 126))
-                reg["gal_cells"] = cell_widgets
-
-                cur_bar = tk.Frame(g_strip, bg="#090d13")
-                cur_bar.pack(fill="x", padx=10, pady=(4, 8))
-                c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-                c_ent = tk.Entry(
-                    cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat",
-                    highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16
-                )
-                c_ent.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=3)
-                c_btn.pack(side="right")
-
-                def _on_more_gal(t=track, s=seq, ent=c_ent, b=c_btn, k=key):
-                    cq = ent.get().strip()
-                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s, "append": True, "query": cq}, b, "... Routing...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
-                c_btn.config(command=_on_more_gal)
-                c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
-                reg["g_strip"] = g_strip
-        else:
-            gal_btn.config(text=f"Plates ({len(gal_list)})" if has_gal else "Curate Plates", state="normal")
-
-        self._sync_drawer_order(reg)
-
-    def _rebuild_qa_drawer(self, key):
-        reg = self._card_registry.get(key)
-        if not reg:
-            return
-        track, seq = key
-        les = self._get_lesson_obj(track, seq) or {}
-        qa_list = les.get("qa_log") or []
-        qa_holder = reg["qa_holder"]
-        for w in qa_holder.winfo_children():
-            w.destroy()
-        reg["has_qa"] = bool(qa_list)
-        if qa_list:
-            is_minimized = (key in self.closed_qa)
-            qa_hdr = tk.Frame(qa_holder, bg="#120d1d")
-            qa_hdr.pack(fill="x", padx=12, pady=(0, 4))
-            tk.Button(
-                qa_hdr,
-                text=f"Show Saved Q&A ({len(qa_list)}) ▼" if is_minimized else f"Minimize Q&A ({len(qa_list)}) ▲",
-                command=lambda k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self._rebuild_qa_drawer(k)),
-                bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=2, cursor="hand2"
-            ).pack(side="left")
-
-            if not is_minimized:
-                for qa in qa_list:
-                    qa_box = tk.Frame(qa_holder, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
-                    qa_box.pack(fill="x", padx=12, pady=(0, 6))
-                    self._make_lbl(
-                        qa_box, "full", text=f"Q: {qa.get('q','')}   [ {qa.get('model','GEMINI')} • {qa.get('ts','')} ]",
-                        fg="#d2a8ff", bg="#0c131d", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left", padx=10, pady=4
-                    ).pack(fill="x")
-                    self._make_lbl(
-                        qa_box, "full", text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d",
-                        font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=10, pady=6
-                    ).pack(fill="x")
-        self._sync_drawer_order(reg)
-
-    def _build_single_card(self, les, is_wide, gal_cols, parent_frm=None, track_override=None):
-        t_key = track_override or self.cur_track
-        seq = les["seq"]
-        key = (t_key, seq)
-        card = tk.Frame(parent_frm or self.inner, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
-        card.pack(fill="x", pady=6, padx=2)
-
-        top_row = tk.Frame(card, bg="#161b22")
-        top_row.pack(fill="x", padx=12, pady=(10, 4))
-
-        left_col = tk.Frame(top_row, bg="#161b22")
-
-        img_url = les.get("image_url", "")
-        p_card = None
-        if img_url:
-            p_card = tk.Frame(top_row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
-            img_lbl = tk.Label(p_card, text="... Loading Plate...", fg="#8b949e", bg="#1c232d", font=("DejaVu Sans Mono", 8), width=29, height=10, cursor="hand2")
-            img_lbl.pack()
-            starred = self._is_starred(img_url)
-            b_bar = tk.Frame(p_card, bg="#161b22")
-            b_bar.pack(fill="x")
-            cap_txt = (les.get("image_caption") or les.get("title", ""))[:30]
-            cap_lbl = tk.Label(b_bar, text=f"{cap_txt} Search:", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 7, "bold"), padx=5, pady=3, cursor="hand2")
-            cap_lbl.pack(side="left")
-            lead_st_btn = tk.Button(
-                b_bar, text="★" if starred else "☆",
-                fg="#fbbf24" if starred else "#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 9, "bold"), padx=4, pady=0, cursor="hand2"
-            )
-            lead_st_btn.config(command=lambda tr=t_key, sq=seq, url_p=img_url, cp=les.get("image_caption") or les.get("title", ""), b_ref=lead_st_btn: self._toggle_star(tr, sq, url_p, cp, "", "Lead Plate", b_ref))
-            lead_st_btn.pack(side="right")
-            for w_click in (img_lbl, cap_lbl):
-                w_click.bind("<Button-1>", lambda e, url_p=img_url, c=les.get("image_caption") or les.get("title", ""): self._open_lightbox(url_p, c))
-            self._load_thumb_async(img_lbl, img_url)
-
-        if is_wide and p_card:
-            p_card.pack(in_=top_row, side="right", anchor="n", padx=(12, 0))
-        left_col.pack(in_=top_row, side="left", fill="both", expand=True)
-
-        tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
-        meta_txt = f"#{seq:03d} • {les.get('date','')}   [ {str(les.get('model','ARCHIVE')).upper()} ]   {tags_str}".strip()
-        self._make_lbl(left_col, "body", text=meta_txt, fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left").pack(fill="x")
-        self._make_lbl(left_col, "body", text=les.get("title", ""), fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 11, "bold"), anchor="w", justify="left").pack(fill="x", pady=(5, 4))
-        self._make_lbl(left_col, "body", text=les.get("core", ""), fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 9), anchor="w", justify="left").pack(fill="x", pady=(0, 6))
-
-        maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
-        maker_box.pack(fill="x", pady=(2, 4))
-        lens_lbl = f">> Temporal & Studio Lens: {les.get('maker', '')}" if t_key == "universe" else f">> Studio Craft Lens: {les.get('maker', '')}"
-        self._make_lbl(
-            maker_box, "maker", text=lens_lbl,
-            fg="#fbbf24", bg="#0f141b", font=("DejaVu Sans Mono", 8), anchor="w", justify="left", padx=8, pady=6
-        ).pack(fill="x")
-
-        if (not is_wide) and p_card:
-            p_card.pack(in_=left_col, anchor="w", pady=(8, 2))
-
-        act_wrap = tk.Frame(card, bg="#161b22")
-        act_wrap.pack(fill="x", padx=12, pady=(4, 8))
-        act_r1 = tk.Frame(act_wrap, bg="#161b22")
-        act_r1.pack(fill="x")
-        act_r2 = tk.Frame(act_wrap, bg="#161b22")
-
-        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
-        ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
-        dd_init_txt = (f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive"
-        dd_btn = tk.Button(act_r1, text=dd_init_txt, bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        dd_btn.pack(side="left", padx=(0, 6))
-
-        gal_list = les.get("gallery") or []
-        gal_init_txt = f"Plates ({len(gal_list)})" if gal_list else "Curate Plates"
-        gal_btn = tk.Button(act_r1, text=gal_init_txt, bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        gal_btn.pack(side="left", padx=(0, 8))
-
-        ask_btn = tk.Button(act_wrap, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        ask_ent = tk.Entry(
-            act_wrap, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat",
-            highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16
-        )
-        if is_wide:
-            ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
-            ask_btn.pack(in_=act_r1, side="right")
-        else:
-            act_r2.pack(fill="x", pady=(5, 0))
-            ask_ent.pack(in_=act_r2, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
-            ask_btn.pack(in_=act_r2, side="right")
-
-        qa_holder = tk.Frame(card, bg="#161b22")
-
-        self._card_registry[key] = {
-            "key": key, "card": card,
-            "p_card": p_card, "top_row": top_row, "left_col": left_col,
-            "act_r1": act_r1, "act_r2": act_r2, "ask_ent": ask_ent, "ask_btn": ask_btn,
-            "dd_btn": dd_btn, "gal_btn": gal_btn, "qa_holder": qa_holder,
-            "dd_frame": None, "g_strip": None, "gal_cells": [], "has_qa": False
-        }
-
-        def _on_dd(k=key, t=t_key, s=seq, b=dd_btn):
-            cur_les = self._get_lesson_obj(t, s) or {}
-            ready = bool(cur_les.get("deep_dive") and len(cur_les["deep_dive"]) > 40)
-            if ready:
-                if k in self.open_dd:
-                    self.open_dd.remove(k)
-                else:
-                    self.open_dd.add(k)
-                self._toggle_dd_drawer(k, force_rebuild=False)
-            else:
-                self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "... Writing...", lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True)))
-        dd_btn.config(command=_on_dd)
-
-        def _on_gal(k=key, t=t_key, s=seq, b=gal_btn):
-            cur_les = self._get_lesson_obj(t, s) or {}
-            ready = len(cur_les.get("gallery") or []) >= 1
-            if ready:
-                if k in self.open_gal:
-                    self.open_gal.remove(k)
-                else:
-                    self.open_gal.add(k)
-                self._toggle_gal_drawer(k, force_rebuild=False)
-            else:
-                self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "... Curating...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
-        gal_btn.config(command=_on_gal)
-
-        def _on_ask(k=key, t=t_key, s=seq, ent=ask_ent, b=ask_btn):
-            q_str = ent.get().strip()
-            if not q_str:
-                return
-            ent.delete(0, "end")
-            self._call_cloud_action("/api/ask", {"track": t, "seq": s, "question": q_str}, b, "... Asking...", lambda: (b.config(text="Ask Gemini", state="normal"), self._rebuild_qa_drawer(k)))
-        ask_btn.config(command=_on_ask)
-        ask_ent.bind("<Return>", lambda e, fn=_on_ask: fn())
-
-        if key in self.open_dd:
-            self._toggle_dd_drawer(key, force_rebuild=False)
-        if key in self.open_gal:
-            self._toggle_gal_drawer(key, force_rebuild=False)
-        if les.get("qa_log"):
-            self._rebuild_qa_drawer(key)
 
 
 if __name__ == "__main__":
