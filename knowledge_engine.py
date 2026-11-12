@@ -8,10 +8,10 @@ _LOCK = threading.Lock()
 _UA = "KnowledgeMatrixHub/2.0 (https://knowledge-center-dsog.onrender.com; educational)"
 
 MODELS_CASCADE = [
-    ("gemini-3.8-flash", "3.8-FLASH"),
     ("gemini-3.5-flash-lite", "3.5-FLASH-LITE"),
     ("gemini-3-flash-preview", "3-FLASH"),
     ("gemini-2.5-flash", "2.5-FLASH"),
+    ("gemini-3.8-flash", "3.8-FLASH"),
 ]
 
 
@@ -306,21 +306,24 @@ def generate_deep_dive_for_lesson(track_key, seq, append=False):
     existing_dd = (les.get("deep_dive") or "").strip()
     if append and existing_dd:
         chapter_num = existing_dd.count("=== DEEPER DIVE CHAPTER") + 2
-        prompt = f"""You are writing Deeper Dive Chapter {chapter_num} for lesson: "{les.get('title')}" ({track_key} track).
+        prompt = f"""Write Deeper Dive Chapter {chapter_num} for lesson: "{les.get('title')}" ({track_key} track).
 Core summary: {les.get('core')}
 Studio craft lens: {les.get('maker')}
 
-Already covered in previous chapters (DO NOT repeat these exact points; go one layer deeper into konkret material physics, archival history, rare technical mechanics, or radical studio execution):
+Already covered in previous chapters (DO NOT repeat these exact points; go one layer deeper into concrete material physics, archival history, rare technical mechanics, or radical studio execution):
 {existing_dd[-1800:]}
 
-Return JSON:
-{{
-  "chapter_title": "Short punchy subtitle for Chapter {chapter_num}",
-  "deep_dive": "3-4 rich, forensic paragraphs separated by \n\n exploring a brand-new technical, historical, or material dimension."
-}}"""
-        res, badge = call_gemini_json(prompt, expect_json=True)
-        ch_title = res.get("chapter_title", f"Level {chapter_num} Synthesis")
-        new_body = res.get("deep_dive", "").strip()
+Format strictly as:
+TITLE: <Short punchy subtitle for Chapter {chapter_num}>
+<3-4 rich, forensic paragraphs separated by blank lines. Write plain text only, no JSON, no markdown code fences.>"""
+        raw_txt, badge = call_gemini_json(prompt, expect_json=False)
+        lines = [ln.strip() for ln in raw_txt.strip().splitlines() if ln.strip()]
+        ch_title = f"Level {chapter_num} Synthesis"
+        body_start = 0
+        if lines and lines[0].upper().startswith("TITLE:"):
+            ch_title = lines[0][6:].strip().strip('"').strip("*")
+            body_start = 1
+        new_body = "\n\n".join(lines[body_start:]) if body_start < len(lines) else raw_txt.strip()
         les["deep_dive"] = f"{existing_dd}\n\n=== DEEPER DIVE CHAPTER {chapter_num}: {ch_title.upper()} [{badge}] ===\n\n{new_body}"
         les["model"] = badge
         save_curriculum(data, f"Deeper Dive Ch.{chapter_num}: {track_key} #{seq:03d}")
@@ -329,12 +332,16 @@ Return JSON:
     prompt = f"""Write an exhaustive, vivid 4-paragraph Deep Dive Monograph for lesson: "{les.get('title')}" ({track_key} track).
 Core context: {les.get('core')}
 Studio Craft connection: {les.get('maker')}
-Return JSON:
-{{
-  "deep_dive": "4 rich paragraphs separated by \n\n covering origin/context, physical or mathematical mechanics, landmark masterwork/experiment, and hands-on studio synthesis."
-}}"""
-    res, badge = call_gemini_json(prompt, expect_json=True)
-    les["deep_dive"] = res.get("deep_dive", "").strip()
+
+Write 4 rich paragraphs separated by blank lines covering:
+1. Origin & historical/scientific context
+2. Exact physical, material, or mathematical mechanics
+3. Landmark masterwork or experiment
+4. Hands-on Studio Craft synthesis
+
+Write plain text paragraphs only (no JSON, no markdown headings)."""
+    raw_txt, badge = call_gemini_json(prompt, expect_json=False)
+    les["deep_dive"] = raw_txt.strip()
     les["model"] = badge
     save_curriculum(data, f"Deep Dive: {track_key} #{seq:03d}")
     return les
