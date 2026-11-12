@@ -39,7 +39,7 @@ class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
         super().__init__(className="knowledge-hub")
         self.title("Knowledge Command Center // Art Endurance, Physics of Time & Favorites Vault")
-        self.geometry("1260x800")
+        self.geometry("980x780")
         self.minsize(480, 460)
         self.configure(bg="#0d1117")
 
@@ -135,6 +135,9 @@ class KnowledgeDesktopHub(tk.Tk):
         self.after(120, self._handle_resize)
         threading.Thread(target=self._cloud_sync_loop, daemon=True).start()
 
+    def _bind_exact_wrap(self, lbl, pad=18):
+        lbl.bind("<Configure>", lambda e, p=pad: e.widget.config(wraplength=max(120, e.width - p)) if e.width > 60 else None)
+
     def _get_win_w(self):
         self.update_idletasks()
         w = self.winfo_width()
@@ -145,7 +148,7 @@ class KnowledgeDesktopHub(tk.Tk):
             child.pack_forget()
         self.nav_row2.pack_forget()
 
-        if w >= 920:
+        if w >= 940:
             self.btn_art.pack(in_=self.nav_row1, side="left", padx=(0, 6))
             self.btn_uni.pack(in_=self.nav_row1, side="left", padx=(0, 6))
             self.btn_fav.pack(in_=self.nav_row1, side="left", padx=(0, 10))
@@ -167,8 +170,26 @@ class KnowledgeDesktopHub(tk.Tk):
             self.matrix_btn.pack(in_=self.nav_row2, side="right")
 
     def _on_canvas_configure(self, event):
-        self.cv.itemconfig(self.cwin, width=event.width)
-        self._apply_dynamic_wraps(event.width)
+        cw = event.width
+        self.cv.itemconfig(self.cwin, width=cw)
+        if cw < 150:
+            return
+        # Update header wraps & 1-row vs 2-row nav directly from real canvas width!
+        win_est = cw + 38
+        self.title_lbl.config(wraplength=max(200, cw - 12))
+        self.sub_lbl.config(wraplength=max(200, cw - 12))
+        self.cap_pill.config(wraplength=max(190, cw - 28))
+        self._pack_nav_for_width(win_est)
+        self._update_tab_counts(win_est)
+
+        mode = "wide" if cw >= 900 else "narrow"
+        gal_cols = max(1, min(5, (cw - 32) // 210))
+        bucket = (mode, gal_cols)
+        if self._last_layout_bucket != bucket:
+            self._last_layout_bucket = bucket
+            if self._resize_job:
+                self.after_cancel(self._resize_job)
+            self._resize_job = self.after(60, self.render_cards)
 
     def _on_window_configure(self, event):
         if event.widget is not self:
@@ -188,7 +209,7 @@ class KnowledgeDesktopHub(tk.Tk):
         cw = self.cv.winfo_width()
         if cw < 200:
             cw = w - 40
-        mode = "wide" if cw >= 860 else "narrow"
+        mode = "wide" if cw >= 900 else "narrow"
         gal_cols = max(1, min(5, (cw - 36) // 215))
         bucket = (mode, gal_cols)
         if self._last_layout_bucket is not None and bucket != self._last_layout_bucket:
@@ -204,7 +225,7 @@ class KnowledgeDesktopHub(tk.Tk):
     def _apply_dynamic_wraps(self, canvas_w):
         if canvas_w < 200:
             canvas_w = self._get_win_w() - 40
-        is_wide = canvas_w >= 860
+        is_wide = canvas_w >= 900
         # Subtract right-side 265px plate column when side-by-side; use full card width when stacked narrow!
         body_w = max(200, (canvas_w - 365) if is_wide else (canvas_w - 64))
         maker_w = max(180, body_w - 32)
@@ -364,12 +385,12 @@ class KnowledgeDesktopHub(tk.Tk):
                 pass
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _update_tab_counts(self):
+    def _update_tab_counts(self, explicit_w=None):
         a_n = len(self.data.get("tracks", {}).get("art", {}).get("lessons", []))
         u_n = len(self.data.get("tracks", {}).get("universe", {}).get("lessons", []))
         f_n = len(self.data.get("favorites") or [])
-        w = self._get_win_w()
-        if w >= 920:
+        w = explicit_w if explicit_w else (self.cv.winfo_width() + 38 if self.cv.winfo_width() > 150 else self._get_win_w())
+        if w >= 940:
             self.btn_art.config(text=f"🎨 ART ENDURANCE ({a_n})")
             self.btn_uni.config(text=f"🌌 PHYSICS OF TIME ({u_n})")
             self.btn_fav.config(text=f"⭐ KEY'S FAVORITES ({f_n})")
@@ -467,7 +488,9 @@ class KnowledgeDesktopHub(tk.Tk):
             l2 = tk.Label(empty, text="Click ☆ on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("Monospace", 9), pady=6)
             l2.pack(fill="x")
             self._reg_wrap(l1, "full")
+            self._bind_exact_wrap(l1, 16)
             self._reg_wrap(l2, "full")
+            self._bind_exact_wrap(l2, 16)
             return
 
         stack_fav = cw < 640
@@ -493,15 +516,18 @@ class KnowledgeDesktopHub(tk.Tk):
                            fg="#8b949e", bg="#161b22", font=("Monospace", 8, "bold"), anchor="w", justify="left")
             m_l.pack(fill="x")
             self._reg_wrap(m_l, "fav")
+            self._bind_exact_wrap(m_l, 16)
 
             c_l = tk.Label(info, text=f.get("caption", "Visual Plate"), fg="#f0f6fc", bg="#161b22", font=("Monospace", 10, "bold"), anchor="w", justify="left")
             c_l.pack(fill="x", pady=(4, 2))
             self._reg_wrap(c_l, "fav")
+            self._bind_exact_wrap(c_l, 16)
 
             if f.get("study_note"):
                 s_l = tk.Label(info, text=f.get("study_note", ""), fg="#fbbf24", bg="#161b22", font=("Monospace", 8), anchor="w", justify="left")
                 s_l.pack(fill="x", pady=(0, 6))
                 self._reg_wrap(s_l, "fav")
+            self._bind_exact_wrap(s_l, 16)
 
             b_row = tk.Frame(info, bg="#161b22")
             b_row.pack(fill="x", pady=(4, 0))
@@ -522,7 +548,7 @@ class KnowledgeDesktopHub(tk.Tk):
         cw = self.cv.winfo_width()
         if cw < 200:
             cw = self._get_win_w() - 40
-        is_wide = cw >= 860
+        is_wide = cw >= 900
         gal_cols = max(1, min(5, (cw - 36) // 215))
         self._last_layout_bucket = ("wide" if is_wide else "narrow", gal_cols)
 
@@ -585,20 +611,24 @@ class KnowledgeDesktopHub(tk.Tk):
             meta_lbl = tk.Label(left_col, text=meta_txt, fg="#58a6ff", bg="#161b22", font=("Monospace", 8, "bold"), anchor="w", justify="left")
             meta_lbl.pack(fill="x")
             self._reg_wrap(meta_lbl, "body")
+            self._bind_exact_wrap(meta_lbl, 16)
 
             t_lbl = tk.Label(left_col, text=les.get("title", ""), fg="#f0f6fc", bg="#161b22", font=("Monospace", 11, "bold"), anchor="w", justify="left")
             t_lbl.pack(fill="x", pady=(5, 4))
             self._reg_wrap(t_lbl, "body")
+            self._bind_exact_wrap(t_lbl, 16)
 
             c_lbl = tk.Label(left_col, text=les.get("core", ""), fg="#c9d1d9", bg="#161b22", font=("Monospace", 9), anchor="w", justify="left")
             c_lbl.pack(fill="x", pady=(0, 6))
             self._reg_wrap(c_lbl, "body")
+            self._bind_exact_wrap(c_lbl, 16)
 
             maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
             maker_box.pack(fill="x", pady=(2, 4))
             m_lbl = tk.Label(maker_box, text=f"🧵 Studio Craft Lens: {les.get('maker', '')}", fg="#fbbf24", bg="#0f141b", font=("Monospace", 8), anchor="w", justify="left", padx=8, pady=6)
             m_lbl.pack(fill="x")
             self._reg_wrap(m_lbl, "maker")
+            self._bind_exact_wrap(m_lbl, 24)
 
             if not is_wide:
                 _mount_plate(left_col, False)
@@ -662,6 +692,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 dd_body = tk.Label(dd_frame, text=les["deep_dive"], fg="#d0d7de", bg="#090d13", font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6)
                 dd_body.pack(fill="x")
                 self._reg_wrap(dd_body, "full")
+            self._bind_exact_wrap(dd_body, 16)
 
             if key in self.open_gal:
                 g_strip = tk.Frame(card, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
@@ -719,7 +750,9 @@ class KnowledgeDesktopHub(tk.Tk):
                 q_ans = tk.Label(qa_box, text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d", font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6)
                 q_ans.pack(fill="x")
                 self._reg_wrap(q_hdr, "full")
+            self._bind_exact_wrap(q_hdr, 16)
                 self._reg_wrap(q_ans, "full")
+            self._bind_exact_wrap(q_ans, 16)
 
         self._apply_dynamic_wraps(cw)
 
