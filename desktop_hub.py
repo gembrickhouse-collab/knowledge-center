@@ -122,14 +122,14 @@ class KnowledgeDesktopHub(tk.Tk):
         self.title_lbl = tk.Label(
             self.top_hdr,
             text="[KCC] KNOWLEDGE COMMAND CENTER // VISUAL MONOGRAPH ARCHIVE",
-            fg="#fbbf24", bg="#090d13", font=("fixed", 12, "bold"),
+            fg="#fbbf24", bg="#090d13", font=("DejaVu Sans Mono", 12, "bold"),
             justify="center", anchor="center", wraplength=900
         )
         self.title_lbl.pack(fill="x")
 
         self.sub_lbl = tk.Label(
             self.top_hdr, text=self.sched_status,
-            fg="#8b949e", bg="#090d13", font=("fixed", 8),
+            fg="#8b949e", bg="#090d13", font=("DejaVu Sans Mono", 8),
             justify="center", anchor="center", wraplength=900
         )
         self.sub_lbl.pack(fill="x", pady=(3, 4))
@@ -137,7 +137,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cap_pill = tk.Label(
             self.top_hdr,
             text="GitHub Vault: -- KB  |  Cloud RAM: --  |  Auto-Drop Runway: ~18.9 yrs",
-            fg="#3fb950", bg="#111822", font=("fixed", 8, "bold"),
+            fg="#3fb950", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"),
             padx=10, pady=4, highlightbackground="#238636", highlightthickness=1,
             justify="center", anchor="center", wraplength=880
         )
@@ -152,35 +152,35 @@ class KnowledgeDesktopHub(tk.Tk):
 
         self.btn_art = tk.Button(
             self.nav_row1, text="ART ENDURANCE (0)", command=lambda: self.switch_track("art"),
-            bg="#fbbf24", fg="#090d13", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            bg="#fbbf24", fg="#090d13", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.btn_uni = tk.Button(
             self.nav_row1, text="PHYSICS OF TIME (0)", command=lambda: self.switch_track("universe"),
-            bg="#21262d", fg="#c9d1d9", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            bg="#21262d", fg="#c9d1d9", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.btn_fav = tk.Button(
             self.nav_row1, text="* FAVORITES (0)", command=lambda: self.switch_track("favorites"),
-            bg="#21262d", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
 
-        self.filter_lbl = tk.Label(self.nav_row1, text="Filter:", fg="#8b949e", bg="#0d1117", font=("fixed", 8))
+        self.filter_lbl = tk.Label(self.nav_row1, text="Filter:", fg="#8b949e", bg="#0d1117", font=("DejaVu Sans Mono", 8))
         self.search_var = tk.StringVar()
         self._search_timer = None
         self.search_var.trace_add("write", self._on_search_type)
         self.filter_ent = tk.Entry(
             self.nav_row1, textvariable=self.search_var, bg="#161b22", fg="#e6edf3",
             insertbackground="#fbbf24", relief="flat", highlightbackground="#30363d",
-            highlightthickness=1, font=("fixed", 9), width=16
+            highlightthickness=1, font=("DejaVu Sans Mono", 9), width=16
         )
 
         self.sync_btn = tk.Button(
             self.nav_row1, text="Sync Drop", command=self._manual_sync_drop,
             bg="#192b20", fg="#3fb950", activebackground="#238636", relief="flat",
-            font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2"
+            font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
         )
         self.matrix_btn = tk.Button(
             self.nav_row1, text="Matrix ->", command=lambda: webbrowser.open(get_cloud_url() + "/matrix"),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("fixed", 8, "bold"), padx=8, pady=4, cursor="hand2"
+            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=4, cursor="hand2"
         )
 
         # Instant Page Bar
@@ -188,16 +188,16 @@ class KnowledgeDesktopHub(tk.Tk):
         self.page_bar.pack(fill="x", padx=12, pady=(0, 6))
         self.prev_btn = tk.Button(
             self.page_bar, text="<< Newer 5", command=lambda: self._step_page(-1),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("fixed", 8, "bold"), padx=10, pady=2, cursor="hand2"
+            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
         )
         self.prev_btn.pack(side="left")
         self.page_lbl = tk.Label(
-            self.page_bar, text="Loading Archive...", fg="#e6edf3", bg="#111822", font=("fixed", 8, "bold")
+            self.page_bar, text="Loading Archive...", fg="#e6edf3", bg="#111822", font=("DejaVu Sans Mono", 8, "bold")
         )
         self.page_lbl.pack(side="left", expand=True)
         self.next_btn = tk.Button(
             self.page_bar, text="Older 5 >>", command=lambda: self._step_page(1),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("fixed", 8, "bold"), padx=10, pady=2, cursor="hand2"
+            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
         )
         self.next_btn.pack(side="right")
 
@@ -233,21 +233,21 @@ class KnowledgeDesktopHub(tk.Tk):
         self.bot_nav.pack(fill="x", pady=(6, 12), padx=2)
         self.bot_prev_btn = tk.Button(
             self.bot_nav, text="<< Newer 5 Lessons", command=lambda: self._step_page(-1),
-            bg="#21262d", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=12, pady=4, cursor="hand2"
+            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
         )
         self.bot_prev_btn.pack(side="left")
-        self.bot_page_lbl = tk.Label(self.bot_nav, text="Page 1", fg="#8b949e", bg="#111822", font=("fixed", 8, "bold"))
+        self.bot_page_lbl = tk.Label(self.bot_nav, text="Page 1", fg="#8b949e", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"))
         self.bot_page_lbl.pack(side="left", expand=True)
         self.bot_next_btn = tk.Button(
             self.bot_nav, text="Older 5 Lessons >>", command=lambda: self._step_page(1),
-            bg="#21262d", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=12, pady=4, cursor="hand2"
+            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
         )
         self.bot_next_btn.pack(side="right")
 
         _log_t("5 permanent card slots constructed in memory! Populating data...")
         self._load_local()
         self.render_cards()
-        self.bind("<Visibility>", lambda e: _log_t("XORG PIXELS PHYSICALLY VISIBLE ON MONITOR!"))
+        self.after_idle(lambda: _log_t("UI READY — 0ms Slot Engine Active!"))
 
         for _ in range(3):
             threading.Thread(target=self._image_worker_loop, daemon=True).start()
@@ -268,24 +268,24 @@ class KnowledgeDesktopHub(tk.Tk):
 
         b_bar = tk.Frame(p_card, bg="#161b22")
         b_bar.pack(fill="x")
-        cap_lbl = tk.Label(b_bar, text="Plate [Zoom]", fg="#8b949e", bg="#161b22", font=("fixed", 7, "bold"), padx=5, pady=3, cursor="hand2")
+        cap_lbl = tk.Label(b_bar, text="Plate [Zoom]", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 7, "bold"), padx=5, pady=3, cursor="hand2")
         cap_lbl.pack(side="left")
-        lead_st_btn = tk.Button(b_bar, text="[+Fav]", fg="#8b949e", bg="#161b22", relief="flat", font=("fixed", 8, "bold"), padx=4, pady=0, cursor="hand2")
+        lead_st_btn = tk.Button(b_bar, text="[+Fav]", fg="#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=4, pady=0, cursor="hand2")
         lead_st_btn.pack(side="right")
 
         p_card.pack(in_=top_row, side="right", anchor="n", padx=(12, 0))
         left_col.pack(in_=top_row, side="left", fill="both", expand=True)
 
-        meta_lbl = self._make_lbl(left_col, "body", text="", fg="#58a6ff", bg="#161b22", font=("fixed", 8, "bold"), anchor="w", justify="left")
+        meta_lbl = self._make_lbl(left_col, "body", text="", fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left")
         meta_lbl.pack(fill="x")
-        title_lbl = self._make_lbl(left_col, "body", text="", fg="#f0f6fc", bg="#161b22", font=("fixed", 11, "bold"), anchor="w", justify="left")
+        title_lbl = self._make_lbl(left_col, "body", text="", fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 11, "bold"), anchor="w", justify="left")
         title_lbl.pack(fill="x", pady=(5, 4))
-        core_lbl = self._make_lbl(left_col, "body", text="", fg="#c9d1d9", bg="#161b22", font=("fixed", 9), anchor="w", justify="left")
+        core_lbl = self._make_lbl(left_col, "body", text="", fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 9), anchor="w", justify="left")
         core_lbl.pack(fill="x", pady=(0, 6))
 
         maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
         maker_box.pack(fill="x", pady=(2, 4))
-        maker_lbl = self._make_lbl(maker_box, "maker", text="", fg="#fbbf24", bg="#0f141b", font=("fixed", 8), anchor="w", justify="left", padx=8, pady=6)
+        maker_lbl = self._make_lbl(maker_box, "maker", text="", fg="#fbbf24", bg="#0f141b", font=("DejaVu Sans Mono", 8), anchor="w", justify="left", padx=8, pady=6)
         maker_lbl.pack(fill="x")
 
         act_wrap = tk.Frame(card, bg="#161b22")
@@ -294,14 +294,14 @@ class KnowledgeDesktopHub(tk.Tk):
         act_r1.pack(fill="x")
         act_r2 = tk.Frame(act_wrap, bg="#161b22")
 
-        dd_btn = tk.Button(act_r1, text="Read Deep Dive", bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        dd_btn = tk.Button(act_r1, text="Read Deep Dive", bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
         dd_btn.pack(side="left", padx=(0, 6))
 
-        gal_btn = tk.Button(act_r1, text="Plates", bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        gal_btn = tk.Button(act_r1, text="Plates", bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
         gal_btn.pack(side="left", padx=(0, 8))
 
-        ask_btn = tk.Button(act_wrap, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        ask_ent = tk.Entry(act_wrap, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("fixed", 8), width=16)
+        ask_btn = tk.Button(act_wrap, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        ask_ent = tk.Entry(act_wrap, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
         ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
         ask_btn.pack(in_=act_r1, side="right")
 
@@ -415,15 +415,15 @@ class KnowledgeDesktopHub(tk.Tk):
             dd_frame.pack(fill="x", padx=12, pady=(0, 8))
             hdr_bar = tk.Frame(dd_frame, bg="#111822")
             hdr_bar.pack(fill="x", padx=1, pady=1)
-            tk.Label(hdr_bar, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fg="#58a6ff", bg="#111822", font=("fixed", 8, "bold"), anchor="w", padx=10, pady=6).pack(side="left")
-            tk.Button(hdr_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=3, cursor="hand2").pack(side="right", padx=6, pady=3)
-            deeper_btn = tk.Button(hdr_bar, text=f"+ Deeper Dive (Ch.{ch_count + 1})", bg="#251736", fg="#d2a8ff", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=3, cursor="hand2")
+            tk.Label(hdr_bar, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fg="#58a6ff", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", padx=10, pady=6).pack(side="left")
+            tk.Button(hdr_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2").pack(side="right", padx=6, pady=3)
+            deeper_btn = tk.Button(hdr_bar, text=f"+ Deeper Dive (Ch.{ch_count + 1})", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2")
             deeper_btn.config(command=lambda s_ref=slot, k=key, t=track, sq=seq, b=deeper_btn: self._call_cloud_action("/api/deep_dive", {"track": t, "seq": sq, "append": True}, b, "... Diving Deeper...", lambda: (self.open_dd.add(k), self._render_slot_drawers(s_ref))))
             deeper_btn.pack(side="right", padx=4, pady=3)
-            self._make_lbl(dd_frame, "full", text=_fast_ascii(les["deep_dive"]), fg="#d0d7de", bg="#090d13", font=("fixed", 9), justify="left", anchor="w", padx=12, pady=8).pack(fill="x")
+            self._make_lbl(dd_frame, "full", text=_fast_ascii(les["deep_dive"]), fg="#d0d7de", bg="#090d13", font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=12, pady=8).pack(fill="x")
             bot_bar = tk.Frame(dd_frame, bg="#090d13")
             bot_bar.pack(fill="x", padx=10, pady=(0, 8))
-            tk.Button(bot_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=10, pady=3, cursor="hand2").pack(side="right")
+            tk.Button(bot_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=3, cursor="hand2").pack(side="right")
 
         if key in self.open_gal and has_gal:
             g_strip = tk.Frame(da, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
@@ -442,15 +442,15 @@ class KnowledgeDesktopHub(tk.Tk):
 
                 hdr_c = tk.Frame(cell, bg="#161b22")
                 hdr_c.pack(fill="x")
-                tk.Button(hdr_c, text="x", fg="#f85149", bg="#161b22", relief="flat", font=("fixed", 8, "bold"), padx=5, pady=0, cursor="hand2", command=lambda s_ref=slot, tr=track, sq=seq, u=gu: self._delete_plate(tr, sq, u, s_ref)).pack(side="left")
-                tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("fixed", 6)).pack(side="left", padx=2)
-                st_btn = tk.Button(hdr_c, text="[*]" if g_star else "[+]", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22", relief="flat", font=("fixed", 8, "bold"), padx=4, pady=0, cursor="hand2")
+                tk.Button(hdr_c, text="x", fg="#f85149", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=5, pady=0, cursor="hand2", command=lambda s_ref=slot, tr=track, sq=seq, u=gu: self._delete_plate(tr, sq, u, s_ref)).pack(side="left")
+                tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 6)).pack(side="left", padx=2)
+                st_btn = tk.Button(hdr_c, text="[*]" if g_star else "[+]", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=4, pady=0, cursor="hand2")
                 st_btn.config(command=lambda tr=track, sq=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs, b_ref=st_btn: self._toggle_star(tr, sq, u, cp, sn, sr, b_ref))
                 st_btn.pack(side="right")
 
                 gl = tk.Label(cell, image=_BLANK_TK, bg="#1c232d", width=190, height=126, cursor="hand2")
                 gl.pack()
-                cl = tk.Label(cell, text=_fast_ascii((g_item.get("caption") or "Plate")[:24]), fg="#c9d1d9", bg="#161b22", font=("fixed", 7), pady=3, cursor="hand2")
+                cl = tk.Label(cell, text=_fast_ascii((g_item.get("caption") or "Plate")[:24]), fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 7), pady=3, cursor="hand2")
                 cl.pack(fill="x")
                 for wg in (gl, cl):
                     wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
@@ -458,8 +458,8 @@ class KnowledgeDesktopHub(tk.Tk):
 
             cur_bar = tk.Frame(g_strip, bg="#090d13")
             cur_bar.pack(fill="x", padx=10, pady=(4, 8))
-            c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2")
-            c_ent = tk.Entry(cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("fixed", 8), width=16)
+            c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
+            c_ent = tk.Entry(cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
             c_ent.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=3)
             c_btn.pack(side="right")
 
@@ -478,14 +478,14 @@ class KnowledgeDesktopHub(tk.Tk):
                 qa_hdr,
                 text=f"Show Saved Q&A ({len(qa_list)}) [v]" if is_minimized else f"Minimize Q&A ({len(qa_list)}) [^]",
                 command=lambda s_ref=slot, k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self._render_slot_drawers(s_ref)),
-                bg="#251736", fg="#d2a8ff", relief="flat", font=("fixed", 8, "bold"), padx=8, pady=2, cursor="hand2"
+                bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=2, cursor="hand2"
             ).pack(side="left")
             if not is_minimized:
                 for qa in qa_list:
                     qa_box = tk.Frame(da, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
                     qa_box.pack(fill="x", padx=12, pady=(0, 6))
-                    self._make_lbl(qa_box, "full", text=_fast_ascii(f"Q: {qa.get('q','')}   [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fg="#d2a8ff", bg="#0c131d", font=("fixed", 8, "bold"), anchor="w", justify="left", padx=10, pady=4).pack(fill="x")
-                    self._make_lbl(qa_box, "full", text=_fast_ascii(qa.get("a", "")), fg="#e6edf3", bg="#0c131d", font=("fixed", 9), justify="left", anchor="w", padx=10, pady=6).pack(fill="x")
+                    self._make_lbl(qa_box, "full", text=_fast_ascii(f"Q: {qa.get('q','')}   [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fg="#d2a8ff", bg="#0c131d", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left", padx=10, pady=4).pack(fill="x")
+                    self._make_lbl(qa_box, "full", text=_fast_ascii(qa.get("a", "")), fg="#e6edf3", bg="#0c131d", font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=10, pady=6).pack(fill="x")
 
         self._throttled_scrollregion()
 
@@ -843,9 +843,9 @@ class KnowledgeDesktopHub(tk.Tk):
         top.title("Visual Plate Lightbox // Full Resolution")
         top.geometry("900x680")
         top.configure(bg="#090d13")
-        lbl_img = tk.Label(top, text="... Loading high-resolution archival plate...", fg="#fbbf24", bg="#090d13", font=("fixed", 10))
+        lbl_img = tk.Label(top, text="... Loading high-resolution archival plate...", fg="#fbbf24", bg="#090d13", font=("DejaVu Sans Mono", 10))
         lbl_img.pack(expand=True, fill="both", padx=14, pady=(14, 6))
-        cap_l = tk.Label(top, text=_fast_ascii(caption), fg="#e6edf3", bg="#090d13", font=("fixed", 9), pady=8, wraplength=840)
+        cap_l = tk.Label(top, text=_fast_ascii(caption), fg="#e6edf3", bg="#090d13", font=("DejaVu Sans Mono", 9), pady=8, wraplength=840)
         cap_l.pack(fill="x", padx=12)
 
         def _load():
@@ -934,8 +934,8 @@ class KnowledgeDesktopHub(tk.Tk):
         if not favs:
             empty = tk.Frame(self.favs_container, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
             empty.pack(fill="x", pady=12, padx=4)
-            self._make_lbl(empty, "full", text="* Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("fixed", 10, "bold")).pack(fill="x")
-            self._make_lbl(empty, "full", text="Click [+Fav] on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("fixed", 9), pady=6).pack(fill="x")
+            self._make_lbl(empty, "full", text="* Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 10, "bold")).pack(fill="x")
+            self._make_lbl(empty, "full", text="Click [+Fav] on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 9), pady=6).pack(fill="x")
             return
 
         stack_fav = cw < 660
@@ -957,15 +957,15 @@ class KnowledgeDesktopHub(tk.Tk):
 
             info = tk.Frame(row, bg="#161b22")
             info.pack(side="left", fill="both", expand=True)
-            self._make_lbl(info, "fav", text=_fast_ascii(f"{str(f.get('track','art')).upper()} #{int(f.get('seq',1)):03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fg="#8b949e", bg="#161b22", font=("fixed", 8, "bold"), anchor="w", justify="left").pack(fill="x")
-            self._make_lbl(info, "fav", text=_fast_ascii(f.get("caption", "Visual Plate")), fg="#f0f6fc", bg="#161b22", font=("fixed", 10, "bold"), anchor="w", justify="left").pack(fill="x", pady=(4, 2))
+            self._make_lbl(info, "fav", text=_fast_ascii(f"{str(f.get('track','art')).upper()} #{int(f.get('seq',1)):03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left").pack(fill="x")
+            self._make_lbl(info, "fav", text=_fast_ascii(f.get("caption", "Visual Plate")), fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 10, "bold"), anchor="w", justify="left").pack(fill="x", pady=(4, 2))
             if f.get("study_note"):
-                self._make_lbl(info, "fav", text=_fast_ascii(f.get("study_note", "")), fg="#fbbf24", bg="#161b22", font=("fixed", 8), anchor="w", justify="left").pack(fill="x", pady=(0, 6))
+                self._make_lbl(info, "fav", text=_fast_ascii(f.get("study_note", "")), fg="#fbbf24", bg="#161b22", font=("DejaVu Sans Mono", 8), anchor="w", justify="left").pack(fill="x", pady=(0, 6))
 
             b_row = tk.Frame(info, bg="#161b22")
             b_row.pack(fill="x", pady=(4, 0))
-            tk.Button(b_row, text=f"Open {str(f.get('track','art')).upper()} (#{int(f.get('seq',1)):03d}) ->", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1): self._jump_to_lesson(tr, sq), bg="#21262d", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left", padx=(0, 8))
-            tk.Button(b_row, text="[*] Unstar", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1), u=f.get("url", ""): self._toggle_star(tr, sq, u), bg="#2d2208", fg="#fbbf24", relief="flat", font=("fixed", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left")
+            tk.Button(b_row, text=f"Open {str(f.get('track','art')).upper()} (#{int(f.get('seq',1)):03d}) ->", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1): self._jump_to_lesson(tr, sq), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left", padx=(0, 8))
+            tk.Button(b_row, text="[*] Unstar", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1), u=f.get("url", ""): self._toggle_star(tr, sq, u), bg="#2d2208", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left")
 
     def render_cards(self):
         cw = self.cv.winfo_width()
