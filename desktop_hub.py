@@ -207,7 +207,7 @@ class KnowledgeDesktopHub(tk.Tk):
             return
         les = self._pending_lessons.pop(0)
         is_wide = (self._last_mode == "wide")
-        self._build_single_card(les, is_wide, self._last_gal_cols)
+        self._build_single_card(self._norm_lesson(les), is_wide, self._last_gal_cols)
         if self._pending_lessons:
             self._drip_job = self.after(40, self._background_card_drip)
 
@@ -379,6 +379,26 @@ class KnowledgeDesktopHub(tk.Tk):
     def _is_starred(self, url):
         return any(f.get("url") == url for f in (self.data.get("favorites") or []))
 
+    def _norm_lesson(self, les):
+        if not isinstance(les, dict):
+            return {"seq": 0, "title": "Untitled", "core": "", "maker": "", "tags": []}
+        raw_seq = les.get("seq", 0)
+        try:
+            les["seq"] = int(str(raw_seq).strip().lstrip("#") or 0)
+        except Exception:
+            les["seq"] = 0
+        raw_tags = les.get("tags")
+        if isinstance(raw_tags, str):
+            les["tags"] = [t.strip().lstrip("#") for t in raw_tags.split(",") if t.strip()]
+        elif isinstance(raw_tags, list):
+            les["tags"] = [str(t).strip().lstrip("#") for t in raw_tags if t]
+        else:
+            les["tags"] = []
+        les["title"] = str(les.get("title") or les.get("topic") or f"Lesson #{les['seq']:03d}")
+        les["core"] = str(les.get("core") or les.get("summary") or les.get("body") or "")
+        les["maker"] = str(les.get("maker") or les.get("lens") or les.get("synthesis") or les.get("application") or " Structural time-symmetry & physical endurance synthesis.")
+        return les
+
     def _get_lesson_obj(self, track, seq):
         for item in self.data.get("tracks", {}).get(track, {}).get("lessons", []):
             if int(item.get("seq", 0)) == int(seq):
@@ -543,8 +563,10 @@ class KnowledgeDesktopHub(tk.Tk):
         self.btn_art.config(bg="#fbbf24" if t == "art" else "#21262d", fg="#090d13" if t == "art" else "#c9d1d9")
         self.btn_uni.config(bg="#58a6ff" if t == "universe" else "#21262d", fg="#090d13" if t == "universe" else "#c9d1d9")
         self.btn_fav.config(bg="#fbbf24" if t == "favorites" else "#21262d", fg="#090d13" if t == "favorites" else "#fbbf24")
-        self.cv.yview_moveto(0)
         self.render_cards()
+        self.update_idletasks()
+        self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100))
+        self.cv.yview_moveto(0.0)
 
     def _jump_to_lesson(self, track, seq):
         self.search_var.set("")
@@ -714,7 +736,8 @@ class KnowledgeDesktopHub(tk.Tk):
             return
 
         q = self.search_var.get().strip().lower()
-        all_lessons = list(reversed(self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])))
+        raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
+        all_lessons = [self._norm_lesson(x) for x in reversed(raw_list) if isinstance(x, dict)]
         filtered = [
             les for les in all_lessons
             if not q or q in f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
@@ -724,7 +747,13 @@ class KnowledgeDesktopHub(tk.Tk):
         initial = filtered[:3]
         self._pending_lessons = filtered[3:]
         for les in initial:
-            self._build_single_card(les, is_wide, gal_cols)
+            try:
+                self._build_single_card(self._norm_lesson(les), is_wide, gal_cols)
+            except Exception as e:
+                print('[Card Build Err]', e, flush=True)
+        self.update_idletasks()
+        self.cv.configure(scrollregion=self.cv.bbox('all') or (0, 0, 100, 100))
+        self.cv.yview_moveto(0.0)
 
         if self._pending_lessons:
             self._drip_job = self.after(40, self._background_card_drip)
@@ -976,7 +1005,7 @@ class KnowledgeDesktopHub(tk.Tk):
         maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
         maker_box.pack(fill="x", pady=(2, 4))
         self._make_lbl(
-            maker_box, "maker", text=f"🧵 Studio Craft Lens: {les.get('maker', '')}",
+            maker_box, "maker", text=f"⏱️ Temporal & Studio Lens: {les.get('maker', '')}" if self.cur_track == "universe" else f"🧵 Studio Craft Lens: {les.get('maker', '')}",
             fg="#fbbf24", bg="#0f141b", font=("Monospace", 8), anchor="w", justify="left", padx=8, pady=6
         ).pack(fill="x")
 
