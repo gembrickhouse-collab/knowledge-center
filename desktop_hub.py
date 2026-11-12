@@ -90,7 +90,7 @@ class KnowledgeDesktopHub(tk.Tk):
         _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
         _log_t("tk.Tk.__init__ complete")
-        self.title("Knowledge Command Center // v4.1 Instant Mainloop & Zero-Reload Slot Engine")
+        self.title("Knowledge Command Center // v4.3 Direct-Canvas 1.1s Boot Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
@@ -254,99 +254,120 @@ class KnowledgeDesktopHub(tk.Tk):
         self.after(3000, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
 
     def _create_permanent_slot(self, idx):
-        """Creates 1 permanent card slot widget tree that stays mapped forever and updates in-place in 0.2ms."""
+        """Uses a SINGLE tk.Canvas for the entire card body + lead plate so X11 maps 1 window instead of 28!"""
         card = tk.Frame(self.cards_container, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
         card.pack(fill="x", pady=6, padx=2)
 
-        top_row = tk.Frame(card, bg="#161b22")
-        top_row.pack(fill="x", padx=12, pady=(10, 4))
+        # Single hardware-accelerated X11 Canvas replaces top_row, left_col, p_card, b_bar, maker_box, and 6 Labels!
+        body_cv = tk.Canvas(card, bg="#161b22", height=235, highlightthickness=0, bd=0)
+        body_cv.pack(fill="x", padx=10, pady=(8, 2))
 
-        left_col = tk.Frame(top_row, bg="#161b22")
-        p_card = tk.Frame(top_row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
-        img_lbl = tk.Label(p_card, image=_BLANK_TK, bg="#1c232d", width=240, height=170, cursor="hand2")
-        img_lbl.pack()
-
-        b_bar = tk.Frame(p_card, bg="#161b22")
-        b_bar.pack(fill="x")
-        cap_lbl = tk.Label(b_bar, text="Plate [Zoom]", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 7, "bold"), padx=5, pady=3, cursor="hand2")
-        cap_lbl.pack(side="left")
-        lead_st_btn = tk.Button(b_bar, text="[+Fav]", fg="#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=4, pady=0, cursor="hand2")
-        lead_st_btn.pack(side="right")
-
-        p_card.pack(in_=top_row, side="right", anchor="n", padx=(12, 0))
-        left_col.pack(in_=top_row, side="left", fill="both", expand=True)
-
-        meta_lbl = self._make_lbl(left_col, "body", text="", fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left")
-        meta_lbl.pack(fill="x")
-        title_lbl = self._make_lbl(left_col, "body", text="", fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 11, "bold"), anchor="w", justify="left")
-        title_lbl.pack(fill="x", pady=(5, 4))
-        core_lbl = self._make_lbl(left_col, "body", text="", fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 9), anchor="w", justify="left")
-        core_lbl.pack(fill="x", pady=(0, 6))
-
-        maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
-        maker_box.pack(fill="x", pady=(2, 4))
-        maker_lbl = self._make_lbl(maker_box, "maker", text="", fg="#fbbf24", bg="#0f141b", font=("DejaVu Sans Mono", 8), anchor="w", justify="left", padx=8, pady=6)
-        maker_lbl.pack(fill="x")
-
-        act_wrap = tk.Frame(card, bg="#161b22")
-        act_wrap.pack(fill="x", padx=12, pady=(4, 8))
-        act_r1 = tk.Frame(act_wrap, bg="#161b22")
-        act_r1.pack(fill="x")
-        act_r2 = tk.Frame(act_wrap, bg="#161b22")
+        act_r1 = tk.Frame(card, bg="#161b22")
+        act_r1.pack(fill="x", padx=12, pady=(2, 8))
 
         dd_btn = tk.Button(act_r1, text="Read Deep Dive", bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
         dd_btn.pack(side="left", padx=(0, 6))
 
         gal_btn = tk.Button(act_r1, text="Plates", bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        gal_btn.pack(side="left", padx=(0, 8))
+        gal_btn.pack(side="left", padx=(0, 6))
 
-        ask_btn = tk.Button(act_wrap, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        ask_ent = tk.Entry(act_wrap, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
-        ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
-        ask_btn.pack(in_=act_r1, side="right")
+        lead_st_btn = tk.Button(act_r1, text="[+Fav Plate]", bg="#21262d", fg="#8b949e", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=4, cursor="hand2")
+        lead_st_btn.pack(side="left", padx=(0, 8))
+
+        ask_btn = tk.Button(act_r1, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        ask_ent = tk.Entry(act_r1, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
+        ask_ent.pack(side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
+        ask_btn.pack(side="right")
 
         drawer_area = tk.Frame(card, bg="#161b22")
         drawer_area.pack(fill="x")
 
-        return {
-            "idx": idx, "card": card, "top_row": top_row, "left_col": left_col,
-            "p_card": p_card, "img_lbl": img_lbl, "cap_lbl": cap_lbl, "lead_st_btn": lead_st_btn,
-            "meta_lbl": meta_lbl, "title_lbl": title_lbl, "core_lbl": core_lbl, "maker_lbl": maker_lbl,
-            "act_r1": act_r1, "act_r2": act_r2, "dd_btn": dd_btn, "gal_btn": gal_btn,
+        slot = {
+            "idx": idx, "card": card, "body_cv": body_cv,
+            "dd_btn": dd_btn, "gal_btn": gal_btn, "lead_st_btn": lead_st_btn,
             "ask_ent": ask_ent, "ask_btn": ask_btn, "drawer_area": drawer_area,
-            "bound_key": None
+            "bound_key": None, "les": None, "track_key": "art", "ph_ref": _BLANK_TK
         }
+        body_cv.bind("<Configure>", lambda e, s_ref=slot: self._redraw_slot_canvas(s_ref, e.width))
+        return slot
 
-    def _populate_slot(self, slot, les, track_key):
-        """Updates an existing card slot in-place in 0.0004 seconds without creating or destroying X11 widgets!"""
+    def _redraw_slot_canvas(self, slot, cw=None):
+        les = slot.get("les")
+        if not les:
+            return
+        cv = slot["body_cv"]
+        if cw is None or cw < 100:
+            cw = cv.winfo_width()
+            if cw < 100:
+                cw = max(300, self._last_cw - 36)
+
+        cv.delete("all")
+        track_key = slot.get("track_key", "art")
         seq = les["seq"]
-        key = (track_key, seq)
-        slot["bound_key"] = key
+        is_wide = (cw >= 820)
+        img_w, img_h = 240, 170
+        text_w = max(180, (cw - img_w - 28) if is_wide else (cw - 16))
 
         tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
         meta_txt = _fast_ascii(f"#{seq:03d} | {les.get('date','')}  [{str(les.get('model','ARCHIVE')).upper()}]  {tags_str}".strip())
-        slot["meta_lbl"].config(text=meta_txt)
-        slot["title_lbl"].config(text=_fast_ascii(les.get("title", "")))
-        slot["core_lbl"].config(text=_fast_ascii(les.get("core", "")))
-
+        title_txt = _fast_ascii(les.get("title", ""))
+        core_txt = _fast_ascii(les.get("core", ""))
         lens_prefix = ">> Temporal & Studio Lens: " if track_key == "universe" else ">> Studio Craft Lens: "
-        slot["maker_lbl"].config(text=_fast_ascii(lens_prefix + les.get("maker", "")))
+        maker_txt = _fast_ascii(lens_prefix + les.get("maker", ""))
+
+        y = 4
+        m_id = cv.create_text(4, y, text=meta_txt, fill="#58a6ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=text_w)
+        y = (cv.bbox(m_id) or (0, 0, 0, y + 18))[3] + 6
+
+        t_id = cv.create_text(4, y, text=title_txt, fill="#f0f6fc", font=("DejaVu Sans Mono", 11, "bold"), anchor="nw", width=text_w)
+        y = (cv.bbox(t_id) or (0, 0, 0, y + 24))[3] + 6
+
+        c_id = cv.create_text(4, y, text=core_txt, fill="#c9d1d9", font=("DejaVu Sans Mono", 9), anchor="nw", width=text_w)
+        y = (cv.bbox(c_id) or (0, 0, 0, y + 45))[3] + 10
+
+        # Draw Studio Craft / Temporal Lens golden box directly on canvas
+        mk_id = cv.create_text(14, y + 8, text=maker_txt, fill="#fbbf24", font=("DejaVu Sans Mono", 8), anchor="nw", width=max(150, text_w - 20))
+        mk_bb = cv.bbox(mk_id) or (14, y + 8, text_w, y + 36)
+        box_id = cv.create_rectangle(4, y, text_w + 4, mk_bb[3] + 8, fill="#0f141b", outline="#fbbf24", width=1)
+        cv.tag_lower(box_id, mk_id)
+        y = mk_bb[3] + 14
+
+        # Draw right-hand (or stacked) visual plate directly on canvas
+        img_x = (cw - img_w - 4) if is_wide else 4
+        img_y = 4 if is_wide else y
+        cv.create_rectangle(img_x - 1, img_y - 1, img_x + img_w + 1, img_y + img_h + 22, fill="#090d13", outline="#30363d", width=1)
+        im_item = cv.create_image(img_x, img_y, image=slot.get("ph_ref") or _BLANK_TK, anchor="nw", tags=("plate_click",))
+        cap_txt = _fast_ascii((les.get("image_caption") or les.get("title", ""))[:27]) + " [Zoom]"
+        cp_item = cv.create_text(img_x + 6, img_y + img_h + 4, text=cap_txt, fill="#8b949e", font=("DejaVu Sans Mono", 7, "bold"), anchor="nw", tags=("plate_click",))
+
+        img_url = les.get("image_url", "")
+        if img_url:
+            cv.tag_bind("plate_click", "<Button-1>", lambda e, u=img_url, c=_fast_ascii(les.get("image_caption") or les.get("title", "")): self._open_lightbox(u, c))
+
+        total_h = max(y, (img_y + img_h + 26) if is_wide else (img_y + img_h + 28))
+        if abs(int(cv.cget("height")) - total_h) > 2:
+            cv.config(height=total_h)
+
+    def _populate_slot(self, slot, les, track_key):
+        seq = les["seq"]
+        key = (track_key, seq)
+        slot["bound_key"] = key
+        slot["les"] = les
+        slot["track_key"] = track_key
 
         img_url = les.get("image_url", "")
         if img_url:
             starred = self._is_starred(img_url)
-            cap_txt = _fast_ascii((les.get("image_caption") or les.get("title", ""))[:28])
-            slot["cap_lbl"].config(text=f"{cap_txt} [Zoom]")
             slot["lead_st_btn"].config(
-                text="[*Fav]" if starred else "[+Fav]",
+                text="[*Fav Plate]" if starred else "[+Fav Plate]",
                 fg="#fbbf24" if starred else "#8b949e",
                 command=lambda tr=track_key, sq=seq, u=img_url, cp=les.get("image_caption") or les.get("title", ""), b=slot["lead_st_btn"]: self._toggle_star(tr, sq, u, cp, "", "Lead Plate", b)
             )
-            for wg in (slot["img_lbl"], slot["cap_lbl"]):
-                wg.bind("<Button-1>", lambda e, u=img_url, c=_fast_ascii(les.get("image_caption") or les.get("title", "")): self._open_lightbox(u, c))
-            self._load_thumb_async(slot["img_lbl"], img_url)
+            self._load_slot_canvas_thumb(slot, img_url)
         else:
-            slot["img_lbl"].config(image=_BLANK_TK)
+            slot["ph_ref"] = _BLANK_TK
+
+        self._redraw_slot_canvas(slot)
 
         def _on_dd(s_ref=slot, k=key, t=track_key, sq=seq):
             cur_les = self._get_lesson_obj(t, sq) or {}
@@ -384,6 +405,30 @@ class KnowledgeDesktopHub(tk.Tk):
         slot["ask_ent"].bind("<Return>", lambda e, fn=_on_ask: fn())
 
         self._render_slot_drawers(slot)
+
+    def _load_slot_canvas_thumb(self, slot, url, size=(240, 170)):
+        cache_key = (url, size)
+        if cache_key in _MEM_TK_CACHE:
+            slot["ph_ref"] = _MEM_TK_CACHE[cache_key]
+            return
+        if cache_key in _MEM_PIL_CACHE:
+            ph = ImageTk.PhotoImage(_MEM_PIL_CACHE[cache_key])
+            _MEM_TK_CACHE[cache_key] = ph
+            slot["ph_ref"] = ph
+            return
+        h = hashlib.sha256(url.encode()).hexdigest()[:24]
+        thumb_path = os.path.join(IMG_CACHE_DIR, f"{h}_{size[0]}x{size[1]}.jpg")
+        if os.path.exists(thumb_path):
+            try:
+                im = Image.open(thumb_path).convert("RGB")
+                _MEM_PIL_CACHE[cache_key] = im
+                ph = ImageTk.PhotoImage(im)
+                _MEM_TK_CACHE[cache_key] = ph
+                slot["ph_ref"] = ph
+                return
+            except Exception:
+                pass
+        slot["ph_ref"] = _BLANK_TK
 
     def _render_slot_drawers(self, slot):
         key = slot["bound_key"]
@@ -609,18 +654,10 @@ class KnowledgeDesktopHub(tk.Tk):
         gal_cols = max(1, min(5, (cw - 32) // 210))
         self._last_gal_cols = gal_cols
 
-        if mode != self._last_mode:
-            self._last_mode = mode
-            is_wide = (mode == "wide")
-            for slot in self._slots:
-                slot["p_card"].pack_forget()
-                if is_wide:
-                    slot["left_col"].pack_forget()
-                    slot["p_card"].pack(in_=slot["top_row"], side="right", anchor="n", padx=(12, 0))
-                    slot["left_col"].pack(in_=slot["top_row"], side="left", fill="both", expand=True)
-                else:
-                    slot["p_card"].pack(in_=slot["left_col"], anchor="w", pady=(8, 2))
-
+        self._last_mode = mode
+        for slot in self._slots:
+            if slot["card"].winfo_ismapped():
+                self._redraw_slot_canvas(slot, max(300, cw - 28))
         wraps = self._calc_wraps(cw)
         alive = []
         for lbl, kind in self._wrap_labels:
