@@ -1,4 +1,4 @@
-import os, io, json, time, hashlib, threading, webbrowser, urllib.request
+import os, io, json, time, queue, hashlib, threading, webbrowser, urllib.request
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -8,7 +8,8 @@ CURRICULUM_FILE = os.path.join(BASE_DIR, "curriculum.json")
 CLOUD_URL_FILE = os.path.join(BASE_DIR, "cloud_url.txt")
 IMG_CACHE_DIR = os.path.expanduser("~/.cache/knowledge_hub_plates")
 os.makedirs(IMG_CACHE_DIR, exist_ok=True)
-_UA = "KnowledgeDesktopHub/2.4 (Ubuntu; educational)"
+_UA = "KnowledgeDesktopHub/2.5 (Ubuntu; educational)"
+_MEM_PIL_CACHE = {}
 
 
 def get_cloud_url():
@@ -22,16 +23,20 @@ def get_cloud_url():
 def fetch_cached_pil(url, max_size):
     if not url:
         return None
+    cache_key = (url, max_size)
+    if cache_key in _MEM_PIL_CACHE:
+        return _MEM_PIL_CACHE[cache_key]
     h = hashlib.sha256(url.encode()).hexdigest()[:24]
     p = os.path.join(IMG_CACHE_DIR, f"{h}.jpg")
     if not os.path.exists(p):
         req = urllib.request.Request(url, headers={"User-Agent": _UA})
-        raw = urllib.request.urlopen(req, timeout=14).read()
+        raw = urllib.request.urlopen(req, timeout=12).read()
         im = Image.open(io.BytesIO(raw)).convert("RGB")
         im.save(p, "JPEG", quality=88)
     else:
         im = Image.open(p).convert("RGB")
-    im.thumbnail(max_size, Image.Resampling.LANCZOS)
+    im.thumbnail(max_size, Image.Resampling.BILINEAR)
+    _MEM_PIL_CACHE[cache_key] = im
     return im
 
 
@@ -39,7 +44,7 @@ class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
         super().__init__(className="knowledge-hub")
         self.title("Knowledge Command Center // Art Endurance, Physics of Time & Favorites Vault")
-        self.geometry("980x780")
+        self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
 
@@ -49,9 +54,16 @@ class KnowledgeDesktopHub(tk.Tk):
         self.open_dd = set()
         self.open_gal = set()
         self._photo_refs = []
-        self._last_layout_bucket = None
-        self._resize_job = None
+        self._card_Layouts = []   # Stores live widget refs for 0ms wide<->narrow reflow without destroying!
+        self._gal_grids = []      # Stores open gallery frames for instant column reflow
+        self._batch_job = None
+        self._img_queue = queue.Queue()
+        self._last_mode = None
+        self._last_gal_cols = None
         self.sched_status = "Syncing Render cloud..."
+
+        # Single background image worker so 30 threads never choke Tkinter's GIL on startup
+        threading.Thread(target=self._image_worker_loop, daemon=True).start()
 
         # Header Frame (100% self-wrapping at any width)
         self.top_hdr = tk.Frame(self, bg="#090d13", pady=8, padx=12)
@@ -136,25 +148,46 @@ class KnowledgeDesktopHub(tk.Tk):
         self.bind_all("<Button-5>", lambda e: self.cv.yview_scroll(1, "units"))
 
         self._load_local()
-        self._pack_nav_for_width(980)
-        self.render_cards()
+        self._pack_nav_for_width(960)
+        # Defer card build by 10ms so window pops open on desktop INSTANTLY (<0.1s)
+        self.after(10, self.render_cards)
         threading.Thread(target=self._cloud_sync_loop, daemon=True).start()
 
+    def _image_worker_loop(self):
+        while True:
+            lbl, url, size = self._img_queue.get()
+            try:
+                if not lbl.winfo_exists():
+                    continue
+                im = fetch_cached_pil(url, size)
+                if im:
+                    def _paint(l=lbl, img=im, sz=size):
+                        if l.winfo_exists():
+                            ph = ImageTk.PhotoImage(img)
+                            self._photo_refs.append(ph)
+                            l.config(image=ph, text="", width=sz[0], height=sz[1])
+                    self.after(0, _paint)
+            except Exception:
+                pass
+
     def _wlabel(self, parent, pad=18, **kwargs):
-        """Creates a tk.Label that dynamically wraps to its own exact live pixel width."""
         lbl = tk.Label(parent, **kwargs)
         lbl.bind(
             "<Configure>",
-            lambda e, p=pad: e.widget.config(wraplength=max(100, e.width - p)) if e.width > 50 else None
+            lambda e, p=pad: e.widget.config(wraplength=max(100, e.width - p)) if (e.width > 50 and abs(int(e.widget.cget("wraplength")) - max(100, e.width - p)) > 6) else None
         )
         return lbl
 
     def _pack_nav_for_width(self, w):
+        target_nav = "wide" if w >= 940 else "narrow"
+        if getattr(self, "_cur_nav_mode", None) == target_nav:
+            return
+        self._cur_nav_mode = target_nav
         for child in (self.btn_art, self.btn_uni, self.btn_fav, self.filter_lbl, self.filter_ent, self.sync_btn, self.matrix_btn):
             child.pack_forget()
         self.nav_row2.pack_forget()
 
-        if w >= 940:
+        if target_nav == "wide":
             self.btn_art.pack(in_=self.nav_row1, side="left", padx=(0, 6))
             self.btn_uni.pack(in_=self.nav_row1, side="left", padx=(0, 6))
             self.btn_fav.pack(in_=self.nav_row1, side="left", padx=(0, 10))
@@ -185,12 +218,50 @@ class KnowledgeDesktopHub(tk.Tk):
 
         mode = "wide" if cw >= 880 else "narrow"
         gal_cols = max(1, min(5, (cw - 32) // 210))
-        bucket = (mode, gal_cols)
-        if self._last_layout_bucket != bucket:
-            self._last_layout_bucket = bucket
-            if self._resize_job:
-                self.after_cancel(self._resize_job)
-            self._resize_job = self.after(60, self.render_cards)
+
+        # ZERO-DESTROY INSTANT REFLOW: Move plates & action bars in place without destroying a single widget!
+        if mode != self._last_mode:
+            self._last_mode = mode
+            self._reflow_existing_cards(mode == "wide")
+
+        if gal_cols != self._last_gal_cols:
+            self._last_gal_cols = gal_cols
+            for cells in self._gal_grids:
+                for idx_g, cell in enumerate(cells):
+                    if cell.winfo_exists():
+                        r_i, c_i = divmod(idx_g, gal_cols)
+                        cell.grid(row=r_i, column=c_i, padx=4, pady=4, sticky="n")
+
+    def _reflow_existing_cards(self, is_wide):
+        for item in self._card_Layouts:
+            p_card = item.get("p_card")
+            top_row = item.get("top_row")
+            left_col = item.get("left_col")
+            act_r1 = item.get("act_r1")
+            act_r2 = item.get("act_r2")
+            ask_ent = item.get("ask_ent")
+            ask_btn = item.get("ask_btn")
+            if not top_row.winfo_exists():
+                continue
+            if p_card and p_card.winfo_exists():
+                p_card.pack_forget()
+                if is_wide:
+                    left_col.pack_forget()
+                    p_card.pack(in_=top_row, side="right", anchor="n", padx=(12, 0))
+                    left_col.pack(in_=top_row, side="left", fill="both", expand=True)
+                else:
+                    p_card.pack(in_=left_col, anchor="w", pady=(8, 2))
+            if act_r1 and act_r2 and ask_ent and ask_btn:
+                ask_ent.pack_forget()
+                ask_btn.pack_forget()
+                act_r2.pack_forget()
+                if is_wide:
+                    ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
+                    ask_btn.pack(in_=act_r1, side="right")
+                else:
+                    act_r2.pack(fill="x", pady=(5, 0))
+                    ask_ent.pack(in_=act_r2, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
+                    ask_btn.pack(in_=act_r2, side="right")
 
     def _load_local(self):
         if os.path.exists(CURRICULUM_FILE):
@@ -334,7 +405,7 @@ class KnowledgeDesktopHub(tk.Tk):
         u_n = len(self.data.get("tracks", {}).get("universe", {}).get("lessons", []))
         f_n = len(self.data.get("favorites") or [])
         cw = self.cv.winfo_width()
-        w = explicit_w if explicit_w else (cw + 38 if cw > 120 else 980)
+        w = explicit_w if explicit_w else (cw + 38 if cw > 120 else 960)
         if w >= 940:
             self.btn_art.config(text=f"🎨 ART ENDURANCE ({a_n})")
             self.btn_uni.config(text=f"🌌 PHYSICS OF TIME ({u_n})")
@@ -384,19 +455,13 @@ class KnowledgeDesktopHub(tk.Tk):
         threading.Thread(target=_load, daemon=True).start()
 
     def _load_thumb_async(self, lbl, url, size=(240, 170)):
-        def _worker():
-            try:
-                im = fetch_cached_pil(url, size)
-                if im:
-                    def _set():
-                        if lbl.winfo_exists():
-                            ph = ImageTk.PhotoImage(im)
-                            self._photo_refs.append(ph)
-                            lbl.config(image=ph, text="", width=size[0], height=size[1])
-                    self.after(0, _set)
-            except Exception:
-                pass
-        threading.Thread(target=_worker, daemon=True).start()
+        cache_key = (url, size)
+        if cache_key in _MEM_PIL_CACHE:
+            ph = ImageTk.PhotoImage(_MEM_PIL_CACHE[cache_key])
+            self._photo_refs.append(ph)
+            lbl.config(image=ph, text="", width=size[0], height=size[1])
+            return
+        self._img_queue.put((lbl, url, size))
 
     def _call_cloud_action(self, endpoint, payload, btn, wait_txt, done_cb):
         btn.config(text=wait_txt, state="disabled")
@@ -483,15 +548,22 @@ class KnowledgeDesktopHub(tk.Tk):
             ).pack(side="left")
 
     def render_cards(self):
+        if self._batch_job:
+            self.after_cancel(self._batch_job)
+            self._batch_job = None
+
         cw = self.cv.winfo_width()
         if cw < 120:
-            cw = 940
+            cw = 920
         is_wide = cw >= 880
         gal_cols = max(1, min(5, (cw - 32) // 210))
-        self._last_layout_bucket = ("wide" if is_wide else "narrow", gal_cols)
+        self._last_mode = "wide" if is_wide else "narrow"
+        self._last_gal_cols = gal_cols
 
         self._update_tab_counts(cw + 38)
         self._photo_refs.clear()
+        self._card_Layouts.clear()
+        self._gal_grids.clear()
         for w in self.inner.winfo_children():
             w.destroy()
 
@@ -500,198 +572,219 @@ class KnowledgeDesktopHub(tk.Tk):
             return
 
         q = self.search_var.get().strip().lower()
-        lessons = list(reversed(self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])))
-        for les in lessons:
-            blob = f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
-            if q and q not in blob:
-                continue
+        all_lessons = list(reversed(self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])))
+        filtered = [
+            les for les in all_lessons
+            if not q or q in f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
+        ]
 
-            seq = les["seq"]
-            key = (self.cur_track, seq)
-            card = tk.Frame(self.inner, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
-            card.pack(fill="x", pady=6, padx=2)
+        # Render first 3 visible cards immediately for <0.2s instant window paint, then stream remaining cards smoothly!
+        self._render_lesson_slice(filtered, 0, 3)
 
-            top_row = tk.Frame(card, bg="#161b22")
-            top_row.pack(fill="x", padx=12, pady=(10, 4))
+    def _render_lesson_slice(self, lessons, start_idx, batch_size):
+        cw = self.cv.winfo_width()
+        if cw < 120:
+            cw = 920
+        is_wide = (self._last_mode == "wide")
+        gal_cols = self._last_gal_cols or max(1, min(5, (cw - 32) // 210))
 
-            img_url = les.get("image_url", "")
+        end_idx = min(len(lessons), start_idx + batch_size)
+        for idx in range(start_idx, end_idx):
+            self._build_single_card(lessons[idx], is_wide, gal_cols)
 
-            def _mount_plate(parent, side_mode, u=img_url, l_obj=les, s_num=seq):
-                if not u:
-                    return
-                p_card = tk.Frame(parent, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
-                if side_mode:
-                    p_card.pack(side="right", anchor="n", padx=(12, 0))
+        if end_idx < len(lessons):
+            self._batch_job = self.after(12, lambda: self._render_lesson_slice(lessons, end_idx, 4))
+
+    def _build_single_card(self, les, is_wide, gal_cols):
+        seq = les["seq"]
+        key = (self.cur_track, seq)
+        card = tk.Frame(self.inner, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
+        card.pack(fill="x", pady=6, padx=2)
+
+        top_row = tk.Frame(card, bg="#161b22")
+        top_row.pack(fill="x", padx=12, pady=(10, 4))
+
+        left_col = tk.Frame(top_row, bg="#161b22")
+
+        img_url = les.get("image_url", "")
+        p_card = None
+        if img_url:
+            p_card = tk.Frame(top_row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
+            img_lbl = tk.Label(p_card, text="⏳ Loading Plate...", fg="#8b949e", bg="#090d13", font=("Monospace", 8), width=29, height=10, cursor="hand2")
+            img_lbl.pack()
+            starred = self._is_starred(img_url)
+            b_bar = tk.Frame(p_card, bg="#161b22")
+            b_bar.pack(fill="x")
+            cap_txt = (les.get("image_caption") or les.get("title", ""))[:30]
+            cap_lbl = tk.Label(b_bar, text=f"📸 {cap_txt} 🔍", fg="#8b949e", bg="#161b22", font=("Monospace", 7, "bold"), padx=5, pady=3, cursor="hand2")
+            cap_lbl.pack(side="left")
+            tk.Button(
+                b_bar, text="★" if starred else "☆",
+                fg="#fbbf24" if starred else "#8b949e", bg="#161b22", relief="flat", font=("Monospace", 9, "bold"), padx=4, pady=0, cursor="hand2",
+                command=lambda tr=self.cur_track, sq=seq, url_p=img_url, cp=les.get("image_caption") or les.get("title", ""): self._toggle_star(tr, sq, url_p, cp, "", "Lead Plate")
+            ).pack(side="right")
+            for w_click in (img_lbl, cap_lbl):
+                w_click.bind("<Button-1>", lambda e, url_p=img_url, c=les.get("image_caption") or les.get("title", ""): self._open_lightbox(url_p, c))
+            self._load_thumb_async(img_lbl, img_url)
+
+        if is_wide and p_card:
+            p_card.pack(in_=top_row, side="right", anchor="n", padx=(12, 0))
+        left_col.pack(in_=top_row, side="left", fill="both", expand=True)
+
+        tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
+        meta_txt = f"#{seq:03d} • {les.get('date','')}   [ {str(les.get('model','ARCHIVE')).upper()} ]   {tags_str}".strip()
+        self._wlabel(left_col, text=meta_txt, fg="#58a6ff", bg="#161b22", font=("Monospace", 8, "bold"), anchor="w", justify="left", pad=14).pack(fill="x")
+        self._wlabel(left_col, text=les.get("title", ""), fg="#f0f6fc", bg="#161b22", font=("Monospace", 11, "bold"), anchor="w", justify="left", pad=14).pack(fill="x", pady=(5, 4))
+        self._wlabel(left_col, text=les.get("core", ""), fg="#c9d1d9", bg="#161b22", font=("Monospace", 9), anchor="w", justify="left", pad=14).pack(fill="x", pady=(0, 6))
+
+        maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
+        maker_box.pack(fill="x", pady=(2, 4))
+        self._wlabel(
+            maker_box, text=f"🧵 Studio Craft Lens: {les.get('maker', '')}",
+            fg="#fbbf24", bg="#0f141b", font=("Monospace", 8), anchor="w", justify="left", padx=8, pady=6, pad=24
+        ).pack(fill="x")
+
+        if (not is_wide) and p_card:
+            p_card.pack(in_=left_col, anchor="w", pady=(8, 2))
+
+        act_wrap = tk.Frame(card, bg="#161b22")
+        act_wrap.pack(fill="x", padx=12, pady=(4, 8))
+        act_r1 = tk.Frame(act_wrap, bg="#161b22")
+        act_r1.pack(fill="x")
+        act_r2 = tk.Frame(act_wrap, bg="#161b22")
+
+        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 120)
+        dd_txt = ("📖 Hide Deep Dive" if key in self.open_dd else "📖 Read Deep Dive") if has_dd else "📖 Deep Dive"
+        dd_btn = tk.Button(act_r1, text=dd_txt, bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        dd_btn.pack(side="left", padx=(0, 6))
+
+        def _on_dd(k=key, t=self.cur_track, s=seq, b=dd_btn, ready=has_dd):
+            if ready:
+                if k in self.open_dd:
+                    self.open_dd.remove(k)
                 else:
-                    p_card.pack(anchor="w", pady=(8, 2))
-                img_lbl = tk.Label(p_card, text="⏳ Loading Plate...", fg="#8b949e", bg="#090d13", font=("Monospace", 8), width=29, height=10, cursor="hand2")
-                img_lbl.pack()
-                starred = self._is_starred(u)
-                b_bar = tk.Frame(p_card, bg="#161b22")
-                b_bar.pack(fill="x")
-                cap_txt = (l_obj.get("image_caption") or l_obj.get("title", ""))[:30]
-                cap_lbl = tk.Label(b_bar, text=f"📸 {cap_txt} 🔍", fg="#8b949e", bg="#161b22", font=("Monospace", 7, "bold"), padx=5, pady=3, cursor="hand2")
-                cap_lbl.pack(side="left")
+                    self.open_dd.add(k)
+                self.render_cards()
+            else:
+                self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "⏳ Writing...", lambda: (self.open_dd.add(k), self.render_cards()))
+        dd_btn.config(command=_on_dd)
+
+        gal_list = les.get("gallery") or []
+        has_gal = len(gal_list) >= 1
+        gal_txt = (f"🖼️ Hide Plates ({len(gal_list)})" if key in self.open_gal else f"🖼️ Plates ({len(gal_list)})") if has_gal else "🖼️ Curate Plates"
+        gal_btn = tk.Button(act_r1, text=gal_txt, bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        gal_btn.pack(side="left", padx=(0, 8))
+
+        def _on_gal(k=key, t=self.cur_track, s=seq, b=gal_btn, ready=has_gal):
+            if ready:
+                if k in self.open_gal:
+                    self.open_gal.remove(k)
+                else:
+                    self.open_gal.add(k)
+                self.render_cards()
+            else:
+                self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "⏳ Curating...", lambda: (self.open_gal.add(k), self.render_cards()))
+        gal_btn.config(command=_on_gal)
+
+        ask_btn = tk.Button(act_wrap, text="💬 Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+        ask_ent = tk.Entry(
+            act_wrap, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat",
+            highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=16
+        )
+        if is_wide:
+            ask_ent.pack(in_=act_r1, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
+            ask_btn.pack(in_=act_r1, side="right")
+        else:
+            act_r2.pack(fill="x", pady=(5, 0))
+            ask_ent.pack(in_=act_r2, side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
+            ask_btn.pack(in_=act_r2, side="right")
+
+        self._card_Layouts.append({
+            "p_card": p_card, "top_row": top_row, "left_col": left_col,
+            "act_r1": act_r1, "act_r2": act_r2, "ask_ent": ask_ent, "ask_btn": ask_btn
+        })
+
+        def _on_ask(t=self.cur_track, s=seq, ent=ask_ent, b=ask_btn):
+            q_str = ent.get().strip()
+            if not q_str:
+                return
+            self._call_cloud_action("/api/ask", {"track": t, "seq": s, "question": q_str}, b, "⏳ Asking...", self.render_cards)
+        ask_btn.config(command=_on_ask)
+        ask_ent.bind("<Return>", lambda e, fn=_on_ask: fn())
+
+        if key in self.open_dd and les.get("deep_dive"):
+            dd_frame = tk.Frame(card, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
+            dd_frame.pack(fill="x", padx=12, pady=(0, 8))
+            tk.Label(dd_frame, text="📖 DEEP DIVE MONOGRAPH", fg="#58a6ff", bg="#090d13", font=("Monospace", 8, "bold"), anchor="w", padx=10, pady=6).pack(fill="x")
+            self._wlabel(dd_frame, text=les["deep_dive"], fg="#d0d7de", bg="#090d13", font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6, pad=26).pack(fill="x")
+
+        if key in self.open_gal:
+            g_strip = tk.Frame(card, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
+            g_strip.pack(fill="x", padx=12, pady=(0, 8))
+
+            grid_f = tk.Frame(g_strip, bg="#090d13")
+            grid_f.pack(fill="x", padx=8, pady=(8, 4))
+            cell_widgets = []
+            for idx_g, g_item in enumerate(gal_list):
+                r_i, c_i = divmod(idx_g, gal_cols)
+                gu = g_item.get("url", "")
+                gc = f"{g_item.get('caption', '')} — {g_item.get('study_note', '')}".strip(" —")
+                gs = g_item.get("source", "Archive")
+                g_star = self._is_starred(gu)
+                cell = tk.Frame(grid_f, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
+                cell.grid(row=r_i, column=c_i, padx=4, pady=4, sticky="n")
+                cell_widgets.append(cell)
+
+                hdr_c = tk.Frame(cell, bg="#161b22")
+                hdr_c.pack(fill="x")
                 tk.Button(
-                    b_bar, text="★" if starred else "☆",
-                    fg="#fbbf24" if starred else "#8b949e", bg="#161b22", relief="flat", font=("Monospace", 9, "bold"), padx=4, pady=0, cursor="hand2",
-                    command=lambda tr=self.cur_track, sq=s_num, url_p=u, cp=l_obj.get("image_caption") or l_obj.get("title", ""): self._toggle_star(tr, sq, url_p, cp, "", "Lead Plate")
+                    hdr_c, text="×", fg="#f85149", bg="#161b22", activebackground="#f85149", activeforeground="#fff",
+                    relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2",
+                    command=lambda tr=self.cur_track, sq=seq, u=gu: self._delete_plate(tr, sq, u)
+                ).pack(side="left")
+                tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("Monospace", 6)).pack(side="left", padx=2)
+                tk.Button(
+                    hdr_c, text="★" if g_star else "☆", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22",
+                    relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2",
+                    command=lambda tr=self.cur_track, sq=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs: self._toggle_star(tr, sq, u, cp, sn, sr)
                 ).pack(side="right")
-                for w_click in (img_lbl, cap_lbl):
-                    w_click.bind("<Button-1>", lambda e, url_p=u, c=l_obj.get("image_caption") or l_obj.get("title", ""): self._open_lightbox(url_p, c))
-                self._load_thumb_async(img_lbl, u)
 
-            if is_wide:
-                _mount_plate(top_row, True)
+                gl = tk.Label(cell, text="⏳", fg="#8b949e", bg="#090d13", width=23, height=7, cursor="hand2")
+                gl.pack()
+                cl = tk.Label(cell, text=(g_item.get("caption") or "Plate")[:24] + " 🔍", fg="#c9d1d9", bg="#161b22", font=("Monospace", 7), pady=3, cursor="hand2")
+                cl.pack(fill="x")
+                for wg in (gl, cl):
+                    wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
+                self._load_thumb_async(gl, gu, size=(190, 126))
+            self._gal_grids.append(cell_widgets)
 
-            left_col = tk.Frame(top_row, bg="#161b22")
-            left_col.pack(side="left", fill="both", expand=True)
-
-            tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
-            meta_txt = f"#{seq:03d} • {les.get('date','')}   [ {str(les.get('model','ARCHIVE')).upper()} ]   {tags_str}".strip()
-            self._wlabel(left_col, text=meta_txt, fg="#58a6ff", bg="#161b22", font=("Monospace", 8, "bold"), anchor="w", justify="left", pad=14).pack(fill="x")
-
-            self._wlabel(left_col, text=les.get("title", ""), fg="#f0f6fc", bg="#161b22", font=("Monospace", 11, "bold"), anchor="w", justify="left", pad=14).pack(fill="x", pady=(5, 4))
-
-            self._wlabel(left_col, text=les.get("core", ""), fg="#c9d1d9", bg="#161b22", font=("Monospace", 9), anchor="w", justify="left", pad=14).pack(fill="x", pady=(0, 6))
-
-            maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
-            maker_box.pack(fill="x", pady=(2, 4))
-            self._wlabel(
-                maker_box, text=f"🧵 Studio Craft Lens: {les.get('maker', '')}",
-                fg="#fbbf24", bg="#0f141b", font=("Monospace", 8), anchor="w", justify="left", padx=8, pady=6, pad=24
-            ).pack(fill="x")
-
-            if not is_wide:
-                _mount_plate(left_col, False)
-
-            act_wrap = tk.Frame(card, bg="#161b22")
-            act_wrap.pack(fill="x", padx=12, pady=(4, 8))
-            act_r1 = tk.Frame(act_wrap, bg="#161b22")
-            act_r1.pack(fill="x")
-            act_r2 = act_r1 if is_wide else tk.Frame(act_wrap, bg="#161b22")
-            if not is_wide:
-                act_r2.pack(fill="x", pady=(5, 0))
-
-            has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 120)
-            dd_txt = ("📖 Hide Deep Dive" if key in self.open_dd else "📖 Read Deep Dive") if has_dd else "📖 Deep Dive"
-            dd_btn = tk.Button(act_r1, text=dd_txt, bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
-            dd_btn.pack(side="left", padx=(0, 6))
-
-            def _on_dd(k=key, t=self.cur_track, s=seq, b=dd_btn, ready=has_dd):
-                if ready:
-                    if k in self.open_dd:
-                        self.open_dd.remove(k)
-                    else:
-                        self.open_dd.add(k)
-                    self.render_cards()
-                else:
-                    self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "⏳ Writing...", lambda: (self.open_dd.add(k), self.render_cards()))
-            dd_btn.config(command=_on_dd)
-
-            gal_list = les.get("gallery") or []
-            has_gal = len(gal_list) >= 1
-            gal_txt = (f"🖼️ Hide Plates ({len(gal_list)})" if key in self.open_gal else f"🖼️ Plates ({len(gal_list)})") if has_gal else "🖼️ Curate Plates"
-            gal_btn = tk.Button(act_r1, text=gal_txt, bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
-            gal_btn.pack(side="left", padx=(0, 8))
-
-            def _on_gal(k=key, t=self.cur_track, s=seq, b=gal_btn, ready=has_gal):
-                if ready:
-                    if k in self.open_gal:
-                        self.open_gal.remove(k)
-                    else:
-                        self.open_gal.add(k)
-                    self.render_cards()
-                else:
-                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "⏳ Curating...", lambda: (self.open_gal.add(k), self.render_cards()))
-            gal_btn.config(command=_on_gal)
-
-            ask_btn = tk.Button(act_r2, text="💬 Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
-            ask_ent = tk.Entry(
-                act_r2, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat",
+            cur_bar = tk.Frame(g_strip, bg="#090d13")
+            cur_bar.pack(fill="x", padx=10, pady=(4, 8))
+            c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
+            c_ent = tk.Entry(
+                cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat",
                 highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=16
             )
-            ask_ent.pack(side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
-            ask_btn.pack(side="right")
+            c_ent.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=3)
+            c_btn.pack(side="right")
 
-            def _on_ask(t=self.cur_track, s=seq, ent=ask_ent, b=ask_btn):
-                q_str = ent.get().strip()
-                if not q_str:
-                    return
-                self._call_cloud_action("/api/ask", {"track": t, "seq": s, "question": q_str}, b, "⏳ Asking...", self.render_cards)
-            ask_btn.config(command=_on_ask)
-            ask_ent.bind("<Return>", lambda e, fn=_on_ask: fn())
+            def _on_more_gal(t=self.cur_track, s=seq, ent=c_ent, b=c_btn, k=key):
+                cq = ent.get().strip()
+                self._call_cloud_action("/api/gallery", {"track": t, "seq": s, "append": True, "query": cq}, b, "⏳ Routing...", lambda: (self.open_gal.add(k), self.render_cards()))
+            c_btn.config(command=_on_more_gal)
+            c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
 
-            if key in self.open_dd and les.get("deep_dive"):
-                dd_frame = tk.Frame(card, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
-                dd_frame.pack(fill="x", padx=12, pady=(0, 8))
-                tk.Label(dd_frame, text="📖 DEEP DIVE MONOGRAPH", fg="#58a6ff", bg="#090d13", font=("Monospace", 8, "bold"), anchor="w", padx=10, pady=6).pack(fill="x")
-                self._wlabel(dd_frame, text=les["deep_dive"], fg="#d0d7de", bg="#090d13", font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6, pad=26).pack(fill="x")
-
-            if key in self.open_gal:
-                g_strip = tk.Frame(card, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
-                g_strip.pack(fill="x", padx=12, pady=(0, 8))
-
-                grid_f = tk.Frame(g_strip, bg="#090d13")
-                grid_f.pack(fill="x", padx=8, pady=(8, 4))
-                for idx_g, g_item in enumerate(gal_list):
-                    r_i, c_i = divmod(idx_g, gal_cols)
-                    gu = g_item.get("url", "")
-                    gc = f"{g_item.get('caption', '')} — {g_item.get('study_note', '')}".strip(" —")
-                    gs = g_item.get("source", "Archive")
-                    g_star = self._is_starred(gu)
-                    cell = tk.Frame(grid_f, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
-                    cell.grid(row=r_i, column=c_i, padx=4, pady=4, sticky="n")
-
-                    hdr_c = tk.Frame(cell, bg="#161b22")
-                    hdr_c.pack(fill="x")
-                    tk.Button(
-                        hdr_c, text="×", fg="#f85149", bg="#161b22", activebackground="#f85149", activeforeground="#fff",
-                        relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2",
-                        command=lambda tr=self.cur_track, sq=seq, u=gu: self._delete_plate(tr, sq, u)
-                    ).pack(side="left")
-                    tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("Monospace", 6)).pack(side="left", padx=2)
-                    tk.Button(
-                        hdr_c, text="★" if g_star else "☆", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22",
-                        relief="flat", font=("Monospace", 9, "bold"), padx=5, pady=0, cursor="hand2",
-                        command=lambda tr=self.cur_track, sq=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs: self._toggle_star(tr, sq, u, cp, sn, sr)
-                    ).pack(side="right")
-
-                    gl = tk.Label(cell, text="⏳", fg="#8b949e", bg="#090d13", width=23, height=7, cursor="hand2")
-                    gl.pack()
-                    cl = tk.Label(cell, text=(g_item.get("caption") or "Plate")[:24] + " 🔍", fg="#c9d1d9", bg="#161b22", font=("Monospace", 7), pady=3, cursor="hand2")
-                    cl.pack(fill="x")
-                    for wg in (gl, cl):
-                        wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
-                    self._load_thumb_async(gl, gu, size=(190, 126))
-
-                cur_bar = tk.Frame(g_strip, bg="#090d13")
-                cur_bar.pack(fill="x", padx=10, pady=(4, 8))
-                c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2")
-                c_ent = tk.Entry(
-                    cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat",
-                    highlightbackground="#30363d", highlightthickness=1, font=("Monospace", 8), width=16
-                )
-                c_ent.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=3)
-                c_btn.pack(side="right")
-
-                def _on_more_gal(t=self.cur_track, s=seq, ent=c_ent, b=c_btn, k=key):
-                    cq = ent.get().strip()
-                    self._call_cloud_action("/api/gallery", {"track": t, "seq": s, "append": True, "query": cq}, b, "⏳ Routing...", lambda: (self.open_gal.add(k), self.render_cards()))
-                c_btn.config(command=_on_more_gal)
-                c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
-
-            for qa in les.get("qa_log") or []:
-                qa_box = tk.Frame(card, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
-                qa_box.pack(fill="x", padx=12, pady=(0, 6))
-                self._wlabel(
-                    qa_box, text=f"💬 Q: {qa.get('q','')}   [ {qa.get('model','GEMINI')} • {qa.get('ts','')} ]",
-                    fg="#d2a8ff", bg="#0c131d", font=("Monospace", 8, "bold"), anchor="w", justify="left", padx=10, pady=4, pad=26
-                ).pack(fill="x")
-                self._wlabel(
-                    qa_box, text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d",
-                    font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6, pad=26
-                ).pack(fill="x")
+        for qa in les.get("qa_log") or []:
+            qa_box = tk.Frame(card, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
+            qa_box.pack(fill="x", padx=12, pady=(0, 6))
+            self._wlabel(
+                qa_box, text=f"💬 Q: {qa.get('q','')}   [ {qa.get('model','GEMINI')} • {qa.get('ts','')} ]",
+                fg="#d2a8ff", bg="#0c131d", font=("Monospace", 8, "bold"), anchor="w", justify="left", padx=10, pady=4, pad=26
+            ).pack(fill="x")
+            self._wlabel(
+                qa_box, text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d",
+                font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6, pad=26
+            ).pack(fill="x")
 
 
 if __name__ == "__main__":
