@@ -63,7 +63,7 @@ def fetch_cached_pil(url, max_size):
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
         super().__init__(className="knowledge-hub")
-        self.title("Knowledge Command Center // v3.4 Zero-Reload Persistent Tab Deck")
+        self.title("Knowledge Command Center // v3.5 Sub-Second Priority Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
@@ -82,7 +82,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self._track_frames = {}
         self._track_built = {"art": False, "universe": False, "favorites": False}
         self._track_scroll = {"art": 0.0, "universe": 0.0, "favorites": 0.0}
-        self._img_queue = queue.Queue()
+        self._img_queue = queue.LifoQueue()
         self._last_cw = 920
         self._last_mode = "wide"
         self._last_gal_cols = 4
@@ -206,18 +206,22 @@ class KnowledgeDesktopHub(tk.Tk):
         self._search_timer = self.after(180, self.render_cards)
 
     def _background_card_drip(self):
-        """Silently pre-builds off-screen Art AND Physics cards while idle so switching tabs is 0ms!"""
         self._drip_job = None
         if self._closing or not self._pending_lessons:
+            self.after_idle(lambda: self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100)))
             return
-        t_key, les = self._pending_lessons.pop(0)
         is_wide = (self._last_mode == "wide")
-        try:
-            self._build_single_card( self._norm_lesson(les), is_wide, self._last_gal_cols, track_override=t_key)
-        except Exception as e:
-            print("[Drip Build Err]", e, flush=True)
+        batch = self._pending_lessons[:3]
+        self._pending_lessons = self._pending_lessons[3:]
+        for t_key, les in batch:
+            try:
+                self._build_single_card(self._norm_lesson(les), is_wide, self._last_gal_cols, track_override=t_key)
+            except Exception as e:
+                print("[Drip Build Err]", e, flush=True)
         if self._pending_lessons:
-            self._drip_job = self.after(35, self._background_card_drip)
+            self._drip_job = self.after(15, self._background_card_drip)
+        else:
+            self.after_idle(lambda: self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100)))
     def _image_worker_loop(self):
         while not self._closing:
             try:
@@ -434,7 +438,9 @@ class KnowledgeDesktopHub(tk.Tk):
                     )
                     st = j.get("scheduler", {}).get("status", "ONLINE")
                     lc = j.get("scheduler", {}).get("last_check", "--")
-                    self.after(0, lambda s=st, l=lc, rr=(old_lesson_counts != new_lesson_counts): self._apply_sync_hdr(s, l, rr))
+                    # Never nuke built decks on routine cloud sync if counts match or decks are already populated!
+                    need_rr = (old_lesson_counts != new_lesson_counts) and not all(self._track_built.get(k) for k in ("art", "universe"))
+                    self.after(0, lambda s=st, l=lc, rr=need_rr: self._apply_sync_hdr(s, l, rr))
             except Exception:
                 pass
             time.sleep(35)
@@ -566,7 +572,6 @@ class KnowledgeDesktopHub(tk.Tk):
             self.btn_fav.config(text=f"⭐ FAVS ({f_n})")
 
     def switch_track(self, t):
-        # Save current scroll position before switching
         try:
             self._track_scroll[self.cur_track] = self.cv.yview()[0]
         except Exception:
@@ -577,27 +582,26 @@ class KnowledgeDesktopHub(tk.Tk):
         self.btn_uni.config(bg="#58a6ff" if t == "universe" else "#21262d", fg="#090d13" if t == "universe" else "#c9d1d9")
         self.btn_fav.config(bg="#fbbf24" if t == "favorites" else "#21262d", fg="#090d13" if t == "favorites" else "#fbbf24")
 
-        # Hide all track decks, then immediately map the selected deck in 0ms!
         for tk_name, frm in self._track_frames.items():
             frm.pack_forget()
-        active_frm = self._track_frames[t]
-        active_frm.pack(fill="both", expand=True)
+        self._track_frames[t].pack(fill="both", expand=True)
 
         q = self.search_var.get().strip()
         if not self._track_built.get(t) or t == "favorites" or q:
             self.render_cards(target_track=t)
-        else:
-            # If user clicked a tab before background drip finished its top 3 cards, prioritize its top 3 right now!
-            urgent = [item for item in self._pending_lessons if item[0] == t][:3]
-            if urgent:
-                is_wide = (self._last_mode == "wide")
-                for _, les in urgent:
-                    self._pending_lessons.remove((t, les))
-                    self._build_single_card(self._norm_lesson(les), is_wide, self._last_gal_cols, track_override=t)
+            return
 
-        self.update_idletasks()
-        self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100))
-        self.cv.yview_moveto(self._track_scroll.get(t, 0.0))
+        # Re-prioritize any pending cards for `t` to the front of _pending_lessons
+        if self._pending_lessons:
+            t_first = [x for x in self._pending_lessons if x[0] == t]
+            t_rest = [x for x in self._pending_lessons if x[0] != t]
+            self._pending_lessons = t_first + t_rest
+
+        target_y = self._track_scroll.get(t, 0.0)
+        self.after_idle(lambda: (
+            self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100)),
+            self.cv.yview_moveto(target_y)
+        ))
     def _jump_to_lesson(self, track, seq):
         self.search_var.set("")
         self.cur_track = track
@@ -765,19 +769,20 @@ class KnowledgeDesktopHub(tk.Tk):
                 w.destroy()
             self._render_favorites(cw)
             self._track_built["favorites"] = True
-            self.update_idletasks()
-            self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100))
+            self.after_idle(lambda: self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100)))
             return
 
-        # Rebuild active track & pre-queue the other track in background drip so switching is 0ms!
         q = self.search_var.get().strip().lower()
         self._pending_lessons.clear()
 
-        for tk_name in (active_t, "universe" if active_t == "art" else "art"):
+        other_t = "universe" if active_t == "art" else "art"
+        rest_queues = {"art": [], "universe": []}
+
+        # Build top 4 of active_t AND top 4 of other_t right now (takes <25ms total without update_idletasks!)
+        for tk_name in (other_t, active_t):
             frm = self._track_frames[tk_name]
             for w in frm.winfo_children():
                 w.destroy()
-            # Clear old registry entries for this track
             for k in [k for k in self._card_registry if k[0] == tk_name]:
                 del self._card_registry[k]
 
@@ -787,27 +792,28 @@ class KnowledgeDesktopHub(tk.Tk):
                 les for les in all_lessons
                 if not q or q in f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
             ]
-            if tk_name == active_t:
-                initial = filtered[:3]
-                rest = filtered[3:]
-                for les in initial:
-                    try:
-                        self._build_single_card(les, is_wide, gal_cols, track_override=tk_name)
-                    except Exception as e:
-                        print("[Card Build Err]", e, flush=True)
-                for les in rest:
-                    self._pending_lessons.append((tk_name, les))
-            else:
-                for les in filtered:
-                    self._pending_lessons.append((tk_name, les))
+            # Note: Because _img_queue is LIFO, building other_t first and active_t second puts active_t's top 4 images at the VERY TOP of the queue!
+            for les in filtered[:4]:
+                try:
+                    self._build_single_card(les, is_wide, gal_cols, track_override=tk_name)
+                except Exception as e:
+                    print("[Card Build Err]", e, flush=True)
+            rest_queues[tk_name] = filtered[4:]
             self._track_built[tk_name] = (not q)
 
-        self.update_idletasks()
-        self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100))
-        self.cv.yview_moveto(0.0)
+        # Queue remaining cards (active track first, then other track)
+        for les in rest_queues[active_t]:
+            self._pending_lessons.append((active_t, les))
+        for les in rest_queues[other_t]:
+            self._pending_lessons.append((other_t, les))
+
+        self.after_idle(lambda: (
+            self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100)),
+            self.cv.yview_moveto(0.0)
+        ))
 
         if self._pending_lessons:
-            self._drip_job = self.after(35, self._background_card_drip)
+            self._drip_job = self.after(15, self._background_card_drip)
     def _sync_drawer_order(self, reg):
         """Packs ONLY open drawers directly onto the card and completely unmaps closed ones so ZERO blank space remains (#3)!"""
         for k_frame in ("dd_frame", "g_strip", "qa_holder"):
@@ -825,9 +831,9 @@ class KnowledgeDesktopHub(tk.Tk):
         if reg.get("has_qa") and reg.get("qa_holder") and reg["qa_holder"].winfo_exists():
             reg["qa_holder"].pack(fill="x")
 
-        # Force Tkinter canvas scrollregion to recalculate immediately when a drawer collapses
-        self.update_idletasks()
-        self.cv.configure(scrollregion=self.cv.bbox("all"))
+        # Only recalculate scrollregion on explicit user click, NEVER during card build!
+        if getattr(self, "_user_toggling_drawer", False):
+            self.after_idle(lambda: self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100)))
 
     def _toggle_dd_drawer(self, key, force_rebuild=False):
         reg = self._card_registry.get(key)
@@ -1108,7 +1114,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     self.open_dd.remove(k)
                 else:
                     self.open_dd.add(k)
-                self._toggle_dd_drawer(k, force_rebuild=False)
+                (setattr(self, '_user_toggling_drawer', True), self._toggle_dd_drawer(k, force_rebuild=False), setattr(self, '_user_toggling_drawer', False))
             else:
                 self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "⏳ Writing...", lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True)))
         dd_btn.config(command=_on_dd)
@@ -1121,7 +1127,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     self.open_gal.remove(k)
                 else:
                     self.open_gal.add(k)
-                self._toggle_gal_drawer(k, force_rebuild=False)
+                (setattr(self, '_user_toggling_drawer', True), self._toggle_gal_drawer(k, force_rebuild=False), setattr(self, '_user_toggling_drawer', False))
             else:
                 self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "⏳ Curating...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
         gal_btn.config(command=_on_gal)
@@ -1135,9 +1141,20 @@ class KnowledgeDesktopHub(tk.Tk):
         ask_btn.config(command=_on_ask)
         ask_ent.bind("<Return>", lambda e, fn=_on_ask: fn())
 
-        self._toggle_dd_drawer(key, force_rebuild=False)
-        self._toggle_gal_drawer(key, force_rebuild=False)
-        self._rebuild_qa_drawer(key)
+        # Fast-path 0ms button initialization (no drawer DOM or layout queries unless open!)
+        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
+        ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
+        dd_btn.config(text=(f"📖 Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "📖 Read Deep Dive") if has_dd else "📖 Generate Deep Dive")
+
+        gal_list = les.get("gallery") or []
+        gal_btn.config(text=f"🖼️ Plates ({len(gal_list)})" if gal_list else "🖼️ Curate Plates")
+
+        if key in self.open_dd:
+            self._toggle_dd_drawer(key, force_rebuild=False)
+        if key in self.open_gal:
+            self._toggle_gal_drawer(key, force_rebuild=False)
+        if les.get("qa_log"):
+            self._rebuild_qa_drawer(key)
 
 
 if __name__ == "__main__":
