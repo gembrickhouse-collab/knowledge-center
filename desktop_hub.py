@@ -594,28 +594,42 @@ class KnowledgeDesktopHub(tk.Tk):
         btn.config(text=wait_txt, state="disabled")
 
         def _worker():
-            try:
-                u = get_cloud_url() + endpoint
-                req = urllib.request.Request(
-                    u, data=json.dumps(payload).encode(),
-                    headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST"
-                )
-                j = json.loads(urllib.request.urlopen(req, timeout=65).read().decode())
-                if j.get("ok") and j.get("lesson"):
-                    arr = self.data["tracks"][payload["track"]]["lessons"]
-                    for idx, item in enumerate(arr):
-                        if int(item["seq"]) == int(payload["seq"]):
-                            arr[idx] = j["lesson"]
-                            break
-                    if j.get("capacity"):
-                        self.capacity = j["capacity"]
-                    self._save_local()
-                    self.after(0, done_cb)
-                else:
-                    self.after(0, lambda: btn.config(text="⚠️ Busy - Retry", state="normal"))
-            except Exception:
-                self.after(0, lambda: btn.config(text="⚠️ Wake & Retry", state="normal"))
+            last_err = ""
+            for attempt in range(2):
+                try:
+                    u = get_cloud_url() + endpoint
+                    req = urllib.request.Request(
+                        u, data=json.dumps(payload).encode(),
+                        headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST"
+                    )
+                    j = json.loads(urllib.request.urlopen(req, timeout=95).read().decode())
+                    if j.get("ok") and j.get("lesson"):
+                        arr = self.data["tracks"][payload["track"]]["lessons"]
+                        for idx, item in enumerate(arr):
+                            if int(item["seq"]) == int(payload["seq"]):
+                                arr[idx] = j["lesson"]
+                                break
+                        if j.get("capacity"):
+                            self.capacity = j["capacity"]
+                        self._save_local()
+                        self.after(0, lambda: (self._apply_sync_hdr(self.sched_status, "Synced", False), done_cb()))
+                        return
+                    last_err = j.get("error", "Busy")
+                except urllib.error.HTTPError as he:
+                    try:
+                        err_b = json.loads(he.read().decode())
+                        last_err = err_b.get("error", f"HTTP {he.code}")
+                    except Exception:
+                        last_err = f"HTTP {he.code}"
+                except Exception as e:
+                    last_err = str(e)
+                if attempt == 0:
+                    self.after(0, lambda: btn.config(text="⏳ Retrying...") if btn.winfo_exists() else None)
+                    time.sleep(2)
+            print(f"[Cloud Action Warn {endpoint}] {last_err}", flush=True)
+            self.after(0, lambda: btn.config(text="⚠️ Tap to Retry", state="normal") if btn.winfo_exists() else None)
         threading.Thread(target=_worker, daemon=True).start()
+
 
     def _render_favorites(self, cw):
         favs = self.data.get("favorites") or []

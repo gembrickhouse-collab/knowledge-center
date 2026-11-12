@@ -85,6 +85,26 @@ def _commit_to_github(commit_msg):
         return False
 
 
+def _parse_lenient_json(raw_txt):
+    """Parses Gemini JSON reliably even if the model puts raw newlines or markdown fences inside long monograph strings."""
+    t = raw_txt.strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```(?:json)?\s*", "", t)
+        t = re.sub(r"\s*```$", "", t).strip()
+    try:
+        return json.loads(t, strict=False)
+    except Exception:
+        # Extract first {...} block and parse with strict=False (allows literal newlines/tabs inside strings!)
+        m = re.search(r"\{.*\}", t, flags=re.S)
+        if m:
+            try:
+                return json.loads(m.group(0), strict=False)
+            except Exception:
+                cleaned = re.sub(r"\r?\n", r"\\n", m.group(0))
+                return json.loads(cleaned, strict=False)
+        raise
+
+
 def call_gemini_json(prompt, expect_json=True):
     key = os.getenv("GEMINI_API_KEY", "").strip()
     if not key:
@@ -92,25 +112,25 @@ def call_gemini_json(prompt, expect_json=True):
     last_err = None
     for model_id, badge in MODELS_CASCADE:
         try:
-            u = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={key}"
-            cfg = {}
+            u = f"[https://generativelanguage.googleapis.com/v1beta/models/](https://generativelanguage.googleapis.com/v1beta/models/){model_id}:generateContent?key={key}"
+            cfg = {"temperature": 0.65}
             if expect_json:
                 cfg["responseMimeType"] = "application/json"
-            body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": cfg}).encode()
-            req = urllib.request.Request(u, data=body, headers={"Content-Type": "application/json"}, method="POST")
-            resp = json.loads(urllib.request.urlopen(req, timeout=75).read().decode())
+            body = json.dumps({
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": cfg,
+            }).encode()
+            req = urllib.request.Request(u, data=body, headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+            resp = json.loads(urllib.request.urlopen(req, timeout=35).read().decode())
             txt = resp["candidates"][0]["content"]["parts"][0]["text"].strip()
             if expect_json:
-                if txt.startswith("```"):
-                    txt = txt.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-                return json.loads(txt), badge
+                return _parse_lenient_json(txt), badge
             return txt, badge
         except Exception as e:
-            print(f'[Gemini Try {model_id}] {e}', flush=True)
-            last_err = f'{model_id}: {e}'
-            time.sleep(2)
+            last_err = f"{model_id}: {e}"
             continue
-    raise RuntimeError(f"Gemini cascade exhausted: {last_err}")
+    raise RuntimeError(f"Gemini cascade exhausted ({last_err})")
+
 
 
 def _http_json(url):
