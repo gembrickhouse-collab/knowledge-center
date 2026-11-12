@@ -1,6 +1,7 @@
 import os, sys, io, json, time, queue, hashlib, threading, webbrowser, urllib.request, urllib.error
 _T0 = time.perf_counter()
 import tkinter as tk
+from tkinter import simpledialog
 from PIL import Image, ImageTk, ImageOps
 
 def _log_t(msg):
@@ -11,14 +12,13 @@ CURRICULUM_FILE = os.path.join(BASE_DIR, "curriculum.json")
 CLOUD_URL_FILE = os.path.join(BASE_DIR, "cloud_url.txt")
 IMG_CACHE_DIR = os.path.expanduser("~/.cache/knowledge_hub_plates")
 os.makedirs(IMG_CACHE_DIR, exist_ok=True)
-_UA = "KnowledgeDesktopHub/4.0 (Ubuntu; educational)"
+_UA = "KnowledgeDesktopHub/4.4 (Ubuntu; educational)"
 
 _MEM_PIL_CACHE = {}
 _MEM_TK_CACHE = {}
 _FAILED_URLS = set()
 PAGE_SIZE = 5
 
-# Pure ASCII sanitizer for X11 labels so libXft/fontconfig NEVER triggers a 9-second glyph fallback search!
 _ASCII_MAP = str.maketrans({
     "—": "--", "–": "-", "’": "'", "‘": "'", "“": '"', "”": '"',
     "•": "|", "…": "...", "é": "e", "è": "e", "ê": "e", "ö": "o", "ü": "u"
@@ -80,23 +80,23 @@ def fetch_cached_pil(url, max_size):
         return None
 
 
-# Blank 1x1 dark placeholder image so image labels never switch between text-mode and image-mode geometry
 _BLANK_TK = None
+_BLANK_GAL_TK = None
 
 
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
-        global _BLANK_TK
+        global _BLANK_TK, _BLANK_GAL_TK
         _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
-        _log_t("tk.Tk.__init__ complete")
-        self.title("Knowledge Command Center // v4.3 Direct-Canvas 1.1s Boot Engine")
+        self.title("Knowledge Command Center // v4.4 Pure-Canvas 1.1s Engine")
         self.geometry("960x760")
-        self.minsize(440, 440)
+        self.minsize(480, 440)
         self.configure(bg="#0d1117")
         self.protocol("WM_DELETE_WINDOW", self._instant_quit)
 
         _BLANK_TK = ImageTk.PhotoImage(Image.new("RGB", (240, 170), (28, 35, 45)))
+        _BLANK_GAL_TK = ImageTk.PhotoImage(Image.new("RGB", (190, 126), (28, 35, 45)))
 
         self.cur_track = "art"
         self.page_idx = {"art": 0, "universe": 0, "favorites": 0}
@@ -105,444 +105,35 @@ class KnowledgeDesktopHub(tk.Tk):
         self.open_dd = set()
         self.open_gal = set()
         self.closed_qa = set()
-        self._wrap_labels = []
+        self._busy_btns = {}  # (track, seq, kind) -> status text
         self._img_queue = queue.LifoQueue()
         self._last_cw = 920
-        self._last_mode = "wide"
-        self._last_gal_cols = 4
         self._resize_timer = None
-        self._sr_job = None
         self._closing = False
-        self.sched_status = "Syncing Render cloud..."
+        self.sched_status = "ONLINE | 08:30 MT Auto-Drop Armed (Art + Universe + Matrix)"
+        self.search_query = ""
 
-        # Header Frame
-        self.top_hdr = tk.Frame(self, bg="#090d13", pady=8, padx=12)
-        self.top_hdr.pack(fill="x")
-
-        self.title_lbl = tk.Label(
-            self.top_hdr,
-            text="[KCC] KNOWLEDGE COMMAND CENTER // VISUAL MONOGRAPH ARCHIVE",
-            fg="#fbbf24", bg="#090d13", font=("DejaVu Sans Mono", 12, "bold"),
-            justify="center", anchor="center", wraplength=900
-        )
-        self.title_lbl.pack(fill="x")
-
-        self.sub_lbl = tk.Label(
-            self.top_hdr, text=self.sched_status,
-            fg="#8b949e", bg="#090d13", font=("DejaVu Sans Mono", 8),
-            justify="center", anchor="center", wraplength=900
-        )
-        self.sub_lbl.pack(fill="x", pady=(3, 4))
-
-        self.cap_pill = tk.Label(
-            self.top_hdr,
-            text="GitHub Vault: -- KB  |  Cloud RAM: --  |  Auto-Drop Runway: ~18.9 yrs",
-            fg="#3fb950", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"),
-            padx=10, pady=4, highlightbackground="#238636", highlightthickness=1,
-            justify="center", anchor="center", wraplength=880
-        )
-        self.cap_pill.pack(fill="x", padx=8, pady=(1, 0))
-
-        # Navigation Toolbar
-        self.nav_outer = tk.Frame(self, bg="#0d1117", pady=6, padx=12)
-        self.nav_outer.pack(fill="x")
-        self.nav_row1 = tk.Frame(self.nav_outer, bg="#0d1117")
-        self.nav_row1.pack(fill="x")
-        self.nav_row2 = tk.Frame(self.nav_outer, bg="#0d1117")
-
-        self.btn_art = tk.Button(
-            self.nav_row1, text="ART ENDURANCE (0)", command=lambda: self.switch_track("art"),
-            bg="#fbbf24", fg="#090d13", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
-        )
-        self.btn_uni = tk.Button(
-            self.nav_row1, text="PHYSICS OF TIME (0)", command=lambda: self.switch_track("universe"),
-            bg="#21262d", fg="#c9d1d9", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
-        )
-        self.btn_fav = tk.Button(
-            self.nav_row1, text="* FAVORITES (0)", command=lambda: self.switch_track("favorites"),
-            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
-        )
-
-        self.filter_lbl = tk.Label(self.nav_row1, text="Filter:", fg="#8b949e", bg="#0d1117", font=("DejaVu Sans Mono", 8))
-        self.search_var = tk.StringVar()
-        self._search_timer = None
-        self.search_var.trace_add("write", self._on_search_type)
-        self.filter_ent = tk.Entry(
-            self.nav_row1, textvariable=self.search_var, bg="#161b22", fg="#e6edf3",
-            insertbackground="#fbbf24", relief="flat", highlightbackground="#30363d",
-            highlightthickness=1, font=("DejaVu Sans Mono", 9), width=16
-        )
-
-        self.sync_btn = tk.Button(
-            self.nav_row1, text="Sync Drop", command=self._manual_sync_drop,
-            bg="#192b20", fg="#3fb950", activebackground="#238636", relief="flat",
-            font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2"
-        )
-        self.matrix_btn = tk.Button(
-            self.nav_row1, text="Matrix ->", command=lambda: webbrowser.open(get_cloud_url() + "/matrix"),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=4, cursor="hand2"
-        )
-
-        # Instant Page Bar
-        self.page_bar = tk.Frame(self, bg="#111822", pady=4, padx=12, highlightbackground="#30363d", highlightthickness=1)
-        self.page_bar.pack(fill="x", padx=12, pady=(0, 6))
-        self.prev_btn = tk.Button(
-            self.page_bar, text="<< Newer 5", command=lambda: self._step_page(-1),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
-        )
-        self.prev_btn.pack(side="left")
-        self.page_lbl = tk.Label(
-            self.page_bar, text="Loading Archive...", fg="#e6edf3", bg="#111822", font=("DejaVu Sans Mono", 8, "bold")
-        )
-        self.page_lbl.pack(side="left", expand=True)
-        self.next_btn = tk.Button(
-            self.page_bar, text="Older 5 >>", command=lambda: self._step_page(1),
-            bg="#21262d", fg="#58a6ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=2, cursor="hand2"
-        )
-        self.next_btn.pack(side="right")
-
-        # Scrollable Main Feed
+        # SINGLE Canvas for the entire application (Header + Tabs + Cards + Drawers = ZERO nested X11 sub-windows!)
         wrap = tk.Frame(self, bg="#0d1117")
-        wrap.pack(fill="both", expand=True, padx=12, pady=(0, 8))
-        self.cv = tk.Canvas(wrap, bg="#0d1117", highlightthickness=0)
+        wrap.pack(fill="both", expand=True)
+        self.cv = tk.Canvas(wrap, bg="#0d1117", highlightthickness=0, bd=0)
         self.sb = tk.Scrollbar(wrap, orient="vertical", command=self.cv.yview, bg="#161b22", troughcolor="#0d1117", activebackground="#30363d", highlightthickness=0, bd=0)
-        self.inner = tk.Frame(self.cv, bg="#0d1117")
-
-        self.inner.bind("<Configure>", self._throttled_scrollregion)
-        self.cwin = self.cv.create_window((0, 0), window=self.inner, anchor="nw")
-        self.cv.bind("<Configure>", self._on_canvas_configure)
         self.cv.configure(yscrollcommand=self.sb.set)
         self.cv.pack(side="left", fill="both", expand=True)
         self.sb.pack(side="right", fill="y")
+
         self.bind_all("<Button-4>", lambda e: self.cv.yview_scroll(-1, "units"))
         self.bind_all("<Button-5>", lambda e: self.cv.yview_scroll(1, "units"))
+        self.cv.bind("<Configure>", self._on_canvas_configure)
 
-        self._pack_nav_for_width(960)
-
-        # Build the 5 permanent reusable Card Slots ONCE!
-        # Switching tabs or pages NEVER creates or maps new card frames in X11—it mutates these 5 slots in 0.002s!
-        self.cards_container = tk.Frame(self.inner, bg="#0d1117")
-        self.cards_container.pack(fill="both", expand=True)
-        self.favs_container = tk.Frame(self.inner, bg="#0d1117")
-
-        self._slots = []
-        for i in range(PAGE_SIZE):
-            self._slots.append(self._create_permanent_slot(i))
-
-        self.bot_nav = tk.Frame(self.cards_container, bg="#111822", pady=8, padx=12, highlightbackground="#30363d", highlightthickness=1)
-        self.bot_nav.pack(fill="x", pady=(6, 12), padx=2)
-        self.bot_prev_btn = tk.Button(
-            self.bot_nav, text="<< Newer 5 Lessons", command=lambda: self._step_page(-1),
-            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
-        )
-        self.bot_prev_btn.pack(side="left")
-        self.bot_page_lbl = tk.Label(self.bot_nav, text="Page 1", fg="#8b949e", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"))
-        self.bot_page_lbl.pack(side="left", expand=True)
-        self.bot_next_btn = tk.Button(
-            self.bot_nav, text="Older 5 Lessons >>", command=lambda: self._step_page(1),
-            bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=12, pady=4, cursor="hand2"
-        )
-        self.bot_next_btn.pack(side="right")
-
-        _log_t("5 permanent card slots constructed in memory! Populating data...")
         self._load_local()
-        self.render_cards()
-        self.after_idle(lambda: _log_t("UI READY — 0ms Slot Engine Active!"))
+        self.render_scene()
+        self.update()
+        _log_t(f"PURE CANVAS LIVE ON MONITOR IN {time.perf_counter() - _T0:.3f}s!")
 
         for _ in range(3):
             threading.Thread(target=self._image_worker_loop, daemon=True).start()
-        self.after(3000, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
-
-    def _create_permanent_slot(self, idx):
-        """Uses a SINGLE tk.Canvas for the entire card body + lead plate so X11 maps 1 window instead of 28!"""
-        card = tk.Frame(self.cards_container, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
-        card.pack(fill="x", pady=6, padx=2)
-
-        # Single hardware-accelerated X11 Canvas replaces top_row, left_col, p_card, b_bar, maker_box, and 6 Labels!
-        body_cv = tk.Canvas(card, bg="#161b22", height=235, highlightthickness=0, bd=0)
-        body_cv.pack(fill="x", padx=10, pady=(8, 2))
-
-        act_r1 = tk.Frame(card, bg="#161b22")
-        act_r1.pack(fill="x", padx=12, pady=(2, 8))
-
-        dd_btn = tk.Button(act_r1, text="Read Deep Dive", bg="#21262d", fg="#58a6ff", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        dd_btn.pack(side="left", padx=(0, 6))
-
-        gal_btn = tk.Button(act_r1, text="Plates", bg="#21262d", fg="#3fb950", activebackground="#30363d", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        gal_btn.pack(side="left", padx=(0, 6))
-
-        lead_st_btn = tk.Button(act_r1, text="[+Fav Plate]", bg="#21262d", fg="#8b949e", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=4, cursor="hand2")
-        lead_st_btn.pack(side="left", padx=(0, 8))
-
-        ask_btn = tk.Button(act_r1, text="Ask Gemini", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-        ask_ent = tk.Entry(act_r1, bg="#090d13", fg="#e6edf3", insertbackground="#d2a8ff", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
-        ask_ent.pack(side="left", fill="x", expand=True, padx=(0, 6), ipady=3)
-        ask_btn.pack(side="right")
-
-        drawer_area = tk.Frame(card, bg="#161b22")
-        drawer_area.pack(fill="x")
-
-        slot = {
-            "idx": idx, "card": card, "body_cv": body_cv,
-            "dd_btn": dd_btn, "gal_btn": gal_btn, "lead_st_btn": lead_st_btn,
-            "ask_ent": ask_ent, "ask_btn": ask_btn, "drawer_area": drawer_area,
-            "bound_key": None, "les": None, "track_key": "art", "ph_ref": _BLANK_TK
-        }
-        body_cv.bind("<Configure>", lambda e, s_ref=slot: self._redraw_slot_canvas(s_ref, e.width))
-        return slot
-
-    def _redraw_slot_canvas(self, slot, cw=None):
-        les = slot.get("les")
-        if not les:
-            return
-        cv = slot["body_cv"]
-        if cw is None or cw < 100:
-            cw = cv.winfo_width()
-            if cw < 100:
-                cw = max(300, self._last_cw - 36)
-
-        cv.delete("all")
-        track_key = slot.get("track_key", "art")
-        seq = les["seq"]
-        is_wide = (cw >= 820)
-        img_w, img_h = 240, 170
-        text_w = max(180, (cw - img_w - 28) if is_wide else (cw - 16))
-
-        tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
-        meta_txt = _fast_ascii(f"#{seq:03d} | {les.get('date','')}  [{str(les.get('model','ARCHIVE')).upper()}]  {tags_str}".strip())
-        title_txt = _fast_ascii(les.get("title", ""))
-        core_txt = _fast_ascii(les.get("core", ""))
-        lens_prefix = ">> Temporal & Studio Lens: " if track_key == "universe" else ">> Studio Craft Lens: "
-        maker_txt = _fast_ascii(lens_prefix + les.get("maker", ""))
-
-        y = 4
-        m_id = cv.create_text(4, y, text=meta_txt, fill="#58a6ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=text_w)
-        y = (cv.bbox(m_id) or (0, 0, 0, y + 18))[3] + 6
-
-        t_id = cv.create_text(4, y, text=title_txt, fill="#f0f6fc", font=("DejaVu Sans Mono", 11, "bold"), anchor="nw", width=text_w)
-        y = (cv.bbox(t_id) or (0, 0, 0, y + 24))[3] + 6
-
-        c_id = cv.create_text(4, y, text=core_txt, fill="#c9d1d9", font=("DejaVu Sans Mono", 9), anchor="nw", width=text_w)
-        y = (cv.bbox(c_id) or (0, 0, 0, y + 45))[3] + 10
-
-        # Draw Studio Craft / Temporal Lens golden box directly on canvas
-        mk_id = cv.create_text(14, y + 8, text=maker_txt, fill="#fbbf24", font=("DejaVu Sans Mono", 8), anchor="nw", width=max(150, text_w - 20))
-        mk_bb = cv.bbox(mk_id) or (14, y + 8, text_w, y + 36)
-        box_id = cv.create_rectangle(4, y, text_w + 4, mk_bb[3] + 8, fill="#0f141b", outline="#fbbf24", width=1)
-        cv.tag_lower(box_id, mk_id)
-        y = mk_bb[3] + 14
-
-        # Draw right-hand (or stacked) visual plate directly on canvas
-        img_x = (cw - img_w - 4) if is_wide else 4
-        img_y = 4 if is_wide else y
-        cv.create_rectangle(img_x - 1, img_y - 1, img_x + img_w + 1, img_y + img_h + 22, fill="#090d13", outline="#30363d", width=1)
-        im_item = cv.create_image(img_x, img_y, image=slot.get("ph_ref") or _BLANK_TK, anchor="nw", tags=("plate_click",))
-        cap_txt = _fast_ascii((les.get("image_caption") or les.get("title", ""))[:27]) + " [Zoom]"
-        cp_item = cv.create_text(img_x + 6, img_y + img_h + 4, text=cap_txt, fill="#8b949e", font=("DejaVu Sans Mono", 7, "bold"), anchor="nw", tags=("plate_click",))
-
-        img_url = les.get("image_url", "")
-        if img_url:
-            cv.tag_bind("plate_click", "<Button-1>", lambda e, u=img_url, c=_fast_ascii(les.get("image_caption") or les.get("title", "")): self._open_lightbox(u, c))
-
-        total_h = max(y, (img_y + img_h + 26) if is_wide else (img_y + img_h + 28))
-        if abs(int(cv.cget("height")) - total_h) > 2:
-            cv.config(height=total_h)
-
-    def _populate_slot(self, slot, les, track_key):
-        seq = les["seq"]
-        key = (track_key, seq)
-        slot["bound_key"] = key
-        slot["les"] = les
-        slot["track_key"] = track_key
-
-        img_url = les.get("image_url", "")
-        if img_url:
-            starred = self._is_starred(img_url)
-            slot["lead_st_btn"].config(
-                text="[*Fav Plate]" if starred else "[+Fav Plate]",
-                fg="#fbbf24" if starred else "#8b949e",
-                command=lambda tr=track_key, sq=seq, u=img_url, cp=les.get("image_caption") or les.get("title", ""), b=slot["lead_st_btn"]: self._toggle_star(tr, sq, u, cp, "", "Lead Plate", b)
-            )
-            self._load_slot_canvas_thumb(slot, img_url)
-        else:
-            slot["ph_ref"] = _BLANK_TK
-
-        self._redraw_slot_canvas(slot)
-
-        def _on_dd(s_ref=slot, k=key, t=track_key, sq=seq):
-            cur_les = self._get_lesson_obj(t, sq) or {}
-            ready = bool(cur_les.get("deep_dive") and len(cur_les["deep_dive"]) > 40)
-            if ready:
-                if k in self.open_dd:
-                    self.open_dd.remove(k)
-                else:
-                    self.open_dd.add(k)
-                self._render_slot_drawers(s_ref)
-            else:
-                self._call_cloud_action("/api/deep_dive", {"track": t, "seq": sq}, s_ref["dd_btn"], "... Writing...", lambda: (self.open_dd.add(k), self._render_slot_drawers(s_ref)))
-        slot["dd_btn"].config(command=_on_dd)
-
-        def _on_gal(s_ref=slot, k=key, t=track_key, sq=seq):
-            cur_les = self._get_lesson_obj(t, sq) or {}
-            ready = len(cur_les.get("gallery") or []) >= 1
-            if ready:
-                if k in self.open_gal:
-                    self.open_gal.remove(k)
-                else:
-                    self.open_gal.add(k)
-                self._render_slot_drawers(s_ref)
-            else:
-                self._call_cloud_action("/api/gallery", {"track": t, "seq": sq}, s_ref["gal_btn"], "... Curating...", lambda: (self.open_gal.add(k), self._render_slot_drawers(s_ref)))
-        slot["gal_btn"].config(command=_on_gal)
-
-        def _on_ask(s_ref=slot, t=track_key, sq=seq):
-            q_str = s_ref["ask_ent"].get().strip()
-            if not q_str:
-                return
-            s_ref["ask_ent"].delete(0, "end")
-            self._call_cloud_action("/api/ask", {"track": t, "seq": sq, "question": q_str}, s_ref["ask_btn"], "... Asking...", lambda: (s_ref["ask_btn"].config(text="Ask Gemini", state="normal"), self._render_slot_drawers(s_ref)))
-        slot["ask_btn"].config(command=_on_ask, text="Ask Gemini", state="normal")
-        slot["ask_ent"].bind("<Return>", lambda e, fn=_on_ask: fn())
-
-        self._render_slot_drawers(slot)
-
-    def _load_slot_canvas_thumb(self, slot, url, size=(240, 170)):
-        cache_key = (url, size)
-        if cache_key in _MEM_TK_CACHE:
-            slot["ph_ref"] = _MEM_TK_CACHE[cache_key]
-            return
-        if cache_key in _MEM_PIL_CACHE:
-            ph = ImageTk.PhotoImage(_MEM_PIL_CACHE[cache_key])
-            _MEM_TK_CACHE[cache_key] = ph
-            slot["ph_ref"] = ph
-            return
-        h = hashlib.sha256(url.encode()).hexdigest()[:24]
-        thumb_path = os.path.join(IMG_CACHE_DIR, f"{h}_{size[0]}x{size[1]}.jpg")
-        if os.path.exists(thumb_path):
-            try:
-                im = Image.open(thumb_path).convert("RGB")
-                _MEM_PIL_CACHE[cache_key] = im
-                ph = ImageTk.PhotoImage(im)
-                _MEM_TK_CACHE[cache_key] = ph
-                slot["ph_ref"] = ph
-                return
-            except Exception:
-                pass
-        slot["ph_ref"] = _BLANK_TK
-
-    def _render_slot_drawers(self, slot):
-        key = slot["bound_key"]
-        if not key:
-            return
-        track, seq = key
-        les = self._get_lesson_obj(track, seq) or {}
-
-        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
-        ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
-        if key in self.open_dd and has_dd:
-            slot["dd_btn"].config(text=f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive", bg="#1f2937", fg="#fbbf24", state="normal")
-        else:
-            slot["dd_btn"].config(text=(f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive", bg="#21262d", fg="#58a6ff", state="normal")
-
-        gal_list = les.get("gallery") or []
-        has_gal = len(gal_list) >= 1
-        if key in self.open_gal and has_gal:
-            slot["gal_btn"].config(text=f"Hide Plates ({len(gal_list)})", state="normal")
-        else:
-            slot["gal_btn"].config(text=f"Plates ({len(gal_list)})" if has_gal else "Curate Plates", state="normal")
-
-        da = slot["drawer_area"]
-        for w in da.winfo_children():
-            w.destroy()
-
-        if key in self.open_dd and has_dd:
-            dd_frame = tk.Frame(da, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
-            dd_frame.pack(fill="x", padx=12, pady=(0, 8))
-            hdr_bar = tk.Frame(dd_frame, bg="#111822")
-            hdr_bar.pack(fill="x", padx=1, pady=1)
-            tk.Label(hdr_bar, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fg="#58a6ff", bg="#111822", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", padx=10, pady=6).pack(side="left")
-            tk.Button(hdr_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2").pack(side="right", padx=6, pady=3)
-            deeper_btn = tk.Button(hdr_bar, text=f"+ Deeper Dive (Ch.{ch_count + 1})", bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=3, cursor="hand2")
-            deeper_btn.config(command=lambda s_ref=slot, k=key, t=track, sq=seq, b=deeper_btn: self._call_cloud_action("/api/deep_dive", {"track": t, "seq": sq, "append": True}, b, "... Diving Deeper...", lambda: (self.open_dd.add(k), self._render_slot_drawers(s_ref))))
-            deeper_btn.pack(side="right", padx=4, pady=3)
-            self._make_lbl(dd_frame, "full", text=_fast_ascii(les["deep_dive"]), fg="#d0d7de", bg="#090d13", font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=12, pady=8).pack(fill="x")
-            bot_bar = tk.Frame(dd_frame, bg="#090d13")
-            bot_bar.pack(fill="x", padx=10, pady=(0, 8))
-            tk.Button(bot_bar, text="Minimize Deep Dive", command=lambda s_ref=slot, k=key: (self.open_dd.discard(k), self._render_slot_drawers(s_ref)), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=10, pady=3, cursor="hand2").pack(side="right")
-
-        if key in self.open_gal and has_gal:
-            g_strip = tk.Frame(da, bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
-            g_strip.pack(fill="x", padx=12, pady=(0, 8))
-            grid_f = tk.Frame(g_strip, bg="#090d13")
-            grid_f.pack(fill="x", padx=8, pady=(8, 4))
-            gal_cols = self._last_gal_cols
-            for idx_g, g_item in enumerate(gal_list):
-                r_i, c_i = divmod(idx_g, gal_cols)
-                gu = g_item.get("url", "")
-                gc = _fast_ascii(f"{g_item.get('caption', '')} -- {g_item.get('study_note', '')}".strip(" -"))
-                gs = _fast_ascii(g_item.get("source", "Archive"))
-                g_star = self._is_starred(gu)
-                cell = tk.Frame(grid_f, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
-                cell.grid(row=r_i, column=c_i, padx=4, pady=4, sticky="n")
-
-                hdr_c = tk.Frame(cell, bg="#161b22")
-                hdr_c.pack(fill="x")
-                tk.Button(hdr_c, text="x", fg="#f85149", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=5, pady=0, cursor="hand2", command=lambda s_ref=slot, tr=track, sq=seq, u=gu: self._delete_plate(tr, sq, u, s_ref)).pack(side="left")
-                tk.Label(hdr_c, text=gs[:16], fg="#58a6ff", bg="#161b22", font=("DejaVu Sans Mono", 6)).pack(side="left", padx=2)
-                st_btn = tk.Button(hdr_c, text="[*]" if g_star else "[+]", fg="#fbbf24" if g_star else "#8b949e", bg="#161b22", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=4, pady=0, cursor="hand2")
-                st_btn.config(command=lambda tr=track, sq=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs, b_ref=st_btn: self._toggle_star(tr, sq, u, cp, sn, sr, b_ref))
-                st_btn.pack(side="right")
-
-                gl = tk.Label(cell, image=_BLANK_TK, bg="#1c232d", width=190, height=126, cursor="hand2")
-                gl.pack()
-                cl = tk.Label(cell, text=_fast_ascii((g_item.get("caption") or "Plate")[:24]), fg="#c9d1d9", bg="#161b22", font=("DejaVu Sans Mono", 7), pady=3, cursor="hand2")
-                cl.pack(fill="x")
-                for wg in (gl, cl):
-                    wg.bind("<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
-                self._load_thumb_async(gl, gu, size=(190, 126))
-
-            cur_bar = tk.Frame(g_strip, bg="#090d13")
-            cur_bar.pack(fill="x", padx=10, pady=(4, 8))
-            c_btn = tk.Button(cur_bar, text="+ Curate 5 Plates", bg="#1f2937", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2")
-            c_ent = tk.Entry(cur_bar, bg="#161b22", fg="#e6edf3", insertbackground="#fbbf24", relief="flat", highlightbackground="#30363d", highlightthickness=1, font=("DejaVu Sans Mono", 8), width=16)
-            c_ent.pack(side="left", fill="x", expand=True, padx=(0, 8), ipady=3)
-            c_btn.pack(side="right")
-
-            def _on_more_gal(s_ref=slot, t=track, sq=seq, ent=c_ent, b=c_btn, k=key):
-                cq = ent.get().strip()
-                self._call_cloud_action("/api/gallery", {"track": t, "seq": sq, "append": True, "query": cq}, b, "... Routing...", lambda: (self.open_gal.add(k), self._render_slot_drawers(s_ref)))
-            c_btn.config(command=_on_more_gal)
-            c_ent.bind("<Return>", lambda e, fn=_on_more_gal: fn())
-
-        qa_list = les.get("qa_log") or []
-        if qa_list:
-            is_minimized = (key in self.closed_qa)
-            qa_hdr = tk.Frame(da, bg="#120d1d")
-            qa_hdr.pack(fill="x", padx=12, pady=(0, 4))
-            tk.Button(
-                qa_hdr,
-                text=f"Show Saved Q&A ({len(qa_list)}) [v]" if is_minimized else f"Minimize Q&A ({len(qa_list)}) [^]",
-                command=lambda s_ref=slot, k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self._render_slot_drawers(s_ref)),
-                bg="#251736", fg="#d2a8ff", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=8, pady=2, cursor="hand2"
-            ).pack(side="left")
-            if not is_minimized:
-                for qa in qa_list:
-                    qa_box = tk.Frame(da, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
-                    qa_box.pack(fill="x", padx=12, pady=(0, 6))
-                    self._make_lbl(qa_box, "full", text=_fast_ascii(f"Q: {qa.get('q','')}   [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fg="#d2a8ff", bg="#0c131d", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left", padx=10, pady=4).pack(fill="x")
-                    self._make_lbl(qa_box, "full", text=_fast_ascii(qa.get("a", "")), fg="#e6edf3", bg="#0c131d", font=("DejaVu Sans Mono", 9), justify="left", anchor="w", padx=10, pady=6).pack(fill="x")
-
-        self._throttled_scrollregion()
-
-    def _throttled_scrollregion(self, _event=None):
-        if self._sr_job:
-            return
-        self._sr_job = self.after(30, self._do_scrollregion)
-
-    def _do_scrollregion(self):
-        self._sr_job = None
-        if not self._closing:
-            self.cv.configure(scrollregion=self.cv.bbox("all") or (0, 0, 100, 100))
+        self.after(2500, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
 
     def _instant_quit(self):
         self._closing = True
@@ -552,120 +143,58 @@ class KnowledgeDesktopHub(tk.Tk):
             pass
         os._exit(0)
 
-    def _step_page(self, delta):
-        self.page_idx[self.cur_track] = max(0, self.page_idx.get(self.cur_track, 0) + delta)
-        self.render_cards()
+    def _on_canvas_configure(self, event):
+        if event.width < 120 or abs(event.width - self._last_cw) < 6:
+            return
+        self._last_cw = event.width
+        if self._resize_timer:
+            self.after_cancel(self._resize_timer)
+        self._resize_timer = self.after(25, self.render_scene)
 
-    def _on_search_type(self, *_):
-        if self._search_timer:
-            self.after_cancel(self._search_timer)
-        self.page_idx[self.cur_track] = 0
-        self._search_timer = self.after(150, self.render_cards)
+    def _draw_pill_btn(self, x, y, text, bg, fg, tag, border=None, pad_x=10, pad_y=5, font_sz=8):
+        t_id = self.cv.create_text(x + pad_x, y + pad_y, text=text, fill=fg, font=("DejaVu Sans Mono", font_sz, "bold"), anchor="nw", tags=(tag,))
+        bb = self.cv.bbox(t_id) or (x, y, x + 60, y + 20)
+        w = (bb[2] - bb[0]) + pad_x * 2
+        h = (bb[3] - bb[1]) + pad_y * 2
+        r_id = self.cv.create_rectangle(x, y, x + w, y + h, fill=bg, outline=border or bg, width=1, tags=(tag,))
+        self.cv.tag_lower(r_id, t_id)
+        return x + w, y + h
+
+    def _get_cached_tk_img(self, url, size=(240, 170)):
+        if not url:
+            return _BLANK_TK if size == (240, 170) else _BLANK_GAL_TK
+        ck = (url, size)
+        if ck in _MEM_TK_CACHE:
+            return _MEM_TK_CACHE[ck]
+        if ck in _MEM_PIL_CACHE:
+            ph = ImageTk.PhotoImage(_MEM_PIL_CACHE[ck])
+            _MEM_TK_CACHE[ck] = ph
+            return ph
+        h = hashlib.sha256(url.encode()).hexdigest()[:24]
+        thumb_path = os.path.join(IMG_CACHE_DIR, f"{h}_{size[0]}x{size[1]}.jpg")
+        if os.path.exists(thumb_path):
+            try:
+                im = Image.open(thumb_path).convert("RGB")
+                _MEM_PIL_CACHE[ck] = im
+                ph = ImageTk.PhotoImage(im)
+                _MEM_TK_CACHE[ck] = ph
+                return ph
+            except Exception:
+                pass
+        self._img_queue.put((url, size))
+        return _BLANK_TK if size == (240, 170) else _BLANK_GAL_TK
 
     def _image_worker_loop(self):
         while not self._closing:
             try:
-                lbl, url, size = self._img_queue.get(timeout=0.5)
+                url, size = self._img_queue.get(timeout=0.5)
             except queue.Empty:
                 continue
             if self._closing:
                 continue
-            try:
-                if not lbl.winfo_exists():
-                    continue
-                im = fetch_cached_pil(url, size)
-                if im and not self._closing:
-                    def _paint(l=lbl, img=im, u=url, sz=size):
-                        if not self._closing and l.winfo_exists():
-                            ck = (u, sz)
-                            ph = _MEM_TK_CACHE.get(ck)
-                            if not ph:
-                                ph = ImageTk.PhotoImage(img)
-                                _MEM_TK_CACHE[ck] = ph
-                            l.config(image=ph, width=sz[0], height=sz[1])
-                    self.after(0, _paint)
-            except Exception:
-                pass
-
-    def _calc_wraps(self, cw=None):
-        if cw is None:
-            cw = self._last_cw
-        is_wide = (cw >= 880)
-        body_w = max(180, (cw - 310) if is_wide else (cw - 48))
-        maker_w = max(160, body_w - 22)
-        full_w = max(180, cw - 56)
-        fav_w = max(180, (cw - 260) if cw >= 660 else (cw - 48))
-        return {"body": body_w, "maker": maker_w, "full": full_w, "fav": fav_w}
-
-    def _make_lbl(self, parent, kind="body", **kwargs):
-        wraps = self._calc_wraps()
-        lbl = tk.Label(parent, wraplength=wraps.get(kind, 600), **kwargs)
-        self._wrap_labels.append((lbl, kind))
-        return lbl
-
-    def _pack_nav_for_width(self, w):
-        target_nav = "wide" if w >= 940 else "narrow"
-        if getattr(self, "_cur_nav_mode", None) == target_nav:
-            return
-        self._cur_nav_mode = target_nav
-        for child in (self.btn_art, self.btn_uni, self.btn_fav, self.filter_lbl, self.filter_ent, self.sync_btn, self.matrix_btn):
-            child.pack_forget()
-        self.nav_row2.pack_forget()
-
-        if target_nav == "wide":
-            self.btn_art.pack(in_=self.nav_row1, side="left", padx=(0, 6))
-            self.btn_uni.pack(in_=self.nav_row1, side="left", padx=(0, 6))
-            self.btn_fav.pack(in_=self.nav_row1, side="left", padx=(0, 10))
-            self.filter_lbl.pack(in_=self.nav_row1, side="left")
-            self.filter_ent.config(width=20)
-            self.filter_ent.pack(in_=self.nav_row1, side="left", padx=5, ipady=3)
-            self.sync_btn.pack(in_=self.nav_row1, side="right", padx=(6, 0))
-            self.matrix_btn.pack(in_=self.nav_row1, side="right")
-        else:
-            self.nav_row2.pack(fill="x", pady=(6, 0))
-            self.btn_art.pack(in_=self.nav_row1, side="left", padx=(0, 4))
-            self.btn_uni.pack(in_=self.nav_row1, side="left", padx=(0, 4))
-            self.btn_fav.pack(in_=self.nav_row1, side="left", padx=(0, 4))
-            self.filter_lbl.pack(in_=self.nav_row2, side="left")
-            self.filter_ent.config(width=12)
-            self.filter_ent.pack(in_=self.nav_row2, side="left", padx=4, ipady=2, fill="x", expand=True)
-            self.sync_btn.pack(in_=self.nav_row2, side="right", padx=(4, 0))
-            self.matrix_btn.pack(in_=self.nav_row2, side="right")
-
-    def _on_canvas_configure(self, event):
-        cw = event.width
-        self.cv.itemconfig(self.cwin, width=cw)
-        if cw < 120 or abs(cw - self._last_cw) < 4:
-            return
-        self._last_cw = cw
-        if self._resize_timer:
-            self.after_cancel(self._resize_timer)
-        self._resize_timer = self.after(30, lambda w=cw: self._apply_geometry_pass(w))
-
-    def _apply_geometry_pass(self, cw):
-        win_est = cw + 38
-        self.title_lbl.config(wraplength=max(200, cw - 16))
-        self.sub_lbl.config(wraplength=max(200, cw - 16))
-        self.cap_pill.config(wraplength=max(180, cw - 32))
-        self._pack_nav_for_width(win_est)
-        self._update_tab_counts(win_est)
-
-        mode = "wide" if cw >= 880 else "narrow"
-        gal_cols = max(1, min(5, (cw - 32) // 210))
-        self._last_gal_cols = gal_cols
-
-        self._last_mode = mode
-        for slot in self._slots:
-            if slot["card"].winfo_ismapped():
-                self._redraw_slot_canvas(slot, max(300, cw - 28))
-        wraps = self._calc_wraps(cw)
-        alive = []
-        for lbl, kind in self._wrap_labels:
-            if lbl.winfo_exists():
-                lbl.config(wraplength=wraps.get(kind, 600))
-                alive.append((lbl, kind))
-        self._wrap_labels = alive
-        self._throttled_scrollregion()
+            im = fetch_cached_pil(url, size)
+            if im and not self._closing:
+                self.after(0, self.render_scene)
 
     def _load_local(self):
         if os.path.exists(CURRICULUM_FILE):
@@ -711,6 +240,412 @@ class KnowledgeDesktopHub(tk.Tk):
                 return item
         return None
 
+    def switch_track(self, t):
+        self.cur_track = t
+        self.cv.yview_moveto(0.0)
+        self.render_scene()
+
+    def _step_page(self, delta):
+        self.page_idx[self.cur_track] = max(0, self.page_idx.get(self.cur_track, 0) + delta)
+        self.cv.yview_moveto(0.0)
+        self.render_scene()
+
+    def _prompt_search(self):
+        q = simpledialog.askstring("Filter Archive", "Enter keyword, artist, physicist, or #tag (leave blank to clear):", initialvalue=self.search_query, parent=self)
+        if q is not None:
+            self.search_query = q.strip()
+            self.page_idx[self.cur_track] = 0
+            self.cv.yview_moveto(0.0)
+            self.render_scene()
+
+    def _prompt_ask_gemini(self, track, seq, title):
+        q = simpledialog.askstring("Ask Gemini", f"Ask Gemini a question about #{seq:03d} ({title[:35]}):", parent=self)
+        if q and q.strip():
+            self._call_cloud_action("/api/ask", {"track": track, "seq": seq, "question": q.strip()}, (track, seq, "ask"), "... Asking...")
+
+    def _prompt_more_plates(self, track, seq):
+        q = simpledialog.askstring("Curate 5 More Plates", "Optional custom search angle (or leave blank for automatic):", parent=self)
+        if q is not None:
+            self.open_gal.add((track, seq))
+            self._call_cloud_action("/api/gallery", {"track": track, "seq": seq, "append": True, "query": q.strip()}, (track, seq, "more_gal"), "... Routing...")
+
+    def render_scene(self):
+        if self._closing:
+            return
+        cw = self.cv.winfo_width()
+        if cw < 120:
+            cw = self._last_cw
+        self._last_cw = cw
+        self.cv.delete("all")
+
+        # 1. Top Header Banner
+        self.cv.create_rectangle(0, 0, cw, 82, fill="#090d13", outline="#090d13")
+        self.cv.create_text(cw // 2, 14, text="[KCC] KNOWLEDGE COMMAND CENTER // VISUAL MONOGRAPH ARCHIVE", fill="#fbbf24", font=("DejaVu Sans Mono", 11, "bold"), anchor="n")
+        self.cv.create_text(cw // 2, 36, text=_fast_ascii(self.sched_status), fill="#8b949e", font=("DejaVu Sans Mono", 8), anchor="n")
+
+        c = self.capacity
+        if c:
+            ram_part = f"Render RAM: {c.get('ram_mb', 0)}/{c.get('ram_limit_mb', 512)} MB ({c.get('ram_pct', 0)}%)" if c.get("ram_mb") else "Cloud: Synced"
+            cap_txt = f"GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)  |  {ram_part}  |  Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
+        else:
+            cap_txt = "GitHub Vault: Synced Locally  |  0ms Pure-Canvas Engine Active  |  Auto-Drop Runway: ~18.9 yrs"
+        self.cv.create_rectangle(16, 54, cw - 16, 76, fill="#111822", outline="#238636", width=1)
+        self.cv.create_text(cw // 2, 65, text=cap_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+
+        # 2. Navigation Bar
+        y = 92
+        a_n = len(self.data.get("tracks", {}).get("art", {}).get("lessons", []))
+        u_n = len(self.data.get("tracks", {}).get("universe", {}).get("lessons", []))
+        f_n = len(self.data.get("favorites") or [])
+
+        x_cur = 16
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#fbbf24" if self.cur_track == "art" else "#21262d", "#090d13" if self.cur_track == "art" else "#c9d1d9", "nav_art")
+        self.cv.tag_bind("nav_art", "<Button-1>", lambda e: self.switch_track("art"))
+
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHYSICS OF TIME ({u_n})", "#58a6ff" if self.cur_track == "universe" else "#21262d", "#090d13" if self.cur_track == "universe" else "#c9d1d9", "nav_uni")
+        self.cv.tag_bind("nav_uni", "<Button-1>", lambda e: self.switch_track("universe"))
+
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"* FAVORITES ({f_n})", "#fbbf24" if self.cur_track == "favorites" else "#21262d", "#090d13" if self.cur_track == "favorites" else "#fbbf24", "nav_fav")
+        self.cv.tag_bind("nav_fav", "<Button-1>", lambda e: self.switch_track("favorites"))
+
+        filt_txt = f"Filter: '{self.search_query}' [x]" if self.search_query else "Filter / Search..."
+        x_cur, _ = self._draw_pill_btn(x_cur + 10, y, filt_txt, "#161b22", "#fbbf24" if self.search_query else "#8b949e", "nav_search", border="#30363d")
+        self.cv.tag_bind("nav_search", "<Button-1>", lambda e: (setattr(self, "search_query", ""), self.render_scene()) if self.search_query else self._prompt_search())
+
+        # Right-hand Matrix & Sync Drop buttons
+        sync_lbl = self._busy_btns.get(("global", 0, "sync"), "Sync Drop")
+        _, _ = self._draw_pill_btn(cw - 102, y, sync_lbl, "#192b20", "#3fb950", "nav_sync", border="#238636")
+        self.cv.tag_bind("nav_sync", "<Button-1>", lambda e: self._manual_sync_drop())
+
+        _, _ = self._draw_pill_btn(cw - 196, y, "Matrix ->", "#21262d", "#58a6ff", "nav_matrix")
+        self.cv.tag_bind("nav_matrix", "<Button-1>", lambda e: webbrowser.open(get_cloud_url() + "/matrix"))
+
+        y += 34
+
+        # 3. Favorites View
+        if self.cur_track == "favorites":
+            self.cv.create_rectangle(16, y, cw - 16, y + 28, fill="#111822", outline="#30363d")
+            self.cv.create_text(cw // 2, y + 14, text=f"* KEY'S FAVORITES VAULT ({f_n} Pinned Plates)", fill="#fbbf24", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+            y += 38
+            favs = self.data.get("favorites") or []
+            if not favs:
+                self.cv.create_rectangle(16, y, cw - 16, y + 80, fill="#161b22", outline="#30363d")
+                self.cv.create_text(cw // 2, y + 28, text="* Key's Favorites Vault is empty right now.", fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"))
+                self.cv.create_text(cw // 2, y + 54, text="Click [+Fav Plate] on any card or gallery plate to pin it permanently to GitHub.", fill="#8b949e", font=("DejaVu Sans Mono", 8))
+                y += 100
+            else:
+                for idx_f, f in enumerate(favs):
+                    f_url = f.get("url", "")
+                    f_cap = _fast_ascii(f.get("caption", "Visual Plate"))
+                    f_tr = str(f.get("track", "art"))
+                    f_sq = int(f.get("seq", 1))
+                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#161b22", outline="#fbbf24")
+                    ph = self._get_cached_tk_img(f_url, (240, 170))
+                    im_tag = f"fav_im_{idx_f}"
+                    self.cv.create_image(28, y + 10, image=ph, anchor="nw", tags=(im_tag,))
+                    self.cv.tag_bind(im_tag, "<Button-1>", lambda e, u=f_url, c=f_cap: self._open_lightbox(u, c))
+                    tx = 284
+                    self.cv.create_text(tx, y + 16, text=_fast_ascii(f"{f_tr.upper()} #{f_sq:03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw")
+                    self.cv.create_text(tx, y + 40, text=f_cap, fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=max(180, cw - tx - 30))
+                    if f.get("study_note"):
+                        self.cv.create_text(tx, y + 68, text=_fast_ascii(f.get("study_note", "")), fill="#fbbf24", font=("DejaVu Sans Mono", 8), anchor="nw", width=max(180, cw - tx - 30))
+                    bx, _ = self._draw_pill_btn(tx, y + 118, f"Open {f_tr.upper()} (#{f_sq:03d}) ->", "#21262d", "#fbbf24", f"fav_jmp_{idx_f}")
+                    self.cv.tag_bind(f"fav_jmp_{idx_f}", "<Button-1>", lambda e, tr=f_tr, sq=f_sq: self._jump_to_lesson(tr, sq))
+                    self._draw_pill_btn(bx + 10, y + 118, "[*] Unstar", "#2d2208", "#fbbf24", f"fav_uns_{idx_f}")
+                    self.cv.tag_bind(f"fav_uns_{idx_f}", "<Button-1>", lambda e, tr=f_tr, sq=f_sq, u=f_url: self._toggle_star(tr, sq, u))
+                    y += 172
+            self.cv.configure(scrollregion=(0, 0, cw, max(760, y + 20)))
+            return
+
+        # 4. Filter & Paginate Active Track
+        q = self.search_query.lower()
+        raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
+        all_lessons = [self._norm_lesson(x) for x in reversed(raw_list) if isinstance(x, dict)]
+        filtered = [
+            les for les in all_lessons
+            if not q or q in f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
+        ]
+        total = len(filtered)
+        max_page = max(0, (total - 1) // PAGE_SIZE)
+        cur_p = min(self.page_idx.get(self.cur_track, 0), max_page)
+        self.page_idx[self.cur_track] = cur_p
+
+        start_i = cur_p * PAGE_SIZE
+        end_i = min(total, start_i + PAGE_SIZE)
+        page_slice = filtered[start_i:end_i]
+        has_prev = (cur_p > 0)
+        has_next = (end_i < total)
+
+        # Top Pagination Bar
+        self.cv.create_rectangle(16, y, cw - 16, y + 28, fill="#111822", outline="#30363d")
+        t_label = "ART ENDURANCE" if self.cur_track == "art" else "PHYSICS OF TIME"
+        if total > 0:
+            meta_p = f"{t_label}  |  Showing #{page_slice[0]['seq']:03d}-#{page_slice[-1]['seq']:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})"
+        else:
+            meta_p = f"{t_label}  |  0 matching lessons"
+        self.cv.create_text(cw // 2, y + 14, text=meta_p, fill="#e6edf3", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+
+        if has_prev:
+            self._draw_pill_btn(22, y + 3, "<< Newer 5", "#21262d", "#58a6ff", "pg_prev_top", pad_x=8, pad_y=3)
+            self.cv.tag_bind("pg_prev_top", "<Button-1>", lambda e: self._step_page(-1))
+        if has_next:
+            self._draw_pill_btn(cw - 108, y + 3, "Older 5 >>", "#21262d", "#58a6ff", "pg_next_top", pad_x=8, pad_y=3)
+            self.cv.tag_bind("pg_next_top", "<Button-1>", lambda e: self._step_page(1))
+        y += 38
+
+        # 5. Draw Each of the 5 Cards Directly on self.cv!
+        is_wide = (cw >= 820)
+        for les in page_slice:
+            y = self._draw_card_on_canvas(les, self.cur_track, y, cw, is_wide) + 12
+
+        # Bottom Pagination Bar
+        if total > PAGE_SIZE:
+            self.cv.create_rectangle(16, y, cw - 16, y + 34, fill="#111822", outline="#30363d")
+            self.cv.create_text(cw // 2, y + 17, text=f"Page {cur_p + 1} of {max_page + 1}", fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+            if has_prev:
+                self._draw_pill_btn(24, y + 5, "<< Newer 5 Lessons", "#21262d", "#fbbf24", "pg_prev_bot", pad_x=10, pad_y=4)
+                self.cv.tag_bind("pg_prev_bot", "<Button-1>", lambda e: self._step_page(-1))
+            if has_next:
+                self._draw_pill_btn(cw - 165, y + 5, "Older 5 Lessons >>", "#21262d", "#fbbf24", "pg_next_bot", pad_x=10, pad_y=4)
+                self.cv.tag_bind("pg_next_bot", "<Button-1>", lambda e: self._step_page(1))
+            y += 48
+
+        self.cv.configure(scrollregion=(0, 0, cw, max(760, y + 20)))
+
+    def _draw_card_on_canvas(self, les, track_key, y_top, cw, is_wide):
+        seq = les["seq"]
+        key = (track_key, seq)
+        card_bg_id = self.cv.create_rectangle(16, y_top, cw - 16, y_top + 200, fill="#161b22", outline="#30363d", width=1)
+
+        img_w, img_h = 240, 170
+        left_x = 28
+        text_w = max(180, (cw - img_w - 68) if is_wide else (cw - 56))
+        y = y_top + 12
+
+        tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
+        meta_txt = _fast_ascii(f"#{seq:03d} | {les.get('date','')}  [{str(les.get('model','ARCHIVE')).upper()}]  {tags_str}".strip())
+        m_id = self.cv.create_text(left_x, y, text=meta_txt, fill="#58a6ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=text_w)
+        y = (self.cv.bbox(m_id) or (0, 0, 0, y + 16))[3] + 6
+
+        t_id = self.cv.create_text(left_x, y, text=_fast_ascii(les.get("title", "")), fill="#f0f6fc", font=("DejaVu Sans Mono", 11, "bold"), anchor="nw", width=text_w)
+        y = (self.cv.bbox(t_id) or (0, 0, 0, y + 22))[3] + 6
+
+        c_id = self.cv.create_text(left_x, y, text=_fast_ascii(les.get("core", "")), fill="#c9d1d9", font=("DejaVu Sans Mono", 9), anchor="nw", width=text_w)
+        y = (self.cv.bbox(c_id) or (0, 0, 0, y + 40))[3] + 10
+
+        lens_prefix = ">> Temporal & Studio Lens: " if track_key == "universe" else ">> Studio Craft Lens: "
+        mk_id = self.cv.create_text(left_x + 10, y + 8, text=_fast_ascii(lens_prefix + les.get("maker", "")), fill="#fbbf24", font=("DejaVu Sans Mono", 8), anchor="nw", width=max(150, text_w - 20))
+        mk_bb = self.cv.bbox(mk_id) or (left_x, y, left_x + text_w, y + 36)
+        box_id = self.cv.create_rectangle(left_x, y, left_x + text_w, mk_bb[3] + 8, fill="#0f141b", outline="#fbbf24", width=1)
+        self.cv.tag_lower(box_id, mk_id)
+        y = mk_bb[3] + 14
+
+        # Lead Plate Image
+        img_url = les.get("image_url", "")
+        img_x = (cw - img_w - 28) if is_wide else left_x
+        img_y = (y_top + 12) if is_wide else y
+        self.cv.create_rectangle(img_x - 1, img_y - 1, img_x + img_w + 1, img_y + img_h + 22, fill="#090d13", outline="#30363d", width=1)
+        ph = self._get_cached_tk_img(img_url, (240, 170))
+        p_tag = f"lead_img_{track_key}_{seq}"
+        self.cv.create_image(img_x, img_y, image=ph, anchor="nw", tags=(p_tag,))
+        cap_txt = _fast_ascii((les.get("image_caption") or les.get("title", ""))[:27]) + " [Zoom]"
+        self.cv.create_text(img_x + 6, img_y + img_h + 4, text=cap_txt, fill="#8b949e", font=("DejaVu Sans Mono", 7, "bold"), anchor="nw", tags=(p_tag,))
+        if img_url:
+            self.cv.tag_bind(p_tag, "<Button-1>", lambda e, u=img_url, c=_fast_ascii(les.get("image_caption") or les.get("title", "")): self._open_lightbox(u, c))
+
+        y = max(y, (img_y + img_h + 30))
+
+        # Action Buttons Row (Pure Canvas Pills!)
+        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
+        ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
+        dd_wait = self._busy_btns.get((track_key, seq, "dd"))
+        if dd_wait:
+            dd_txt, dd_bg, dd_fg = dd_wait, "#1f2937", "#fbbf24"
+        elif key in self.open_dd and has_dd:
+            dd_txt, dd_bg, dd_fg = (f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive"), "#1f2937", "#fbbf24"
+        else:
+            dd_txt = (f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive"
+            dd_bg, dd_fg = "#21262d", "#58a6ff"
+
+        bx = left_x
+        dd_tag = f"btn_dd_{track_key}_{seq}"
+        bx, _ = self._draw_pill_btn(bx, y, dd_txt, dd_bg, dd_fg, dd_tag)
+        self.cv.tag_bind(dd_tag, "<Button-1>", lambda e, t=track_key, s=seq, r=has_dd: self._on_dd_click(t, s, r))
+
+        gal_list = les.get("gallery") or []
+        has_gal = len(gal_list) >= 1
+        gal_wait = self._busy_btns.get((track_key, seq, "gal"))
+        if gal_wait:
+            gal_txt = gal_wait
+        elif key in self.open_gal and has_gal:
+            gal_txt = f"Hide Plates ({len(gal_list)})"
+        else:
+            gal_txt = f"Plates ({len(gal_list)})" if has_gal else "Curate Plates"
+        gal_tag = f"btn_gal_{track_key}_{seq}"
+        bx, _ = self._draw_pill_btn(bx + 8, y, gal_txt, "#21262d", "#3fb950", gal_tag)
+        self.cv.tag_bind(gal_tag, "<Button-1>", lambda e, t=track_key, s=seq, r=has_gal: self._on_gal_click(t, s, r))
+
+        if img_url:
+            starred = self._is_starred(img_url)
+            fav_tag = f"btn_fav_{track_key}_{seq}"
+            bx, _ = self._draw_pill_btn(bx + 8, y, "[*Fav Plate]" if starred else "[+Fav Plate]", "#21262d", "#fbbf24" if starred else "#8b949e", fav_tag)
+            self.cv.tag_bind(fav_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=img_url, cp=les.get("image_caption") or les.get("title", ""): self._toggle_star(t, s, u, cp, "", "Lead Plate"))
+
+        ask_wait = self._busy_btns.get((track_key, seq, "ask"), "Ask Gemini...")
+        ask_tag = f"btn_ask_{track_key}_{seq}"
+        _, btn_bot = self._draw_pill_btn(bx + 8, y, ask_wait, "#251736", "#d2a8ff", ask_tag)
+        self.cv.tag_bind(ask_tag, "<Button-1>", lambda e, t=track_key, s=seq, ti=les.get("title", ""): self._prompt_ask_gemini(t, s, ti))
+
+        y = btn_bot + 10
+
+        # Expandable Deep Dive Drawer (drawn directly on Canvas!)
+        if key in self.open_dd and has_dd:
+            dd_top = y
+            self.cv.create_rectangle(left_x, y, cw - 28, y + 30, fill="#111822", outline="#30363d")
+            self.cv.create_text(left_x + 10, y + 15, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fill="#58a6ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="w")
+
+            min_tag = f"dd_min_{track_key}_{seq}"
+            self._draw_pill_btn(cw - 178, y + 4, "Minimize Deep Dive", "#21262d", "#fbbf24", min_tag, pad_x=8, pad_y=3)
+            self.cv.tag_bind(min_tag, "<Button-1>", lambda e, k=key: (self.open_dd.discard(k), self.render_scene()))
+
+            dp_wait = self._busy_btns.get((track_key, seq, "deeper"), f"+ Deeper Dive (Ch.{ch_count + 1})")
+            dp_tag = f"dd_more_{track_key}_{seq}"
+            self._draw_pill_btn(cw - 355, y + 4, dp_wait, "#251736", "#d2a8ff", dp_tag, pad_x=8, pad_y=3)
+            self.cv.tag_bind(dp_tag, "<Button-1>", lambda e, t=track_key, s=seq: self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s, "append": True}, (t, s, "deeper"), "... Diving Deeper..."))
+
+            y += 38
+            dd_txt_id = self.cv.create_text(left_x + 12, y, text=_fast_ascii(les["deep_dive"]), fill="#d0d7de", font=("DejaVu Sans Mono", 9), anchor="nw", width=max(200, cw - 80))
+            dd_bb = self.cv.bbox(dd_txt_id) or (left_x, y, cw - 28, y + 100)
+            y = dd_bb[3] + 12
+            min_bot_tag = f"dd_min_b_{track_key}_{seq}"
+            _, y_end_btn = self._draw_pill_btn(cw - 182, y, "Minimize Deep Dive", "#21262d", "#fbbf24", min_bot_tag, pad_x=8, pad_y=3)
+            self.cv.tag_bind(min_bot_tag, "<Button-1>", lambda e, k=key: (self.open_dd.discard(k), self.render_scene()))
+            y = y_end_btn + 8
+            dd_box = self.cv.create_rectangle(left_x, dd_top, cw - 28, y, fill="#090d13", outline="#30363d")
+            self.cv.tag_lower(dd_box, dd_txt_id)
+            y += 10
+
+        # Expandable Gallery Plates Drawer (drawn directly on Canvas!)
+        if key in self.open_gal and has_gal:
+            gal_cols = max(1, min(4, (cw - 64) // 204))
+            gx0 = left_x + 8
+            gy = y + 8
+            for idx_g, g_item in enumerate(gal_list):
+                r_i, c_i = divmod(idx_g, gal_cols)
+                cx = gx0 + c_i * 204
+                cy = gy + r_i * 168
+                gu = g_item.get("url", "")
+                gc = _fast_ascii(f"{g_item.get('caption', '')} -- {g_item.get('study_note', '')}".strip(" -"))
+                gs = _fast_ascii(g_item.get("source", "Archive"))[:16]
+                g_star = self._is_starred(gu)
+
+                self.cv.create_rectangle(cx, cy, cx + 194, cy + 160, fill="#161b22", outline="#30363d")
+                del_tag = f"gdel_{track_key}_{seq}_{idx_g}"
+                self.cv.create_text(cx + 8, cy + 3, text="x", fill="#f85149", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", tags=(del_tag,))
+                self.cv.tag_bind(del_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=gu: self._delete_plate(t, s, u))
+
+                self.cv.create_text(cx + 24, cy + 4, text=gs, fill="#58a6ff", font=("DejaVu Sans Mono", 6), anchor="nw")
+                st_tag = f"gstar_{track_key}_{seq}_{idx_g}"
+                self.cv.create_text(cx + 166, cy + 3, text="[*]" if g_star else "[+]", fill="#fbbf24" if g_star else "#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", tags=(st_tag,))
+                self.cv.tag_bind(st_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs: self._toggle_star(t, s, u, cp, sn, sr))
+
+                g_ph = self._get_cached_tk_img(gu, (190, 126))
+                gim_tag = f"gim_{track_key}_{seq}_{idx_g}"
+                self.cv.create_image(cx + 2, cy + 18, image=g_ph, anchor="nw", tags=(gim_tag,))
+                self.cv.create_text(cx + 6, cy + 145, text=_fast_ascii((g_item.get("caption") or "Plate")[:24]), fill="#c9d1d9", font=("DejaVu Sans Mono", 7), anchor="nw", tags=(gim_tag,))
+                self.cv.tag_bind(gim_tag, "<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
+
+            rows_n = (len(gal_list) + gal_cols - 1) // gal_cols
+            y = gy + rows_n * 168 + 4
+            more_wait = self._busy_btns.get((track_key, seq, "more_gal"), "+ Curate 5 More Plates")
+            more_tag = f"gmore_{track_key}_{seq}"
+            _, y_mb = self._draw_pill_btn(left_x + 8, y, more_wait, "#1f2937", "#fbbf24", more_tag)
+            self.cv.tag_bind(more_tag, "<Button-1>", lambda e, t=track_key, s=seq: self._prompt_more_plates(t, s))
+            y = y_mb + 10
+
+        # Saved Q&A Drawer
+        qa_list = les.get("qa_log") or []
+        if qa_list:
+            is_min = (key in self.closed_qa)
+            q_tag = f"qatog_{track_key}_{seq}"
+            _, y_qb = self._draw_pill_btn(left_x, y, f"Show Saved Q&A ({len(qa_list)}) [v]" if is_min else f"Minimize Q&A ({len(qa_list)}) [^]", "#251736", "#d2a8ff", q_tag, pad_x=8, pad_y=3)
+            self.cv.tag_bind(q_tag, "<Button-1>", lambda e, k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self.render_scene()))
+            y = y_qb + 6
+            if not is_min:
+                for qa in qa_list:
+                    q_top = y
+                    q_h = self.cv.create_text(left_x + 10, y + 6, text=_fast_ascii(f"Q: {qa.get('q','')}  [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fill="#d2a8ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=max(180, cw - 80))
+                    y = (self.cv.bbox(q_h) or (0, 0, 0, y + 18))[3] + 4
+                    q_a = self.cv.create_text(left_x + 10, y, text=_fast_ascii(qa.get("a", "")), fill="#e6edf3", font=("DejaVu Sans Mono", 9), anchor="nw", width=max(180, cw - 80))
+                    y = (self.cv.bbox(q_a) or (0, 0, 0, y + 24))[3] + 8
+                    q_rect = self.cv.create_rectangle(left_x, q_top, cw - 28, y, fill="#0c131d", outline="#6e40c9")
+                    self.cv.tag_lower(q_rect, q_h)
+                    y += 6
+
+        self.cv.coords(card_bg_id, 16, y_top, cw - 16, y + 6)
+        return y + 6
+
+    def _on_dd_click(self, track, seq, ready):
+        key = (track, seq)
+        if ready:
+            if key in self.open_dd:
+                self.open_dd.remove(key)
+            else:
+                self.open_dd.add(key)
+            self.render_scene()
+        else:
+            self.open_dd.add(key)
+            self._call_cloud_action("/api/deep_dive", {"track": track, "seq": seq}, (track, seq, "dd"), "... Writing...")
+
+    def _on_gal_click(self, track, seq, ready):
+        key = (track, seq)
+        if ready:
+            if key in self.open_gal:
+                self.open_gal.remove(key)
+            else:
+                self.open_gal.add(key)
+            self.render_scene()
+        else:
+            self.open_gal.add(key)
+            self._call_cloud_action("/api/gallery", {"track": track, "seq": seq}, (track, seq, "gal"), "... Curating...")
+
+    def _call_cloud_action(self, endpoint, payload, busy_key, wait_txt):
+        if busy_key in self._busy_btns:
+            return
+        self._busy_btns[busy_key] = wait_txt
+        self.render_scene()
+
+        def _worker():
+            for attempt in range(2):
+                try:
+                    u = get_cloud_url() + endpoint
+                    req = urllib.request.Request(u, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                    j = json.loads(urllib.request.urlopen(req, timeout=95).read().decode())
+                    if j.get("ok") and j.get("lesson"):
+                        arr = self.data["tracks"][payload["track"]]["lessons"]
+                        for idx, item in enumerate(arr):
+                            if int(item["seq"]) == int(payload["seq"]):
+                                arr[idx] = j["lesson"]
+                                break
+                        if j.get("capacity"):
+                            self.capacity = j["capacity"]
+                        self._save_local()
+                        self._busy_btns.pop(busy_key, None)
+                        self.after(0, self.render_scene)
+                        return
+                except Exception:
+                    pass
+                if attempt == 0:
+                    self._busy_btns[busy_key] = "... Retrying..."
+                    self.after(0, self.render_scene)
+                    time.sleep(2)
+            self._busy_btns[busy_key] = "[!] Tap to Retry"
+            self.after(0, self.render_scene)
+            time.sleep(2.5)
+            self._busy_btns.pop(busy_key, None)
+            self.after(0, self.render_scene)
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _cloud_sync_loop(self):
         while not self._closing:
             try:
@@ -718,52 +653,30 @@ class KnowledgeDesktopHub(tk.Tk):
                 req = urllib.request.Request(u, headers={"User-Agent": _UA})
                 j = json.loads(urllib.request.urlopen(req, timeout=22).read().decode())
                 if j.get("curriculum") and not self._closing:
-                    old_counts = (
-                        len(self.data.get("tracks", {}).get("art", {}).get("lessons", [])),
-                        len(self.data.get("tracks", {}).get("universe", {}).get("lessons", [])),
-                    )
                     self.data = j["curriculum"]
                     self.data.setdefault("favorites", [])
                     if j.get("capacity"):
                         self.capacity = j["capacity"]
                     self._save_local()
-                    new_counts = (
-                        len(self.data.get("tracks", {}).get("art", {}).get("lessons", [])),
-                        len(self.data.get("tracks", {}).get("universe", {}).get("lessons", [])),
-                    )
                     st = j.get("scheduler", {}).get("status", "ONLINE")
                     lc = j.get("scheduler", {}).get("last_check", "--")
-                    self.after(0, lambda s=st, l=lc, rr=(old_counts != new_counts): self._apply_sync_hdr(s, l, rr))
+                    self.sched_status = f"{st}  |  Last Check: {lc}"
+                    self.after(0, self.render_scene)
             except Exception:
                 pass
             time.sleep(35)
 
-    def _apply_sync_hdr(self, st, lc, rerender):
-        if self._closing:
-            return
-        self.sched_status = st
-        self.sub_lbl.config(text=_fast_ascii(f"{st}  |  Last Check: {lc}"))
-        c = self.capacity
-        if c:
-            ram_part = f"Render RAM: {c.get('ram_mb', 0)}/{c.get('ram_limit_mb', 512)} MB ({c.get('ram_pct', 0)}%)" if c.get("ram_mb") else "Cloud: Synced"
-            self.cap_pill.config(
-                text=f"GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)  |  {ram_part}  |  Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
-            )
-        self._update_tab_counts()
-        if rerender:
-            self.render_cards()
-
     def _manual_sync_drop(self):
-        self.sync_btn.config(text="... Dropping...", state="disabled")
-        self.sub_lbl.config(text="ONLINE | Triggering Missed/Daily Drop on Render (Art + Universe + Matrix)...")
+        bkey = ("global", 0, "sync")
+        if bkey in self._busy_btns:
+            return
+        self._busy_btns[bkey] = "... Dropping..."
+        self.render_scene()
 
         def _worker():
             try:
                 u = get_cloud_url() + "/api/sync_drop"
-                req = urllib.request.Request(
-                    u, data=json.dumps({"force": True}).encode(),
-                    headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST"
-                )
+                req = urllib.request.Request(u, data=json.dumps({"force": True}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
                 j = json.loads(urllib.request.urlopen(req, timeout=140).read().decode())
                 if j.get("ok"):
                     if j.get("curriculum"):
@@ -772,25 +685,25 @@ class KnowledgeDesktopHub(tk.Tk):
                         self._save_local()
                     if j.get("capacity"):
                         self.capacity = j["capacity"]
-                    st = j.get("scheduler", {}).get("status", "ONLINE")
-                    lc = j.get("scheduler", {}).get("last_check", "--")
                     added = (j.get("result") or {}).get("changed") or []
-                    btn_lbl = f"[OK] +{len(added)} Dropped!" if added else "[OK] Up to Date"
-                    self.after(0, lambda: (
-                        self._apply_sync_hdr(st, lc, bool(added)),
-                        self.sync_btn.config(text=btn_lbl, state="normal"),
-                        self.after(3500, lambda: self.sync_btn.config(text="Sync Drop"))
-                    ))
+                    self._busy_btns[bkey] = f"[OK] +{len(added)}!" if added else "[OK] Synced"
                 else:
-                    self.after(0, lambda: self.sync_btn.config(text="[!] Retry", state="normal"))
+                    self._busy_btns[bkey] = "[!] Retry"
             except Exception:
-                self.after(0, lambda: self.sync_btn.config(text="[!] Wake & Retry", state="normal"))
+                self._busy_btns[bkey] = "[!] Wake & Retry"
+            self.after(0, self.render_scene)
+            time.sleep(3)
+            self._busy_btns.pop(bkey, None)
+            self.after(0, self.render_scene)
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _toggle_star(self, track, seq, url, caption="", study_note="", source="", star_btn=None):
-        if star_btn and star_btn.winfo_exists():
-            now_st = ("+" in star_btn.cget("text"))
-            star_btn.config(text="[*Fav]" if now_st else "[+Fav]", fg="#fbbf24" if now_st else "#8b949e")
+    def _toggle_star(self, track, seq, url, caption="", study_note="", source=""):
+        favs = self.data.setdefault("favorites", [])
+        if any(f.get("url") == url for f in favs):
+            self.data["favorites"] = [f for f in favs if f.get("url") != url]
+        else:
+            favs.insert(0, {"track": track, "seq": seq, "url": url, "caption": caption, "study_note": study_note, "source": source, "saved_at": time.strftime("%Y-%m-%d")})
+        self.render_scene()
 
         def _worker():
             try:
@@ -803,28 +716,21 @@ class KnowledgeDesktopHub(tk.Tk):
                     if j.get("capacity"):
                         self.capacity = j["capacity"]
                     self._save_local()
-                    self.after(0, lambda: (
-                        self._apply_sync_hdr(self.sched_status, "Synced", False),
-                        self.render_cards() if self.cur_track == "favorites" else None
-                    ))
+                    self.after(0, self.render_scene)
             except Exception:
                 pass
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _delete_plate(self, track, seq, url, slot_ref=None):
+    def _delete_plate(self, track, seq, url):
         les = self._get_lesson_obj(track, seq)
         if les and les.get("gallery"):
             les["gallery"] = [g for g in les["gallery"] if g.get("url") != url]
-        if slot_ref:
-            self._render_slot_drawers(slot_ref)
+        self.render_scene()
 
         def _worker():
             try:
                 u = get_cloud_url() + "/api/delete_plate"
-                req = urllib.request.Request(
-                    u, data=json.dumps({"track": track, "seq": seq, "url": url}).encode(),
-                    headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST"
-                )
+                req = urllib.request.Request(u, data=json.dumps({"track": track, "seq": seq, "url": url}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
                 j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
                 if j.get("ok"):
                     arr = self.data["tracks"][track]["lessons"]
@@ -836,39 +742,17 @@ class KnowledgeDesktopHub(tk.Tk):
                     if j.get("capacity"):
                         self.capacity = j["capacity"]
                     self._save_local()
-                    self.after(0, lambda: self._apply_sync_hdr(self.sched_status, "Pruned", False))
+                    self.after(0, self.render_scene)
             except Exception:
                 pass
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _update_tab_counts(self, explicit_w=None):
-        a_n = len(self.data.get("tracks", {}).get("art", {}).get("lessons", []))
-        u_n = len(self.data.get("tracks", {}).get("universe", {}).get("lessons", []))
-        f_n = len(self.data.get("favorites") or [])
-        w = explicit_w if explicit_w else (self._last_cw + 38)
-        if w >= 940:
-            self.btn_art.config(text=f"ART ENDURANCE ({a_n})")
-            self.btn_uni.config(text=f"PHYSICS OF TIME ({u_n})")
-            self.btn_fav.config(text=f"* KEY'S FAVORITES ({f_n})")
-        else:
-            self.btn_art.config(text=f"ART ({a_n})")
-            self.btn_uni.config(text=f"PHYSICS ({u_n})")
-            self.btn_fav.config(text=f"* FAVS ({f_n})")
-
-    def switch_track(self, t):
-        self.cur_track = t
-        self.btn_art.config(bg="#fbbf24" if t == "art" else "#21262d", fg="#090d13" if t == "art" else "#c9d1d9")
-        self.btn_uni.config(bg="#58a6ff" if t == "universe" else "#21262d", fg="#090d13" if t == "universe" else "#c9d1d9")
-        self.btn_fav.config(bg="#fbbf24" if t == "favorites" else "#21262d", fg="#090d13" if t == "favorites" else "#fbbf24")
-        self.render_cards()
-
     def _jump_to_lesson(self, track, seq):
-        self.search_var.set("")
+        self.search_query = ""
         raw_list = self.data.get("tracks", {}).get(track, {}).get("lessons", [])
         all_seq = [int(x.get("seq", 0)) for x in reversed(raw_list) if isinstance(x, dict)]
         if int(seq) in all_seq:
-            idx = all_seq.index(int(seq))
-            self.page_idx[track] = idx // PAGE_SIZE
+            self.page_idx[track] = all_seq.index(int(seq)) // PAGE_SIZE
         else:
             self.page_idx[track] = 0
         self.switch_track(track)
@@ -880,199 +764,22 @@ class KnowledgeDesktopHub(tk.Tk):
         top.title("Visual Plate Lightbox // Full Resolution")
         top.geometry("900x680")
         top.configure(bg="#090d13")
-        lbl_img = tk.Label(top, text="... Loading high-resolution archival plate...", fg="#fbbf24", bg="#090d13", font=("DejaVu Sans Mono", 10))
-        lbl_img.pack(expand=True, fill="both", padx=14, pady=(14, 6))
-        cap_l = tk.Label(top, text=_fast_ascii(caption), fg="#e6edf3", bg="#090d13", font=("DejaVu Sans Mono", 9), pady=8, wraplength=840)
-        cap_l.pack(fill="x", padx=12)
+        l_cv = tk.Canvas(top, bg="#090d13", highlightthickness=0)
+        l_cv.pack(fill="both", expand=True)
+        l_cv.create_text(450, 300, text="... Loading high-resolution archival plate...", fill="#fbbf24", font=("DejaVu Sans Mono", 10), tags=("wait",))
+        l_cv.create_text(450, 640, text=caption, fill="#e6edf3", font=("DejaVu Sans Mono", 9), width=840)
 
         def _load():
-            try:
-                im = fetch_cached_pil(url, (860, 580))
-                if im:
-                    def _paint():
-                        if top.winfo_exists():
-                            ph = ImageTk.PhotoImage(im)
-                            top._ph = ph
-                            lbl_img.config(image=ph, text="")
-                    self.after(0, _paint)
-            except Exception as e:
-                self.after(0, lambda: lbl_img.config(text=f"Plate unavailable ({e})"))
+            im = fetch_cached_pil(url, (860, 580))
+            if im:
+                def _paint():
+                    if top.winfo_exists():
+                        ph = ImageTk.PhotoImage(im)
+                        top._ph = ph
+                        l_cv.delete("wait")
+                        l_cv.create_image(450, 300, image=ph, anchor="center")
+                self.after(0, _paint)
         threading.Thread(target=_load, daemon=True).start()
-
-    def _load_thumb_async(self, lbl, url, size=(240, 170)):
-        cache_key = (url, size)
-        if cache_key in _MEM_TK_CACHE:
-            lbl.config(image=_MEM_TK_CACHE[cache_key], width=size[0], height=size[1])
-            return
-        if cache_key in _MEM_PIL_CACHE:
-            ph = ImageTk.PhotoImage(_MEM_PIL_CACHE[cache_key])
-            _MEM_TK_CACHE[cache_key] = ph
-            lbl.config(image=ph, width=size[0], height=size[1])
-            return
-        h = hashlib.sha256(url.encode()).hexdigest()[:24]
-        thumb_path = os.path.join(IMG_CACHE_DIR, f"{h}_{size[0]}x{size[1]}.jpg")
-        if os.path.exists(thumb_path):
-            try:
-                im = Image.open(thumb_path).convert("RGB")
-                _MEM_PIL_CACHE[cache_key] = im
-                ph = ImageTk.PhotoImage(im)
-                _MEM_TK_CACHE[cache_key] = ph
-                lbl.config(image=ph, width=size[0], height=size[1])
-                return
-            except Exception:
-                pass
-        lbl.config(image=_BLANK_TK, width=size[0], height=size[1])
-        self._img_queue.put((lbl, url, size))
-
-    def _call_cloud_action(self, endpoint, payload, btn, wait_txt, done_cb):
-        btn.config(text=wait_txt, state="disabled")
-
-        def _worker():
-            last_err = ""
-            for attempt in range(2):
-                try:
-                    u = get_cloud_url() + endpoint
-                    req = urllib.request.Request(
-                        u, data=json.dumps(payload).encode(),
-                        headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST"
-                    )
-                    j = json.loads(urllib.request.urlopen(req, timeout=95).read().decode())
-                    if j.get("ok") and j.get("lesson"):
-                        arr = self.data["tracks"][payload["track"]]["lessons"]
-                        for idx, item in enumerate(arr):
-                            if int(item["seq"]) == int(payload["seq"]):
-                                arr[idx] = j["lesson"]
-                                break
-                        if j.get("capacity"):
-                            self.capacity = j["capacity"]
-                        self._save_local()
-                        self.after(0, lambda: (self._apply_sync_hdr(self.sched_status, "Synced", False), done_cb()))
-                        return
-                    last_err = j.get("error", "Busy")
-                except urllib.error.HTTPError as he:
-                    try:
-                        err_b = json.loads(he.read().decode())
-                        last_err = err_b.get("error", f"HTTP {he.code}")
-                    except Exception:
-                        last_err = f"HTTP {he.code}"
-                except Exception as e:
-                    last_err = str(e)
-                if attempt == 0:
-                    self.after(0, lambda: btn.config(text="... Retrying...") if btn.winfo_exists() else None)
-                    time.sleep(2)
-            print(f"[Cloud Action Warn {endpoint}] {last_err}", flush=True)
-            self.after(0, lambda: btn.config(text="[!] Tap to Retry", state="normal") if btn.winfo_exists() else None)
-        threading.Thread(target=_worker, daemon=True).start()
-
-    def _render_favorites_view(self, cw):
-        for w in self.favs_container.winfo_children():
-            w.destroy()
-        favs = self.data.get("favorites") or []
-        if not favs:
-            empty = tk.Frame(self.favs_container, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
-            empty.pack(fill="x", pady=12, padx=4)
-            self._make_lbl(empty, "full", text="* Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 10, "bold")).pack(fill="x")
-            self._make_lbl(empty, "full", text="Click [+Fav] on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 9), pady=6).pack(fill="x")
-            return
-
-        stack_fav = cw < 660
-        for f in favs:
-            card = tk.Frame(self.favs_container, bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
-            card.pack(fill="x", pady=6, padx=2)
-            row = tk.Frame(card, bg="#161b22")
-            row.pack(fill="x", padx=12, pady=10)
-
-            p_card = tk.Frame(row, bg="#090d13", highlightbackground="#30363d", highlightthickness=1, cursor="hand2")
-            if stack_fav:
-                p_card.pack(anchor="w", pady=(0, 8))
-            else:
-                p_card.pack(side="left", padx=(0, 14), anchor="n")
-            il = tk.Label(p_card, image=_BLANK_TK, bg="#1c232d", width=205, height=138, cursor="hand2")
-            il.pack()
-            il.bind("<Button-1>", lambda e, u=f.get("url", ""), c=_fast_ascii(f.get("caption", "")): self._open_lightbox(u, c))
-            self._load_thumb_async(il, f.get("url", ""), size=(205, 138))
-
-            info = tk.Frame(row, bg="#161b22")
-            info.pack(side="left", fill="both", expand=True)
-            self._make_lbl(info, "fav", text=_fast_ascii(f"{str(f.get('track','art')).upper()} #{int(f.get('seq',1)):03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fg="#8b949e", bg="#161b22", font=("DejaVu Sans Mono", 8, "bold"), anchor="w", justify="left").pack(fill="x")
-            self._make_lbl(info, "fav", text=_fast_ascii(f.get("caption", "Visual Plate")), fg="#f0f6fc", bg="#161b22", font=("DejaVu Sans Mono", 10, "bold"), anchor="w", justify="left").pack(fill="x", pady=(4, 2))
-            if f.get("study_note"):
-                self._make_lbl(info, "fav", text=_fast_ascii(f.get("study_note", "")), fg="#fbbf24", bg="#161b22", font=("DejaVu Sans Mono", 8), anchor="w", justify="left").pack(fill="x", pady=(0, 6))
-
-            b_row = tk.Frame(info, bg="#161b22")
-            b_row.pack(fill="x", pady=(4, 0))
-            tk.Button(b_row, text=f"Open {str(f.get('track','art')).upper()} (#{int(f.get('seq',1)):03d}) ->", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1): self._jump_to_lesson(tr, sq), bg="#21262d", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left", padx=(0, 8))
-            tk.Button(b_row, text="[*] Unstar", command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1), u=f.get("url", ""): self._toggle_star(tr, sq, u), bg="#2d2208", fg="#fbbf24", relief="flat", font=("DejaVu Sans Mono", 8, "bold"), padx=9, pady=4, cursor="hand2").pack(side="left")
-
-    def render_cards(self):
-        cw = self.cv.winfo_width()
-        if cw < 120:
-            cw = self._last_cw
-        self._last_cw = cw
-        self._update_tab_counts(cw + 38)
-
-        if self.cur_track == "favorites":
-            self.cards_container.pack_forget()
-            self.favs_container.pack(fill="both", expand=True)
-            self.page_lbl.config(text=f"* KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
-            self.prev_btn.config(state="disabled")
-            self.next_btn.config(state="disabled")
-            self._render_favorites_view(cw)
-            self.cv.yview_moveto(0.0)
-            self._throttled_scrollregion()
-            return
-
-        self.favs_container.pack_forget()
-        if not self.cards_container.winfo_ismapped():
-            self.cards_container.pack(fill="both", expand=True)
-
-        q = self.search_var.get().strip().lower()
-        raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
-        all_lessons = [self._norm_lesson(x) for x in reversed(raw_list) if isinstance(x, dict)]
-        filtered = [
-            les for les in all_lessons
-            if not q or q in f"#{les.get('seq',0):03d} {les.get('title','')} {les.get('core','')} {' '.join(les.get('tags',[]))}".lower()
-        ]
-
-        total = len(filtered)
-        max_page = max(0, (total - 1) // PAGE_SIZE)
-        cur_p = min(self.page_idx.get(self.cur_track, 0), max_page)
-        self.page_idx[self.cur_track] = cur_p
-
-        start_i = cur_p * PAGE_SIZE
-        end_i = min(total, start_i + PAGE_SIZE)
-        page_slice = filtered[start_i:end_i]
-
-        t_label = "ART ENDURANCE" if self.cur_track == "art" else "PHYSICS OF TIME"
-        if total > 0:
-            hi_seq = page_slice[0]["seq"]
-            lo_seq = page_slice[-1]["seq"]
-            meta_txt = f"{t_label}  |  Showing #{hi_seq:03d}-#{lo_seq:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})"
-        else:
-            meta_txt = f"{t_label}  |  0 matching lessons"
-
-        has_prev = (cur_p > 0)
-        has_next = (end_i < total)
-        self.page_lbl.config(text=meta_txt)
-        self.prev_btn.config(state="normal" if has_prev else "disabled", fg="#58a6ff" if has_prev else "#484f58")
-        self.next_btn.config(state="normal" if has_next else "disabled", fg="#58a6ff" if has_next else "#484f58")
-
-        self.bot_page_lbl.config(text=f"Page {cur_p + 1} of {max_page + 1}")
-        self.bot_prev_btn.config(state="normal" if has_prev else "disabled", fg="#fbbf24" if has_prev else "#484f58")
-        self.bot_next_btn.config(state="normal" if has_next else "disabled", fg="#fbbf24" if has_next else "#484f58")
-
-        # Update the 5 permanent slots IN-PLACE (zero new frames packed on tab/page change!)
-        for idx in range(PAGE_SIZE):
-            slot = self._slots[idx]
-            if idx < len(page_slice):
-                if not slot["card"].winfo_ismapped():
-                    slot["card"].pack(fill="x", pady=6, padx=2, before=self.bot_nav)
-                self._populate_slot(slot, page_slice[idx], self.cur_track)
-            else:
-                slot["card"].pack_forget()
-
-        self.cv.yview_moveto(0.0)
-        self._throttled_scrollregion()
 
 
 if __name__ == "__main__":
