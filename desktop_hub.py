@@ -90,7 +90,7 @@ class KnowledgeDesktopHub(tk.Tk):
         _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
         _log_t("tk.Tk.__init__ complete")
-        self.title("Knowledge Command Center // v4.0 Zero-Latency Slot Engine")
+        self.title("Knowledge Command Center // v4.1 Instant Mainloop & Zero-Reload Slot Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
@@ -247,11 +247,7 @@ class KnowledgeDesktopHub(tk.Tk):
         _log_t("5 permanent card slots constructed in memory! Populating data...")
         self._load_local()
         self.render_cards()
-
-        _log_t("Mapping window + 5 slots to X11 in one single pass...")
-        self.deiconify()
-        self.update_idletasks()
-        _log_t("READY! Window + Art Page 1 live on screen!")
+        self.after(1, lambda: _log_t("FIRST FRAME PAINTED IN MAINLOOP!"))
 
         for _ in range(3):
             threading.Thread(target=self._image_worker_loop, daemon=True).start()
