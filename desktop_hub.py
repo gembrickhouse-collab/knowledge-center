@@ -1,19 +1,23 @@
-import os, io, json, time, queue, hashlib, threading, webbrowser, urllib.request, urllib.error
+import os, sys, io, json, time, queue, hashlib, threading, webbrowser, urllib.request, urllib.error
+_T0 = time.perf_counter()
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk, ImageOps
+
+def _log_t(msg):
+    print(f"[{time.perf_counter() - _T0:6.3f}s] {msg}", flush=True)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CURRICULUM_FILE = os.path.join(BASE_DIR, "curriculum.json")
 CLOUD_URL_FILE = os.path.join(BASE_DIR, "cloud_url.txt")
 IMG_CACHE_DIR = os.path.expanduser("~/.cache/knowledge_hub_plates")
 os.makedirs(IMG_CACHE_DIR, exist_ok=True)
-_UA = "KnowledgeDesktopHub/3.6 (Ubuntu; educational)"
+_UA = "KnowledgeDesktopHub/3.8 (Ubuntu; educational)"
 
 _MEM_PIL_CACHE = {}
 _MEM_TK_CACHE = {}
 _FAILED_URLS = set()
-PAGE_SIZE = 5  # Only 5 cards exist in X11 at once -> 0.1s boot, 0.05s tab switch, ZERO X11 freeze!
+PAGE_SIZE = 5
 
 
 def get_cloud_url():
@@ -41,7 +45,6 @@ def fetch_cached_pil(url, max_size):
     if cache_key in _MEM_PIL_CACHE:
         return _MEM_PIL_CACHE[cache_key]
     h = hashlib.sha256(url.encode()).hexdigest()[:24]
-    # Save exact pre-sized thumbnail on disk so future launches read a tiny 8KB file in 0.5ms!
     thumb_path = os.path.join(IMG_CACHE_DIR, f"{h}_{max_size[0]}x{max_size[1]}.jpg")
     full_path = os.path.join(IMG_CACHE_DIR, f"{h}_v31.jpg")
     try:
@@ -51,7 +54,7 @@ def fetch_cached_pil(url, max_size):
             return im
         if not os.path.exists(full_path):
             req = urllib.request.Request(url, headers={"User-Agent": _UA})
-            raw = urllib.request.urlopen(req, timeout=4).read()
+            raw = urllib.request.urlopen(req, timeout=3.5).read()
             im = _normalize_pil_image(Image.open(io.BytesIO(raw)))
             im.thumbnail((900, 900), Image.Resampling.BILINEAR)
             im.save(full_path, "JPEG", quality=85)
@@ -69,12 +72,20 @@ def fetch_cached_pil(url, max_size):
 
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
+        _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
-        self.title("Knowledge Command Center // v3.7 Instant 5-Card Persistent Deck")
+        _log_t("tk.Tk.__init__ complete")
+        self.title("Knowledge Command Center // v3.8 Instant Slot-Pool Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
         self.protocol("WM_DELETE_WINDOW", self._instant_quit)
+
+        # Force X11 window onto the screen in the first 0.05s BEFORE building any child widgets!
+        self.update_idletasks()
+        self.deiconify()
+        self.update()
+        _log_t("X11 Window mapped on screen!")
 
         self.cur_track = "art"
         self.page_idx = {"art": 0, "universe": 0, "favorites": 0}
@@ -86,7 +97,6 @@ class KnowledgeDesktopHub(tk.Tk):
         self._card_registry = {}
         self._wrap_labels = []
         self._img_queue = queue.LifoQueue()
-        self._render_gen = 0
         self._last_cw = 920
         self._last_mode = "wide"
         self._last_gal_cols = 4
@@ -162,7 +172,7 @@ class KnowledgeDesktopHub(tk.Tk):
             bg="#21262d", fg="#58a6ff", relief="flat", font=("Monospace", 8, "bold"), padx=8, pady=4, cursor="hand2"
         )
 
-        # Instant Page Bar (keeps X11 widget count under 40 widgets at all times!)
+        # Instant Page Bar
         self.page_bar = tk.Frame(self, bg="#111822", pady=4, padx=12, highlightbackground="#30363d", highlightthickness=1)
         self.page_bar.pack(fill="x", padx=12, pady=(0, 6))
         self.prev_btn = tk.Button(
@@ -171,7 +181,7 @@ class KnowledgeDesktopHub(tk.Tk):
         )
         self.prev_btn.pack(side="left")
         self.page_lbl = tk.Label(
-            self.page_bar, text="Page 1", fg="#e6edf3", bg="#111822", font=("Monospace", 8, "bold")
+            self.page_bar, text="Loading Archive...", fg="#e6edf3", bg="#111822", font=("Monospace", 8, "bold")
         )
         self.page_lbl.pack(side="left", expand=True)
         self.next_btn = tk.Button(
@@ -186,14 +196,13 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv = tk.Canvas(wrap, bg="#0d1117", highlightthickness=0)
         self.sb = ttk.Scrollbar(wrap, orient="vertical", command=self.cv.yview)
         self.inner = tk.Frame(self.cv, bg="#0d1117")
-        self._deck_frames = {
-            "art": tk.Frame(self.inner, bg="#0d1117"),
-            "universe": tk.Frame(self.inner, bg="#0d1117"),
-            "favorites": tk.Frame(self.inner, bg="#0d1117"),
-        }
-        self._deck_built_sig = {"art": None, "universe": None, "favorites": None}
-        self._page_meta = {"art": ("ART ENDURANCE", False, False), "universe": ("PHYSICS OF TIME", False, False)}
+
+        # Every page (Art Page 0, Art Page 1, Physics Page 0, etc.) gets cached in its own persistent frame once viewed!
+        # Plus we pre-build Art Page 0 AND Physics Page 0 right after window paint!
+        self._page_decks = {}      # (track, page_idx, query) -> tk.Frame
+        self._active_deck = None
         self._sr_job = None
+
         self.inner.bind("<Configure>", self._throttled_scrollregion)
         self.cwin = self.cv.create_window((0, 0), window=self.inner, anchor="nw")
         self.cv.bind("<Configure>", self._on_canvas_configure)
@@ -204,18 +213,52 @@ class KnowledgeDesktopHub(tk.Tk):
         self.bind_all("<Button-5>", lambda e: self.cv.yview_scroll(1, "units"))
 
         self._pack_nav_for_width(960)
-        self._load_local()
-        self.render_cards()
+        self.update()
+        _log_t("Header & Navigation bar painted!")
 
         for _ in range(3):
             threading.Thread(target=self._image_worker_loop, daemon=True).start()
-        threading.Thread(target=self._cloud_sync_loop, daemon=True).start()
+
+        self.after(10, self._fast_boot)
+
+    def _fast_boot(self):
+        _log_t("Loading curriculum.json...")
+        self._load_local()
+        _log_t("Rendering Art Page 1...")
+        self.render_cards()
+        self.update_idletasks()
+        _log_t("Art Page 1 rendered on screen!")
+        # Wait 3 seconds before starting cloud sync so network SSL handshake NEVER competes with initial UI or tab clicks!
+        self.after(250, self._background_prebuild_pages)
+        self.after(4000, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
+
+    def _background_prebuild_pages(self):
+        """Silently pre-builds Physics Page 1 and next pages one by one while idle so tab switching & Older 5 are 0ms!"""
+        if self._closing:
+            return
+        is_wide = (self._last_mode == "wide")
+        gal_cols = self._last_gal_cols
+        # Priority order: Physics Page 0, Art Page 1, Physics Page 1, Art Page 2...
+        targets = [
+            ("universe", 0), ("art", 1), ("universe", 1),
+            ("art", 2), ("universe", 2), ("art", 3), ("universe", 3),
+            ("art", 4), ("art", 5)
+        ]
+        for t_k, p_i in targets:
+            sig = (t_k, p_i, "")
+            if sig not in self._page_decks:
+                raw_list = self.data.get("tracks", {}).get(t_k, {}).get("lessons", [])
+                if p_i * PAGE_SIZE < len(raw_list):
+                    _log_t(f"Idle pre-building {t_k} page {p_i + 1}...")
+                    self._ensure_page_deck(t_k, p_i, "", is_wide, gal_cols)
+                    self.after(60, self._background_prebuild_pages)
+                    return
+        _log_t("All Art & Physics pages pre-built in RAM! Every tab & page switch is now 0ms!")
 
     def _throttled_scrollregion(self, _event=None):
-        """Debounces scrollregion bbox calculation so X11 NEVER runs bbox('all') 50 times in a row!"""
         if self._sr_job:
             return
-        self._sr_job = self.after(35, self._do_scrollregion)
+        self._sr_job = self.after(30, self._do_scrollregion)
 
     def _do_scrollregion(self):
         self._sr_job = None
@@ -243,7 +286,7 @@ class KnowledgeDesktopHub(tk.Tk):
     def _image_worker_loop(self):
         while not self._closing:
             try:
-                gen, lbl, url, size = self._img_queue.get(timeout=0.5)
+                lbl, url, size = self._img_queue.get(timeout=0.5)
             except queue.Empty:
                 continue
             if self._closing:
@@ -253,7 +296,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     continue
                 im = fetch_cached_pil(url, size)
                 if im and not self._closing:
-                    def _paint(l=lbl, img=im, u=url, sz=size, g=gen):
+                    def _paint(l=lbl, img=im, u=url, sz=size):
                         if not self._closing and l.winfo_exists():
                             ck = (u, sz)
                             ph = _MEM_TK_CACHE.get(ck)
@@ -474,6 +517,7 @@ class KnowledgeDesktopHub(tk.Tk):
             )
         self._update_tab_counts()
         if rerender:
+            self._page_decks.clear()
             self.render_cards()
 
     def _manual_sync_drop(self):
@@ -643,7 +687,6 @@ class KnowledgeDesktopHub(tk.Tk):
             _MEM_TK_CACHE[cache_key] = ph
             lbl.config(image=ph, text="", width=size[0], height=size[1])
             return
-        # Fast-path synchronous local disk check for pre-sized thumbnail (<0.5ms!)
         h = hashlib.sha256(url.encode()).hexdigest()[:24]
         thumb_path = os.path.join(IMG_CACHE_DIR, f"{h}_{size[0]}x{size[1]}.jpg")
         if os.path.exists(thumb_path):
@@ -656,7 +699,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 return
             except Exception:
                 pass
-        self._img_queue.put((self._render_gen, lbl, url, size))
+        self._img_queue.put((lbl, url, size))
 
     def _call_cloud_action(self, endpoint, payload, btn, wait_txt, done_cb):
         btn.config(text=wait_txt, state="disabled")
@@ -698,22 +741,19 @@ class KnowledgeDesktopHub(tk.Tk):
             self.after(0, lambda: btn.config(text="⚠️ Tap to Retry", state="normal") if btn.winfo_exists() else None)
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _render_favorites(self, cw):
-        self.page_lbl.config(text=f"⭐ KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
-        self.prev_btn.config(state="disabled")
-        self.next_btn.config(state="disabled")
-
+    def _build_favorites_deck(self, cw):
+        frm = tk.Frame(self.inner, bg="#0d1117")
         favs = self.data.get("favorites") or []
         if not favs:
-            empty = tk.Frame(self._deck_frames["favorites"], bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
+            empty = tk.Frame(frm, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
             empty.pack(fill="x", pady=12, padx=4)
             self._make_lbl(empty, "full", text="⭐ Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("Monospace", 10, "bold")).pack(fill="x")
             self._make_lbl(empty, "full", text="Click ☆ on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("Monospace", 9), pady=6).pack(fill="x")
-            return
+            return frm
 
         stack_fav = cw < 660
         for f in favs:
-            card = tk.Frame(self._deck_frames["favorites"], bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
+            card = tk.Frame(frm, bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
             card.pack(fill="x", pady=6, padx=2)
             row = tk.Frame(card, bg="#161b22")
             row.pack(fill="x", padx=12, pady=10)
@@ -758,90 +798,14 @@ class KnowledgeDesktopHub(tk.Tk):
                 command=lambda tr=f.get("track", "art"), sq=f.get("seq", 1), u=f.get("url", ""): self._toggle_star(tr, sq, u),
                 bg="#2d2208", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
             ).pack(side="left")
+        return frm
 
-    def _update_page_bar_ui(self, track):
-        if track == "favorites":
-            self.page_lbl.config(text=f"⭐ KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
-            self.prev_btn.config(state="disabled")
-            self.next_btn.config(state="disabled")
-            return
-        txt, has_prev, has_next = self._page_meta.get(track, ("", False, False))
-        self.page_lbl.config(text=txt)
-        self.prev_btn.config(state="normal" if has_prev else "disabled", fg="#58a6ff" if has_prev else "#484f58")
-        self.next_btn.config(state="normal" if has_next else "disabled", fg="#58a6ff" if has_next else "#484f58")
+    def _ensure_page_deck(self, track_key, page_num, q, is_wide, gal_cols):
+        sig = (track_key, page_num, q)
+        if sig in self._page_decks:
+            return self._page_decks[sig]
 
-    def render_cards(self, force_all=False):
-        cw = self.cv.winfo_width()
-        if cw < 120:
-            cw = self._last_cw
-        self._last_cw = cw
-        is_wide = cw >= 880
-        gal_cols = max(1, min(5, (cw - 32) // 210))
-        self._last_mode = "wide" if is_wide else "narrow"
-        self._last_gal_cols = gal_cols
-        self._update_tab_counts(cw + 38)
-
-        # 1. Map ONLY the active track's 5-card frame (0ms swap!)
-        for tk_name, frm in self._deck_frames.items():
-            frm.pack_forget()
-        active_frm = self._deck_frames[self.cur_track]
-        active_frm.pack(fill="both", expand=True)
-
-        q = self.search_var.get().strip().lower()
-
-        if self.cur_track == "favorites":
-            fav_sig = (len(self.data.get("favorites") or []), cw < 660)
-            if force_all or self._deck_built_sig["favorites"] != fav_sig:
-                for w in active_frm.winfo_children():
-                    w.destroy()
-                self._render_favorites(cw)
-                self._deck_built_sig["favorites"] = fav_sig
-            self._update_page_bar_ui("favorites")
-            self.cv.yview_moveto(0.0)
-            self._throttled_scrollregion()
-            return
-
-        # 2. Check if active track's current 5-card page is ALREADY built in RAM!
-        #    If yes, do NOTHING — 0ms instant switch without destroying or reloading a single widget!
-        raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
-        cur_p = self.page_idx.get(self.cur_track, 0)
-        want_sig = (len(raw_list), cur_p, q)
-
-        if not force_all and self._deck_built_sig.get(self.cur_track) == want_sig:
-            self._update_page_bar_ui(self.cur_track)
-            self.cv.yview_moveto(0.0)
-            self._throttled_scrollregion()
-            return
-
-        # 3. Build ONLY the 5 cards for this track/page into its persistent deck frame
-        self._build_track_page(self.cur_track, is_wide, gal_cols, q)
-        self._update_page_bar_ui(self.cur_track)
-        self.cv.yview_moveto(0.0)
-        self._throttled_scrollregion()
-
-        # 4. Also pre-build the other track's 5-card Page 1 once in the background after 120ms so your first click to Physics is ALSO 0ms!
-        other_t = "universe" if self.cur_track == "art" else "art"
-        other_raw = self.data.get("tracks", {}).get(other_t, {}).get("lessons", [])
-        other_sig = (len(other_raw), self.page_idx.get(other_t, 0), q)
-        if self._deck_built_sig.get(other_t) != other_sig:
-            self.after(120, lambda ot=other_t, iw=is_wide, gc=gal_cols, qq=q: self._prewarm_other_deck(ot, iw, gc, qq))
-
-    def _prewarm_other_deck(self, track_key, is_wide, gal_cols, q):
-        if self._closing:
-            return
-        raw_list = self.data.get("tracks", {}).get(track_key, {}).get("lessons", [])
-        want_sig = (len(raw_list), self.page_idx.get(track_key, 0), q)
-        if self._deck_built_sig.get(track_key) == want_sig:
-            return
-        self._build_track_page(track_key, is_wide, gal_cols, q)
-
-    def _build_track_page(self, track_key, is_wide, gal_cols, q):
-        deck_frm = self._deck_frames[track_key]
-        for w in deck_frm.winfo_children():
-            w.destroy()
-        for k in [k for k in self._card_registry if k[0] == track_key]:
-            del self._card_registry[k]
-
+        deck_frm = tk.Frame(self.inner, bg="#0d1117")
         raw_list = self.data.get("tracks", {}).get(track_key, {}).get("lessons", [])
         all_lessons = [self._norm_lesson(x) for x in reversed(raw_list) if isinstance(x, dict)]
         filtered = [
@@ -851,8 +815,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         total = len(filtered)
         max_page = max(0, (total - 1) // PAGE_SIZE)
-        cur_p = min(self.page_idx.get(track_key, 0), max_page)
-        self.page_idx[track_key] = cur_p
+        cur_p = min(page_num, max_page)
 
         start_i = cur_p * PAGE_SIZE
         end_i = min(total, start_i + PAGE_SIZE)
@@ -866,11 +829,8 @@ class KnowledgeDesktopHub(tk.Tk):
         else:
             meta_txt = f"{t_label}  •  0 matching lessons"
 
-        self._page_meta[track_key] = (meta_txt, cur_p > 0, end_i < total)
-        self._deck_built_sig[track_key] = (len(raw_list), cur_p, q)
-
         for les in page_slice:
-            self._build_single_card(les, is_wide, gal_cols, track_override=track_key)
+            self._build_single_card(les, is_wide, gal_cols, parent_frm=deck_frm, track_override=track_key)
 
         if total > PAGE_SIZE:
             bot_nav = tk.Frame(deck_frm, bg="#111822", pady=8, padx=12, highlightbackground="#30363d", highlightthickness=1)
@@ -886,6 +846,51 @@ class KnowledgeDesktopHub(tk.Tk):
                 state="normal" if end_i < total else "disabled",
                 bg="#21262d", fg="#fbbf24" if end_i < total else "#484f58", relief="flat", font=("Monospace", 8, "bold"), padx=12, pady=4, cursor="hand2"
             ).pack(side="right")
+
+        deck_info = {"frame": deck_frm, "meta_txt": meta_txt, "has_prev": cur_p > 0, "has_next": end_i < total}
+        self._page_decks[sig] = deck_info
+        return deck_info
+
+    def render_cards(self):
+        cw = self.cv.winfo_width()
+        if cw < 120:
+            cw = self._last_cw
+        self._last_cw = cw
+        is_wide = cw >= 880
+        gal_cols = max(1, min(5, (cw - 32) // 210))
+        self._last_mode = "wide" if is_wide else "narrow"
+        self._last_gal_cols = gal_cols
+        self._update_tab_counts(cw + 38)
+
+        if self._active_deck and self._active_deck.winfo_exists():
+            self._active_deck.pack_forget()
+
+        if self.cur_track == "favorites":
+            self.page_lbl.config(text=f"⭐ KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
+            self.prev_btn.config(state="disabled")
+            self.next_btn.config(state="disabled")
+            fav_frm = self._build_favorites_deck(cw)
+            fav_frm.pack(fill="both", expand=True)
+            self._active_deck = fav_frm
+            self.cv.yview_moveto(0.0)
+            self._throttled_scrollregion()
+            return
+
+        q = self.search_var.get().strip().lower()
+        raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
+        max_page = max(0, (len(raw_list) - 1) // PAGE_SIZE)
+        cur_p = min(self.page_idx.get(self.cur_track, 0), max_page)
+        self.page_idx[self.cur_track] = cur_p
+
+        deck_info = self._ensure_page_deck(self.cur_track, cur_p, q, is_wide, gal_cols)
+        self.page_lbl.config(text=deck_info["meta_txt"])
+        self.prev_btn.config(state="normal" if deck_info["has_prev"] else "disabled", fg="#58a6ff" if deck_info["has_prev"] else "#484f58")
+        self.next_btn.config(state="normal" if deck_info["has_next"] else "disabled", fg="#58a6ff" if deck_info["has_next"] else "#484f58")
+
+        deck_info["frame"].pack(fill="both", expand=True)
+        self._active_deck = deck_info["frame"]
+        self.cv.yview_moveto(0.0)
+        self._throttled_scrollregion()
 
     def _sync_drawer_order(self, reg):
         for k_frame in ("dd_frame", "g_strip", "qa_holder"):
@@ -1085,11 +1090,11 @@ class KnowledgeDesktopHub(tk.Tk):
                     ).pack(fill="x")
         self._sync_drawer_order(reg)
 
-    def _build_single_card(self, les, is_wide, gal_cols, track_override=None):
+    def _build_single_card(self, les, is_wide, gal_cols, parent_frm=None, track_override=None):
         t_key = track_override or self.cur_track
         seq = les["seq"]
         key = (t_key, seq)
-        card = tk.Frame(self._deck_frames[t_key], bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
+        card = tk.Frame(parent_frm or self.inner, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
         card.pack(fill="x", pady=6, padx=2)
 
         top_row = tk.Frame(card, bg="#161b22")
