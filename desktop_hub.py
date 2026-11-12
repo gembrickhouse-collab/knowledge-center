@@ -70,7 +70,7 @@ def fetch_cached_pil(url, max_size):
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
         super().__init__(className="knowledge-hub")
-        self.title("Knowledge Command Center // v3.6 Instant 5-Card Viewport Engine")
+        self.title("Knowledge Command Center // v3.7 Instant 5-Card Persistent Deck")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
@@ -186,6 +186,13 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv = tk.Canvas(wrap, bg="#0d1117", highlightthickness=0)
         self.sb = ttk.Scrollbar(wrap, orient="vertical", command=self.cv.yview)
         self.inner = tk.Frame(self.cv, bg="#0d1117")
+        self._deck_frames = {
+            "art": tk.Frame(self.inner, bg="#0d1117"),
+            "universe": tk.Frame(self.inner, bg="#0d1117"),
+            "favorites": tk.Frame(self.inner, bg="#0d1117"),
+        }
+        self._deck_built_sig = {"art": None, "universe": None, "favorites": None}
+        self._page_meta = {"art": ("ART ENDURANCE", False, False), "universe": ("PHYSICS OF TIME", False, False)}
         self._sr_job = None
         self.inner.bind("<Configure>", self._throttled_scrollregion)
         self.cwin = self.cv.create_window((0, 0), window=self.inner, anchor="nw")
@@ -239,15 +246,15 @@ class KnowledgeDesktopHub(tk.Tk):
                 gen, lbl, url, size = self._img_queue.get(timeout=0.5)
             except queue.Empty:
                 continue
-            if self._closing or gen != self._render_gen:
+            if self._closing:
                 continue
             try:
                 if not lbl.winfo_exists():
                     continue
                 im = fetch_cached_pil(url, size)
-                if im and not self._closing and gen == self._render_gen:
+                if im and not self._closing:
                     def _paint(l=lbl, img=im, u=url, sz=size, g=gen):
-                        if not self._closing and g == self._render_gen and l.winfo_exists():
+                        if not self._closing and l.winfo_exists():
                             ck = (u, sz)
                             ph = _MEM_TK_CACHE.get(ck)
                             if not ph:
@@ -255,7 +262,7 @@ class KnowledgeDesktopHub(tk.Tk):
                                 _MEM_TK_CACHE[ck] = ph
                             l.config(image=ph, text="", width=sz[0], height=sz[1])
                     self.after(0, _paint)
-                elif not self._closing and gen == self._render_gen:
+                elif not self._closing:
                     self.after(0, lambda l=lbl: l.config(text="🖼️ Plate Offline") if l.winfo_exists() else None)
             except Exception:
                 pass
@@ -698,7 +705,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         favs = self.data.get("favorites") or []
         if not favs:
-            empty = tk.Frame(self.inner, bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
+            empty = tk.Frame(self._deck_frames["favorites"], bg="#161b22", highlightbackground="#30363d", highlightthickness=1, pady=24, padx=12)
             empty.pack(fill="x", pady=12, padx=4)
             self._make_lbl(empty, "full", text="⭐ Key's Favorites Vault is empty right now.", fg="#f0f6fc", bg="#161b22", font=("Monospace", 10, "bold")).pack(fill="x")
             self._make_lbl(empty, "full", text="Click ☆ on any lead plate or curated gallery plate to pin it permanently to GitHub.", fg="#8b949e", bg="#161b22", font=("Monospace", 9), pady=6).pack(fill="x")
@@ -706,7 +713,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         stack_fav = cw < 660
         for f in favs:
-            card = tk.Frame(self.inner, bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
+            card = tk.Frame(self._deck_frames["favorites"], bg="#161b22", highlightbackground="#fbbf24", highlightthickness=1)
             card.pack(fill="x", pady=6, padx=2)
             row = tk.Frame(card, bg="#161b22")
             row.pack(fill="x", padx=12, pady=10)
@@ -752,8 +759,18 @@ class KnowledgeDesktopHub(tk.Tk):
                 bg="#2d2208", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=9, pady=4, cursor="hand2"
             ).pack(side="left")
 
-    def render_cards(self):
-        self._render_gen += 1
+    def _update_page_bar_ui(self, track):
+        if track == "favorites":
+            self.page_lbl.config(text=f"⭐ KEY'S FAVORITES VAULT ({len(self.data.get('favorites') or [])} Pinned Plates)")
+            self.prev_btn.config(state="disabled")
+            self.next_btn.config(state="disabled")
+            return
+        txt, has_prev, has_next = self._page_meta.get(track, ("", False, False))
+        self.page_lbl.config(text=txt)
+        self.prev_btn.config(state="normal" if has_prev else "disabled", fg="#58a6ff" if has_prev else "#484f58")
+        self.next_btn.config(state="normal" if has_next else "disabled", fg="#58a6ff" if has_next else "#484f58")
+
+    def render_cards(self, force_all=False):
         cw = self.cv.winfo_width()
         if cw < 120:
             cw = self._last_cw
@@ -764,20 +781,68 @@ class KnowledgeDesktopHub(tk.Tk):
         self._last_gal_cols = gal_cols
         self._update_tab_counts(cw + 38)
 
-        self._card_registry.clear()
-        self._wrap_labels.clear()
-        # Because ONLY 5 cards ever exist inside self.inner, destroying them takes <2ms!
-        for w in self.inner.winfo_children():
-            w.destroy()
+        # 1. Map ONLY the active track's 5-card frame (0ms swap!)
+        for tk_name, frm in self._deck_frames.items():
+            frm.pack_forget()
+        active_frm = self._deck_frames[self.cur_track]
+        active_frm.pack(fill="both", expand=True)
+
+        q = self.search_var.get().strip().lower()
 
         if self.cur_track == "favorites":
-            self._render_favorites(cw)
+            fav_sig = (len(self.data.get("favorites") or []), cw < 660)
+            if force_all or self._deck_built_sig["favorites"] != fav_sig:
+                for w in active_frm.winfo_children():
+                    w.destroy()
+                self._render_favorites(cw)
+                self._deck_built_sig["favorites"] = fav_sig
+            self._update_page_bar_ui("favorites")
             self.cv.yview_moveto(0.0)
             self._throttled_scrollregion()
             return
 
-        q = self.search_var.get().strip().lower()
+        # 2. Check if active track's current 5-card page is ALREADY built in RAM!
+        #    If yes, do NOTHING — 0ms instant switch without destroying or reloading a single widget!
         raw_list = self.data.get("tracks", {}).get(self.cur_track, {}).get("lessons", [])
+        cur_p = self.page_idx.get(self.cur_track, 0)
+        want_sig = (len(raw_list), cur_p, q)
+
+        if not force_all and self._deck_built_sig.get(self.cur_track) == want_sig:
+            self._update_page_bar_ui(self.cur_track)
+            self.cv.yview_moveto(0.0)
+            self._throttled_scrollregion()
+            return
+
+        # 3. Build ONLY the 5 cards for this track/page into its persistent deck frame
+        self._build_track_page(self.cur_track, is_wide, gal_cols, q)
+        self._update_page_bar_ui(self.cur_track)
+        self.cv.yview_moveto(0.0)
+        self._throttled_scrollregion()
+
+        # 4. Also pre-build the other track's 5-card Page 1 once in the background after 120ms so your first click to Physics is ALSO 0ms!
+        other_t = "universe" if self.cur_track == "art" else "art"
+        other_raw = self.data.get("tracks", {}).get(other_t, {}).get("lessons", [])
+        other_sig = (len(other_raw), self.page_idx.get(other_t, 0), q)
+        if self._deck_built_sig.get(other_t) != other_sig:
+            self.after(120, lambda ot=other_t, iw=is_wide, gc=gal_cols, qq=q: self._prewarm_other_deck(ot, iw, gc, qq))
+
+    def _prewarm_other_deck(self, track_key, is_wide, gal_cols, q):
+        if self._closing:
+            return
+        raw_list = self.data.get("tracks", {}).get(track_key, {}).get("lessons", [])
+        want_sig = (len(raw_list), self.page_idx.get(track_key, 0), q)
+        if self._deck_built_sig.get(track_key) == want_sig:
+            return
+        self._build_track_page(track_key, is_wide, gal_cols, q)
+
+    def _build_track_page(self, track_key, is_wide, gal_cols, q):
+        deck_frm = self._deck_frames[track_key]
+        for w in deck_frm.winfo_children():
+            w.destroy()
+        for k in [k for k in self._card_registry if k[0] == track_key]:
+            del self._card_registry[k]
+
+        raw_list = self.data.get("tracks", {}).get(track_key, {}).get("lessons", [])
         all_lessons = [self._norm_lesson(x) for x in reversed(raw_list) if isinstance(x, dict)]
         filtered = [
             les for les in all_lessons
@@ -786,31 +851,29 @@ class KnowledgeDesktopHub(tk.Tk):
 
         total = len(filtered)
         max_page = max(0, (total - 1) // PAGE_SIZE)
-        cur_p = min(self.page_idx.get(self.cur_track, 0), max_page)
-        self.page_idx[self.cur_track] = cur_p
+        cur_p = min(self.page_idx.get(track_key, 0), max_page)
+        self.page_idx[track_key] = cur_p
 
         start_i = cur_p * PAGE_SIZE
         end_i = min(total, start_i + PAGE_SIZE)
         page_slice = filtered[start_i:end_i]
 
-        t_label = "ART ENDURANCE" if self.cur_track == "art" else "PHYSICS OF TIME"
+        t_label = "ART ENDURANCE" if track_key == "art" else "PHYSICS OF TIME"
         if total > 0:
             hi_seq = page_slice[0]["seq"]
             lo_seq = page_slice[-1]["seq"]
-            self.page_lbl.config(text=f"{t_label}  •  Showing #{hi_seq:03d}–#{lo_seq:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})")
+            meta_txt = f"{t_label}  •  Showing #{hi_seq:03d}–#{lo_seq:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})"
         else:
-            self.page_lbl.config(text=f"{t_label}  •  0 matching lessons")
+            meta_txt = f"{t_label}  •  0 matching lessons"
 
-        self.prev_btn.config(state="normal" if cur_p > 0 else "disabled", fg="#58a6ff" if cur_p > 0 else "#484f58")
-        self.next_btn.config(state="normal" if end_i < total else "disabled", fg="#58a6ff" if end_i < total else "#484f58")
+        self._page_meta[track_key] = (meta_txt, cur_p > 0, end_i < total)
+        self._deck_built_sig[track_key] = (len(raw_list), cur_p, q)
 
-        # Build ONLY the 5 cards on this page (reversed push to LifoQueue so card #1 loads its image first!)
         for les in page_slice:
-            self._build_single_card(les, is_wide, gal_cols)
+            self._build_single_card(les, is_wide, gal_cols, track_override=track_key)
 
-        # Bottom quick-page bar so when you scroll to the bottom of the 5 cards you can click Older 5 right there!
         if total > PAGE_SIZE:
-            bot_nav = tk.Frame(self.inner, bg="#111822", pady=8, padx=12, highlightbackground="#30363d", highlightthickness=1)
+            bot_nav = tk.Frame(deck_frm, bg="#111822", pady=8, padx=12, highlightbackground="#30363d", highlightthickness=1)
             bot_nav.pack(fill="x", pady=(6, 12), padx=2)
             tk.Button(
                 bot_nav, text="◀ Newer 5 Lessons", command=lambda: self._step_page(-1),
@@ -823,9 +886,6 @@ class KnowledgeDesktopHub(tk.Tk):
                 state="normal" if end_i < total else "disabled",
                 bg="#21262d", fg="#fbbf24" if end_i < total else "#484f58", relief="flat", font=("Monospace", 8, "bold"), padx=12, pady=4, cursor="hand2"
             ).pack(side="right")
-
-        self.cv.yview_moveto(0.0)
-        self._throttled_scrollregion()
 
     def _sync_drawer_order(self, reg):
         for k_frame in ("dd_frame", "g_strip", "qa_holder"):
@@ -1025,10 +1085,11 @@ class KnowledgeDesktopHub(tk.Tk):
                     ).pack(fill="x")
         self._sync_drawer_order(reg)
 
-    def _build_single_card(self, les, is_wide, gal_cols):
+    def _build_single_card(self, les, is_wide, gal_cols, track_override=None):
+        t_key = track_override or self.cur_track
         seq = les["seq"]
-        key = (self.cur_track, seq)
-        card = tk.Frame(self.inner, bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
+        key = (t_key, seq)
+        card = tk.Frame(self._deck_frames[t_key], bg="#161b22", highlightbackground="#30363d", highlightthickness=1)
         card.pack(fill="x", pady=6, padx=2)
 
         top_row = tk.Frame(card, bg="#161b22")
@@ -1052,7 +1113,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 b_bar, text="★" if starred else "☆",
                 fg="#fbbf24" if starred else "#8b949e", bg="#161b22", relief="flat", font=("Monospace", 9, "bold"), padx=4, pady=0, cursor="hand2"
             )
-            lead_st_btn.config(command=lambda tr=self.cur_track, sq=seq, url_p=img_url, cp=les.get("image_caption") or les.get("title", ""), b_ref=lead_st_btn: self._toggle_star(tr, sq, url_p, cp, "", "Lead Plate", b_ref))
+            lead_st_btn.config(command=lambda tr=t_key, sq=seq, url_p=img_url, cp=les.get("image_caption") or les.get("title", ""), b_ref=lead_st_btn: self._toggle_star(tr, sq, url_p, cp, "", "Lead Plate", b_ref))
             lead_st_btn.pack(side="right")
             for w_click in (img_lbl, cap_lbl):
                 w_click.bind("<Button-1>", lambda e, url_p=img_url, c=les.get("image_caption") or les.get("title", ""): self._open_lightbox(url_p, c))
@@ -1070,7 +1131,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         maker_box = tk.Frame(left_col, bg="#0f141b", highlightbackground="#fbbf24", highlightthickness=1)
         maker_box.pack(fill="x", pady=(2, 4))
-        lens_lbl = f"⏱️ Temporal & Studio Lens: {les.get('maker', '')}" if self.cur_track == "universe" else f"🧵 Studio Craft Lens: {les.get('maker', '')}"
+        lens_lbl = f"⏱️ Temporal & Studio Lens: {les.get('maker', '')}" if t_key == "universe" else f"🧵 Studio Craft Lens: {les.get('maker', '')}"
         self._make_lbl(
             maker_box, "maker", text=lens_lbl,
             fg="#fbbf24", bg="#0f141b", font=("Monospace", 8), anchor="w", justify="left", padx=8, pady=6
@@ -1119,7 +1180,7 @@ class KnowledgeDesktopHub(tk.Tk):
             "dd_frame": None, "g_strip": None, "gal_cells": [], "has_qa": False
         }
 
-        def _on_dd(k=key, t=self.cur_track, s=seq, b=dd_btn):
+        def _on_dd(k=key, t=t_key, s=seq, b=dd_btn):
             cur_les = self._get_lesson_obj(t, s) or {}
             ready = bool(cur_les.get("deep_dive") and len(cur_les["deep_dive"]) > 40)
             if ready:
@@ -1132,7 +1193,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s}, b, "⏳ Writing...", lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True)))
         dd_btn.config(command=_on_dd)
 
-        def _on_gal(k=key, t=self.cur_track, s=seq, b=gal_btn):
+        def _on_gal(k=key, t=t_key, s=seq, b=gal_btn):
             cur_les = self._get_lesson_obj(t, s) or {}
             ready = len(cur_les.get("gallery") or []) >= 1
             if ready:
@@ -1145,7 +1206,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 self._call_cloud_action("/api/gallery", {"track": t, "seq": s}, b, "⏳ Curating...", lambda: (self.open_gal.add(k), self._toggle_gal_drawer(k, force_rebuild=True)))
         gal_btn.config(command=_on_gal)
 
-        def _on_ask(k=key, t=self.cur_track, s=seq, ent=ask_ent, b=ask_btn):
+        def _on_ask(k=key, t=t_key, s=seq, ent=ask_ent, b=ask_btn):
             q_str = ent.get().strip()
             if not q_str:
                 return
