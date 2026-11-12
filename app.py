@@ -100,7 +100,7 @@ def api_sync_drop():
 def api_deep_dive():
     b = request.get_json(force=True)
     try:
-        les = ke.generate_deep_dive_for_lesson(b["track"], int(b["seq"]))
+        les = ke.generate_deep_dive_for_lesson(b["track"], int(b["seq"]), append=bool(b.get("append", False)))
         return jsonify({"ok": True, "lesson": les, "capacity": ke.get_capacity_telemetry()})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500

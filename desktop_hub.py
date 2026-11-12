@@ -63,7 +63,7 @@ def fetch_cached_pil(url, max_size):
 class KnowledgeDesktopHub(tk.Tk):
     def __init__(self):
         super().__init__(className="knowledge-hub")
-        self.title("Knowledge Command Center // v3.2 Zero-Freeze Stream Engine")
+        self.title("Knowledge Command Center // v3.3 Unlimited Deeper-Dive & Instant Minimize Engine")
         self.geometry("960x760")
         self.minsize(440, 440)
         self.configure(bg="#0d1117")
@@ -74,6 +74,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.capacity = {}
         self.open_dd = set()
         self.open_gal = set()
+        self.closed_qa = set()
         self._card_registry = {}
         self._wrap_labels = []
         self._pending_lessons = []
@@ -741,25 +742,68 @@ class KnowledgeDesktopHub(tk.Tk):
             return
         track, seq = key
         les = self._get_lesson_obj(track, seq) or {}
-        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 120)
+        has_dd = bool(les.get("deep_dive") and len(les["deep_dive"]) > 40)
         dd_btn = reg["dd_btn"]
         dd_frame = reg.get("dd_frame")
+        ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
 
         if key in self.open_dd and has_dd:
-            dd_btn.config(text="📖 Hide Deep Dive", state="normal")
+            dd_btn.config(text=f"📖 Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "📖 Minimize Deep Dive", bg="#1f2937", fg="#fbbf24", state="normal")
             if force_rebuild and dd_frame and dd_frame.winfo_exists():
                 dd_frame.destroy()
                 dd_frame = None
             if not dd_frame or not dd_frame.winfo_exists():
                 dd_frame = tk.Frame(reg["card"], bg="#090d13", highlightbackground="#30363d", highlightthickness=1)
-                tk.Label(dd_frame, text="📖 DEEP DIVE MONOGRAPH", fg="#58a6ff", bg="#090d13", font=("Monospace", 8, "bold"), anchor="w", padx=10, pady=6).pack(fill="x")
-                self._make_lbl(dd_frame, "full", text=les["deep_dive"], fg="#d0d7de", bg="#090d13", font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6).pack(fill="x")
+                hdr_bar = tk.Frame(dd_frame, bg="#111822")
+                hdr_bar.pack(fill="x", padx=1, pady=1)
+                tk.Label(
+                    hdr_bar, text=f"📖 DEEP DIVE MONOGRAPH  •  {ch_count} CHAPTER(S) ARCHIVED",
+                    fg="#58a6ff", bg="#111822", font=("Monospace", 8, "bold"), anchor="w", padx=10, pady=6
+                ).pack(side="left")
+
+                # Top-right Minimize button & Unlimited "+ Deeper Dive" button right inside the drawer header!
+                tk.Button(
+                    hdr_bar, text="▲ Minimize Deep Dive",
+                    command=lambda k=key: (self.open_dd.discard(k), self._toggle_dd_drawer(k, False)),
+                    bg="#21262d", fg="#fbbf24", activebackground="#30363d", relief="flat",
+                    font=("Monospace", 8, "bold"), padx=9, pady=3, cursor="hand2"
+                ).pack(side="right", padx=6, pady=3)
+
+                deeper_btn = tk.Button(
+                    hdr_bar, text=f"🔥 + Deeper Dive (Ch.{ch_count + 1})",
+                    bg="#251736", fg="#d2a8ff", activebackground="#3b2354", relief="flat",
+                    font=("Monospace", 8, "bold"), padx=9, pady=3, cursor="hand2"
+                )
+                deeper_btn.config(
+                    command=lambda k=key, t=track, s=seq, b=deeper_btn: self._call_cloud_action(
+                        "/api/deep_dive", {"track": t, "seq": s, "append": True},
+                        b, "⏳ Diving Deeper...",
+                        lambda: (self.open_dd.add(k), self._toggle_dd_drawer(k, force_rebuild=True))
+                    )
+                )
+                deeper_btn.pack(side="right", padx=4, pady=3)
+
+                self._make_lbl(
+                    dd_frame, "full", text=les["deep_dive"],
+                    fg="#d0d7de", bg="#090d13", font=("Monospace", 9),
+                    justify="left", anchor="w", padx=12, pady=8
+                ).pack(fill="x")
+
+                # Bottom Minimize bar so you don't even have to scroll back up after reading a long multi-chapter dive!
+                bot_bar = tk.Frame(dd_frame, bg="#090d13")
+                bot_bar.pack(fill="x", padx=10, pady=(0, 8))
+                tk.Button(
+                    bot_bar, text="▲ Minimize Deep Dive",
+                    command=lambda k=key: (self.open_dd.discard(k), self._toggle_dd_drawer(k, False)),
+                    bg="#21262d", fg="#fbbf24", relief="flat", font=("Monospace", 8, "bold"), padx=10, pady=3, cursor="hand2"
+                ).pack(side="right")
+
                 reg["dd_frame"] = dd_frame
         else:
-            dd_btn.config(text="📖 Read Deep Dive" if has_dd else "📖 Deep Dive", state="normal")
+            lbl_closed = (f"📖 Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "📖 Read Deep Dive") if has_dd else "📖 Generate Deep Dive"
+            dd_btn.config(text=lbl_closed, bg="#21262d", fg="#58a6ff", state="normal")
 
         self._sync_drawer_order(reg)
-
     def _toggle_gal_drawer(self, key, force_rebuild=False):
         reg = self._card_registry.get(key)
         if not reg:
@@ -848,19 +892,30 @@ class KnowledgeDesktopHub(tk.Tk):
         for w in qa_holder.winfo_children():
             w.destroy()
         reg["has_qa"] = bool(qa_list)
-        for qa in qa_list:
-            qa_box = tk.Frame(qa_holder, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
-            qa_box.pack(fill="x", padx=12, pady=(0, 6))
-            self._make_lbl(
-                qa_box, "full", text=f"💬 Q: {qa.get('q','')}   [ {qa.get('model','GEMINI')} • {qa.get('ts','')} ]",
-                fg="#d2a8ff", bg="#0c131d", font=("Monospace", 8, "bold"), anchor="w", justify="left", padx=10, pady=4
-            ).pack(fill="x")
-            self._make_lbl(
-                qa_box, "full", text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d",
-                font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6
-            ).pack(fill="x")
-        self._sync_drawer_order(reg)
+        if qa_list:
+            is_minimized = (key in self.closed_qa)
+            qa_hdr = tk.Frame(qa_holder, bg="#120d1d")
+            qa_hdr.pack(fill="x", padx=12, pady=(0, 4))
+            tk.Button(
+                qa_hdr,
+                text=f"💬 Show Saved Q&A ({len(qa_list)}) ▼" if is_minimized else f"💬 Minimize Q&A ({len(qa_list)}) ▲",
+                command=lambda k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self._rebuild_qa_drawer(k)),
+                bg="#251736", fg="#d2a8ff", relief="flat", font=("Monospace", 8, "bold"), padx=8, pady=2, cursor="hand2"
+            ).pack(side="left")
 
+            if not is_minimized:
+                for qa in qa_list:
+                    qa_box = tk.Frame(qa_holder, bg="#0c131d", highlightbackground="#6e40c9", highlightthickness=1)
+                    qa_box.pack(fill="x", padx=12, pady=(0, 6))
+                    self._make_lbl(
+                        qa_box, "full", text=f"💬 Q: {qa.get('q','')}   [ {qa.get('model','GEMINI')} • {qa.get('ts','')} ]",
+                        fg="#d2a8ff", bg="#0c131d", font=("Monospace", 8, "bold"), anchor="w", justify="left", padx=10, pady=4
+                    ).pack(fill="x")
+                    self._make_lbl(
+                        qa_box, "full", text=qa.get("a", ""), fg="#e6edf3", bg="#0c131d",
+                        font=("Monospace", 9), justify="left", anchor="w", padx=10, pady=6
+                    ).pack(fill="x")
+        self._sync_drawer_order(reg)
     def _build_single_card(self, les, is_wide, gal_cols):
         seq = les["seq"]
         key = (self.cur_track, seq)
@@ -952,7 +1007,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         def _on_dd(k=key, t=self.cur_track, s=seq, b=dd_btn):
             cur_les = self._get_lesson_obj(t, s) or {}
-            ready = bool(cur_les.get("deep_dive") and len(cur_les["deep_dive"]) > 120)
+            ready = bool(cur_les.get("deep_dive") and len(cur_les["deep_dive"]) > 40)
             if ready:
                 if k in self.open_dd:
                     self.open_dd.remove(k)

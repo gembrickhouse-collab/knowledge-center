@@ -277,45 +277,46 @@ def find_lesson(data, track_key, seq):
     raise KeyError(f"Lesson #{seq} not found in track '{track_key}'")
 
 
-def generate_deep_dive_for_lesson(track_key, seq):
+def generate_deep_dive_for_lesson(track_key, seq, append=False):
     data = load_curriculum()
     les = find_lesson(data, track_key, seq)
-    if les.get("deep_dive") and len(les["deep_dive"]) > 200:
+    if not les:
+        raise ValueError(f"Lesson {track_key} #{seq} not found")
+
+    existing_dd = (les.get("deep_dive") or "").strip()
+    if append and existing_dd:
+        chapter_num = existing_dd.count("=== DEEPER DIVE CHAPTER") + 2
+        prompt = f"""You are writing Deeper Dive Chapter {chapter_num} for lesson: "{les.get('title')}" ({track_key} track).
+Core summary: {les.get('core')}
+Studio craft lens: {les.get('maker')}
+
+Already covered in previous chapters (DO NOT repeat these exact points; go one layer deeper into konkret material physics, archival history, rare technical mechanics, or radical studio execution):
+{existing_dd[-1800:]}
+
+Return JSON:
+{{
+  "chapter_title": "Short punchy subtitle for Chapter {chapter_num}",
+  "deep_dive": "3-4 rich, forensic paragraphs separated by \n\n exploring a brand-new technical, historical, or material dimension."
+}}"""
+        res, badge = call_gemini_json(prompt, expect_json=True)
+        ch_title = res.get("chapter_title", f"Level {chapter_num} Synthesis")
+        new_body = res.get("deep_dive", "").strip()
+        les["deep_dive"] = f"{existing_dd}\n\n=== DEEPER DIVE CHAPTER {chapter_num}: {ch_title.upper()} [{badge}] ===\n\n{new_body}"
+        les["model"] = badge
+        save_curriculum(data, f"Deeper Dive Ch.{chapter_num}: {track_key} #{seq:03d}")
         return les
 
-    if track_key == "matrix":
-        prompt = f"""You are Keyshawn's lead systems architect teaching him every nut and bolt of his own live codebase (Keith Stoner spaceship-engineer style).
-Module: {les['title']}
-Summary: {les['core']}
-Code Snippet:
-{les.get('code_snippet', '')}
-
-Return JSON with keys:
-- "deep_dive": A rich 4-paragraph architectural & engineering deep dive (separated by \\n\\n) explaining: (1) Why this subsystem exists in the spaceship, (2) How data flows step-by-step at runtime, (3) Failure modes / security / rate-limit guardrails we built in, and (4) How Keyshawn can modify or extend this module himself.
-- "line_decode": Array of 6 to 8 objects [{{"code": "exact line or construct", "meaning": "crystal-clear plain-English explanation of every keyword, symbol, and operation"}}]."""
-        res, badge = call_gemini_json(prompt, expect_json=True)
-        les["deep_dive"] = res.get("deep_dive", "")
-        if res.get("line_decode"):
-            les["line_decode"] = res["line_decode"]
-        les["deep_dive_model"] = badge
-    else:
-        lens_hint = "garment architecture, multi-fabric layering (denim, felt, flannel, Climalite), negative-space cross cutouts, and 20+ hour studio endurance" if track_key == "art" else "structural craft, block-universe geometry, entropy, and physical studio intuition"
-        prompt = f"""Write an authoritative, riveting 4-paragraph monograph deep dive (separated by \\n\\n) on:
-Title: {les['title']}
-Core Premise: {les['core']}
-
-Cover:
-Paragraph 1: Historical/scientific origin and the exact problem or orthodoxy being shattered.
-Paragraph 2: Deep technical or physical mechanics—materials, equations, brushwork, or experimental apparatus in concrete detail.
-Paragraph 3: Signature masterwork or landmark experiment unpacked closely.
-Paragraph 4: Extended Studio Craft synthesis connecting directly to {lens_hint}.
-
-Return JSON: {{"deep_dive": "paragraph1\\n\\nparagraph2\\n\\nparagraph3\\n\\nparagraph4"}}"""
-        res, badge = call_gemini_json(prompt, expect_json=True)
-        les["deep_dive"] = res.get("deep_dive", "")
-        les["deep_dive_model"] = badge
-
-    save_curriculum(data, f"Cache Deep Dive for {track_key} #{seq:03d} ({les['title'][:36]})")
+    prompt = f"""Write an exhaustive, vivid 4-paragraph Deep Dive Monograph for lesson: "{les.get('title')}" ({track_key} track).
+Core context: {les.get('core')}
+Studio Craft connection: {les.get('maker')}
+Return JSON:
+{{
+  "deep_dive": "4 rich paragraphs separated by \n\n covering origin/context, physical or mathematical mechanics, landmark masterwork/experiment, and hands-on studio synthesis."
+}}"""
+    res, badge = call_gemini_json(prompt, expect_json=True)
+    les["deep_dive"] = res.get("deep_dive", "").strip()
+    les["model"] = badge
+    save_curriculum(data, f"Deep Dive: {track_key} #{seq:03d}")
     return les
 
 
