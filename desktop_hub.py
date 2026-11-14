@@ -839,7 +839,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 self._trigger_heartbeat_now()
         except Exception as e:
             print("Tick error:", e)
-        self.after(250, self._tick_epoch_clock)
+        self.after(40, self._tick_epoch_clock)
 
     def _prompt_epoch_stamp(self):
         note = simpledialog.askstring("WARNING: PERMANENT STAMP", "WARNING: TIME STAMPS PERMANENT AND UNEDITABLE.\n\nEnter anchor note for this exact hour:", parent=self)
