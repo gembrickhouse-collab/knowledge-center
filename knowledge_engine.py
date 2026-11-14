@@ -871,11 +871,9 @@ def _load_telnyx_env():
 
 def call_gemini_text(prompt_text, max_tokens=280):
     try:
-        res = call_gemini_json(
-            prompt_text + '\n\nReturn ONLY valid JSON in this exact format: {"transmission": "your 2-sentence plain text response here"}'
-        )
-        if isinstance(res, dict) and res.get("transmission"):
-            return str(res["transmission"]).strip()
+        txt, _badge = call_gemini_json(prompt_text, expect_json=False)
+        if txt and str(txt).strip():
+            return str(txt).strip()
     except Exception:
         pass
     return ""

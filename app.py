@@ -183,6 +183,23 @@ def api_stamp():
 
 
 
+@app.route("/api/state", methods=["GET"])
+def api_state_live():
+    data = ke.load_curriculum()
+    hb = data.get("heartbeat") or {}
+    if int(time.time()) - int(hb.get("last_pulse_ts", 0)) >= 300:
+        try:
+            hb = ke.run_gemini_heartbeat(force_synthesis=True)
+            data = ke.load_curriculum()
+        except Exception:
+            pass
+    return jsonify({
+        "ok": True,
+        "curriculum": data,
+        "capacity": ke.get_capacity_telemetry()
+    })
+
+
 @app.route("/api/heartbeat", methods=["POST"])
 def api_heartbeat():
     try:
