@@ -218,7 +218,7 @@ def api_ask():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-WEB_TEMPLATE = """<!doctype html>
+WEB_TEMPLATE = r"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -528,8 +528,8 @@ function renderFavoritesView() {
     });
     const isPoem = String(f.url || '').startsWith('poem://');
     const mediaBlock = isPoem
-      ? `<div style="padding:16px 14px;background:#090d13;border-bottom:1px solid #30363d;font-style:italic;color:#f0f6fc;font-size:0.82rem;line-height:1.55;max-height:210px;overflow-y:auto;white-space:pre-wrap;">${esc(f.study_note || '')}</div>`
-      : `<img src="${esc(f.url)}" loading="lazy" onclick="zoomReg(${idx})">`;
+      ? '<div style="padding:16px 14px;background:#090d13;border-bottom:1px solid #30363d;font-style:italic;color:#f0f6fc;font-size:0.82rem;line-height:1.55;max-height:210px;overflow-y:auto;white-space:pre-wrap;">' + esc(f.study_note || '') + '</div>'
+      : '<img src="' + esc(f.url) + '" loading="lazy" onclick="zoomReg(' + idx + ')">';
     return `<div class="fav-card" style="${isPoem ? 'border-color:#d2a8ff;' : ''}">
       <button class="star-btn starred" title="Remove from Favorites" onclick="toggleStarIdx(event, ${idx})">⭐</button>
       ${mediaBlock}
@@ -663,7 +663,7 @@ async function toggleStarPoem() {
       seq: 1,
       url: p.uri,
       caption: p.title + ' — ' + p.author + ' (' + (p.written_when || 'Archive') + ')',
-      study_note: (p.full_lines || p.lines || []).join('\n'),
+      study_note: (p.full_lines || p.lines || []).join(String.fromCharCode(10)),
       source: (p.author || 'PoetryDB') + ' • ' + (p.written_where || '')
     })
   });
