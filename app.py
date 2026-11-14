@@ -530,7 +530,8 @@ function renderHeaderStats() {
 async function loadState() {
   const r = await fetch('/state');
   const j = await r.json();
-  DATA = j.curriculum;
+  if (DATA && DATA.heartbeat && j.curriculum.heartbeat && Number(j.curriculum.heartbeat.pulse_seq || 0) < Number(DATA.heartbeat.pulse_seq || 0)) { j.curriculum.heartbeat = DATA.heartbeat; }
+      DATA = j.curriculum;
   DATA.favorites = DATA.favorites || [];
   if (j.capacity) CAP = j.capacity;
   document.getElementById('sched').textContent = j.scheduler.status + '  |  Last Check: ' + j.scheduler.last_check;
@@ -773,7 +774,8 @@ async function sendVoiceComm(spokenText) {
     const j = await r.json();
     if (j.ok) {
       VOICE_LAST_REPLY = j.reply || '';
-      if (j.curriculum) DATA = j.curriculum;
+      if (j.curriculum) if (DATA && DATA.heartbeat && j.curriculum.heartbeat && Number(j.curriculum.heartbeat.pulse_seq || 0) < Number(DATA.heartbeat.pulse_seq || 0)) { j.curriculum.heartbeat = DATA.heartbeat; }
+      DATA = j.curriculum;
       renderHeaderStats();
       renderFeed();
       speakTextAloud(VOICE_LAST_REPLY);
@@ -1017,7 +1019,7 @@ function buildHeartbeatHtml() {
   let h = '<div class="card" style="background:#090d13;border:1.5px solid #3fb950;">';
   h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">';
   h += '<div><span class="pill" style="border-color:#3fb950;color:#3fb950;">💓 GEMINI 5-MIN HEARTBEAT // PULSE #' + String(hb.pulse_seq || 1).padStart(4, '0') + '</span>';
-  h += '<span style="color:#8b949e;font-size:0.74rem;margin-left:8px;">LAST: ' + esc(hb.last_pulse_mt || 'LIVE') + ' • NEXT AUTO: ' + mm + ':' + ss + '</span></div>';
+  h += '<span id="hb-next-auto-span" style="color:#8b949e;font-size:0.74rem;margin-left:8px;">LAST: ' + esc(hb.last_pulse_mt || 'LIVE') + ' • NEXT AUTO: ' + mm + ':' + ss + '</span></div>';
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
   h += '<button class="btn" id="hb-pulse-btn" onclick="triggerHeartbeatNow()" style="border-color:#3fb950;color:#3fb950;">⚡ PULSE NOW</button>';
   h += '<button class="btn" id="voice-brief-btn" onclick="sendVoiceComm()" style="border-color:#58a6ff;color:#58a6ff;">🔊 HEAR VOICE BRIEFING</button>';
@@ -1414,6 +1416,7 @@ setInterval(async () => {
     const j = await r.json();
     if (j.ok && j.curriculum) {
       const oldStampsLen = ((DATA && DATA.stamps) || []).length;
+      if (DATA && DATA.heartbeat && j.curriculum.heartbeat && Number(j.curriculum.heartbeat.pulse_seq || 0) < Number(DATA.heartbeat.pulse_seq || 0)) { j.curriculum.heartbeat = DATA.heartbeat; }
       DATA = j.curriculum;
       if (j.capacity) CAP = j.capacity;
       renderHeaderStats();
@@ -1426,29 +1429,43 @@ setInterval(async () => {
 
 loadState();
 
-// 1-Second Live Mobile Heartbeat Countdown & Direct DOM Updater
+
+// 1-Second Live Mobile Heartbeat Countdown & Auto-Trigger
 setInterval(function() {
   const hb = (typeof DATA !== 'undefined' && DATA && DATA.heartbeat) ? DATA.heartbeat : {};
   const nowSec = Math.floor(Date.now() / 1000);
-  const lastTs = Number(hb.last_pulse_ts || 0);
-  const elapsed = lastTs > 0 ? (nowSec - lastTs) : 300;
+  let lastTs = Number(hb.last_pulse_ts || 0);
+  if (!lastTs && hb.last_pulse_mt) {
+    const parsed = Date.parse(String(hb.last_pulse_mt).replace(' MT', '').replace(' ', 'T') + '-07:00');
+    if (!isNaN(parsed)) lastTs = Math.floor(parsed / 1000);
+  }
+  const elapsed = lastTs > 0 ? Math.max(0, nowSec - lastTs) : 300;
   const rem = Math.max(0, 300 - elapsed);
   const mm = String(Math.floor(rem / 60)).padStart(2, '0');
   const ss = String(rem % 60).padStart(2, '0');
-  const cdText = window._HB_AUTO_FLIGHT ? 'PULSING NOW...' : ('NEXT PULSE IN ' + mm + ':' + ss);
+  const pMt = hb.last_pulse_mt || 'LIVE';
 
-  // Update #hb-countdown if present, OR scan for any element showing the GEMINI 5-MIN HEARTBEAT header
-  const cdEl = document.getElementById('hb-countdown');
-  if (cdEl) {
-    cdEl.textContent = cdText;
+  const autoSpan = document.getElementById('hb-next-auto-span');
+  if (autoSpan) {
+    autoSpan.textContent = 'LAST: ' + pMt + ' • NEXT AUTO: ' + (window._HB_AUTO_FLIGHT ? 'PULSING...' : (mm + ':' + ss));
   }
-  document.querySelectorAll('div, span').forEach(function(el) {
-    if (el.children.length === 0 && el.textContent && el.textContent.indexOf('GEMINI 5-MIN HEARTBEAT // PULSE #') !== -1) {
-      const pSeq = String(hb.pulse_seq || 1).padStart(4, '0');
-      const pMt = hb.last_pulse_mt || 'ARMED';
-      el.textContent = 'GEMINI 5-MIN HEARTBEAT // PULSE #' + pSeq + ' (' + pMt + ') | ' + cdText;
-    }
-  });
+
+  if (rem === 0 && !window._HB_AUTO_FLIGHT && (!window._LAST_MOB_HB_TRY || (nowSec - window._LAST_MOB_HB_TRY) >= 20)) {
+    window._HB_AUTO_FLIGHT = true;
+    window._LAST_MOB_HB_TRY = nowSec;
+    fetch('/api/heartbeat', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({force: true})})
+      .then(r => r.json())
+      .then(j => {
+        if (j && j.ok && j.heartbeat) {
+          DATA.heartbeat = j.heartbeat;
+          DATA.heartbeat.last_pulse_ts = Math.floor(Date.now() / 1000);
+          const y = window.scrollY;
+          if (typeof renderFeed === 'function') { renderFeed(); window.scrollTo(0, y); }
+        }
+      })
+      .catch(() => {})
+      .finally(() => { setTimeout(() => { window._HB_AUTO_FLIGHT = false; if (typeof pullLiveCloudState === 'function') pullLiveCloudState(true); }, 3000); });
+  }
 }, 1000);
 </script>
 </body>
