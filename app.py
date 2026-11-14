@@ -66,6 +66,8 @@ def state():
     curr = ke.load_curriculum()
     curr.setdefault("favorites", [])
     curr.setdefault("stamps", [])
+    if not curr.get("current_poem"):
+        curr["current_poem"] = ke.curate_poem_desk(force_new=False)
     curr.setdefault("epoch_zero", 1794623880)
     return jsonify({
         "ok": True,
@@ -90,6 +92,8 @@ def api_sync_drop():
     curr = ke.load_curriculum()
     curr.setdefault("favorites", [])
     curr.setdefault("stamps", [])
+    if not curr.get("current_poem"):
+        curr["current_poem"] = ke.curate_poem_desk(force_new=False)
     curr.setdefault("epoch_zero", 1794623880)
     return jsonify({
         "ok": True,
@@ -168,6 +172,22 @@ def api_stamp():
             "ok": True,
             "stamp": res["stamp"],
             "stamps": res["stamps"],
+            "capacity": ke.get_capacity_telemetry(),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
+
+@app.route("/api/poem", methods=["POST"])
+def api_poem():
+    b = request.get_json(silent=True) or {}
+    try:
+        poem = ke.curate_poem_desk(force_new=bool(b.get("force_new", True)))
+        return jsonify({
+            "ok": True,
+            "current_poem": poem,
             "capacity": ke.get_capacity_telemetry(),
         })
     except Exception as e:
@@ -492,9 +512,13 @@ function renderFavoritesView() {
       track: f.track, seq: f.seq, url: f.url,
       caption: f.caption || '', study_note: f.study_note || '', source: f.source || 'Archive'
     });
-    return `<div class="fav-card">
+    const isPoem = String(f.url || '').startsWith('poem://');
+    const mediaBlock = isPoem
+      ? `<div style="padding:16px 14px;background:#090d13;border-bottom:1px solid #30363d;font-style:italic;color:#f0f6fc;font-size:0.82rem;line-height:1.55;max-height:210px;overflow-y:auto;white-space:pre-wrap;">${esc(f.study_note || '')}</div>`
+      : `<img src="${esc(f.url)}" loading="lazy" onclick="zoomReg(${idx})">`;
+    return `<div class="fav-card" style="${isPoem ? 'border-color:#d2a8ff;' : ''}">
       <button class="star-btn starred" title="Remove from Favorites" onclick="toggleStarIdx(event, ${idx})">⭐</button>
-      <img src="${esc(f.url)}" loading="lazy" onclick="zoomReg(${idx})">
+      ${mediaBlock}
       <div class="fav-body">
         <div>
           <div style="color:#f0f6fc;font-weight:bold;line-height:1.35;">${esc(f.caption)}</div>
@@ -565,6 +589,51 @@ async function submitEpochStamp() {
   }
 }
 
+
+async function pullNextPoem() {
+  const btn = document.getElementById('poem-next-btn');
+  if (btn) { btn.textContent = '⏳ Consulting 1,000-Author Corpus...'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/poem', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({force_new: true})});
+    const j = await r.json();
+    if (j.ok && j.current_poem) {
+      DATA.current_poem = j.current_poem;
+      if (j.capacity) CAP = j.capacity;
+      renderHeaderStats();
+      renderFeed();
+    } else if (btn) {
+      btn.textContent = '⚠️ Retry Pull';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    if (btn) { btn.textContent = '⚠️ Error'; btn.disabled = false; }
+  }
+}
+
+async function toggleStarPoem() {
+  const p = (DATA && DATA.current_poem) || null;
+  if (!p || !p.uri) return;
+  const r = await fetch('/api/favorite', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      track: 'foundations',
+      seq: 1,
+      url: p.uri,
+      caption: `${p.title} — ${p.author}`,
+      study_note: (p.lines || []).join('\n'),
+      source: p.author || 'PoetryDB'
+    })
+  });
+  const j = await r.json();
+  if (j.ok) {
+    DATA.favorites = j.favorites || [];
+    if (j.capacity) CAP = j.capacity;
+    renderHeaderStats();
+    renderFeed();
+  }
+}
+
 function renderFoundationsView() {
   const feed = document.getElementById('feed');
   const nowH = getLiveEpochHrs();
@@ -607,6 +676,45 @@ function renderFoundationsView() {
       <div class="core" style="margin-bottom:12px;">Every stamp locks your mental coordinates permanently against Epoch Zero and exposes the exact Δ hour gap since your previous mark.</div>
       ${stampsRows}
     </div>
+
+    ${(() => {
+      const p = (DATA && DATA.current_poem) || {
+        uri: 'poem://Archival/Default',
+        title: 'Awaiting First Stanza',
+        author: '1,000-Author Corpus',
+        lines: ['Tap Pull Next Stanza below to query the live PoetryDB archive and Gemini Curator.'],
+        curator_note: 'Tuned to your latest Epoch Zero stamp and starred poets.'
+      };
+      const starred = isStarred(p.uri);
+      const linesHtml = (p.lines || []).map(l => esc(l)).join('<br>');
+      return `
+      <div class="card" style="background:#090d13;border:1.5px solid #d2a8ff;">
+        <div class="meta">
+          <span class="pill" style="border-color:#d2a8ff;color:#d2a8ff;">POEM DESK // REDUCING VALVE CURATOR</span>
+          <span>1,000-AUTHOR ARCHIVE • ${esc(p.curated_at || 'LIVE')}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+          <div>
+            <div class="title" style="color:#f0f6fc;margin-bottom:2px;">✒️ "${esc(p.title)}"</div>
+            <div style="color:#d2a8ff;font-size:0.82rem;font-weight:bold;">— ${esc(p.author)}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" onclick="toggleStarPoem()" style="border-color:#fbbf24;color:${starred ? '#090d13' : '#fbbf24'};background:${starred ? '#fbbf24' : 'transparent'};">
+              ${starred ? '⭐ STARRED IN FAVORITES' : '☆ STAR TO FAVORITES'}
+            </button>
+            <button class="btn" id="poem-next-btn" onclick="pullNextPoem()" style="border-color:#d2a8ff;color:#d2a8ff;">
+              🔄 PULL NEXT CURATED STANZA
+            </button>
+          </div>
+        </div>
+        <div style="padding:14px 18px;background:#161b22;border-left:3px solid #d2a8ff;border-radius:6px;font-style:italic;color:#f0f6fc;font-size:0.92rem;line-height:1.65;margin-bottom:10px;">
+          ${linesHtml}
+        </div>
+        <div class="maker" style="border-color:#d2a8ff;color:#c9d1d9;">
+          🧠 <strong>Gemini Heartbeat Synthesis:</strong> ${esc(p.curator_note || '')}
+        </div>
+      </div>`;
+    })()}
 
     <div class="card" style="border-color:#58a6ff;">
       <div class="meta"><span class="pill">FOUNDATION 01 // QUANTUM RETROACTION</span><span>JOHN ARCHIBALD WHEELER (1978)</span></div>

@@ -665,3 +665,96 @@ def add_epoch_stamp(note=""):
     stamps.append(entry)
     save_curriculum(data, f"Epoch Zero Stamp #{next_seq:03d} ({epoch_hrs:011.4f} HRS): {note_clean[:40]}")
     return {"stamp": entry, "stamps": stamps}
+
+
+POEM_THEMES = ["time", "eternity", "dream", "shadow", "star", "night", "infinite", "silence", "flame", "clock", "soul", "light", "sleep", "memory", "void"]
+
+def curate_poem_desk(force_new=False):
+    data = load_curriculum()
+    if not force_new and data.get("current_poem"):
+        return data["current_poem"]
+
+    favs = data.get("favorites", [])
+    starred_poems = [f for f in favs if str(f.get("url", "")).startswith("poem://")]
+    fav_authors = list({f.get("source", "") for f in starred_poems if f.get("source")})
+    stamps = data.get("stamps", [])
+    last_stamp = stamps[-1].get("note", "Epoch Zero") if stamps else "Epoch Zero"
+
+    candidates = []
+    # Pull from PoetryDB 1,000-author archive using themes + starred author preference
+    import random
+    search_terms = random.sample(POEM_THEMES, min(3, len(POEM_THEMES)))
+    for term in search_terms:
+        try:
+            url = f"https://poetrydb.org/title,lines/{urllib.parse.quote(term)};14/author,title,lines,linecount.json"
+            res = _http_json(url)
+            if isinstance(res, list):
+                for p in res:
+                    lc = int(p.get("linecount", 99) or 99)
+                    lines = p.get("lines", [])
+                    if 4 <= lc <= 20 and lines:
+                        candidates.append({
+                            "author": p.get("author", "Unknown"),
+                            "title": p.get("title", "Untitled"),
+                            "lines": lines[:20],
+                            "linecount": len(lines[:20])
+                        })
+        except Exception:
+            pass
+
+    if not candidates:
+        try:
+            res = _http_json("https://poetrydb.org/random/6/author,title,lines,linecount.json")
+            if isinstance(res, list):
+                for p in res:
+                    lines = p.get("lines", [])[:16]
+                    if lines:
+                        candidates.append({
+                            "author": p.get("author", "Archival Poet"),
+                            "title": p.get("title", "Fragment"),
+                            "lines": lines,
+                            "linecount": len(lines)
+                        })
+        except Exception:
+            pass
+
+    chosen = candidates[0] if candidates else {
+        "author": "Archival Signal",
+        "title": "Temporal Anchor",
+        "lines": ["The clock ticks strictly forward in raw hours,", "Yet attention steps outside the narrow groove."],
+        "linecount": 2
+    }
+    curator_note = f"Matched to Stamp '{last_stamp}' across the 1,000-author corpus."
+
+    if len(candidates) > 1 and os.getenv("GEMINI_API_KEY", "").strip():
+        try:
+            pool = random.sample(candidates, min(6, len(candidates)))
+            prompt = {
+                "task": "Select the single poem index (0 to N-1) that best resonates with the user's current Epoch Zero stamp note and starred poet taste.",
+                "latest_stamp_note": last_stamp,
+                "starred_poets": fav_authors[:8],
+                "candidates": [{"idx": i, "author": c["author"], "title": c["title"], "preview": " / ".join(c["lines"][:4])} for i, c in enumerate(pool)],
+                "return_json": {"idx": 0, "curator_note": "1-sentence synthesis linking this stanza to the stamp note and serial time."}
+            }
+            g_res = call_gemini_json(json.dumps(prompt), expect_json=True)
+            if isinstance(g_res, dict):
+                idx = int(g_res.get("idx", 0))
+                if 0 <= idx < len(pool):
+                    chosen = pool[idx]
+                if g_res.get("curator_note"):
+                    curator_note = str(g_res["curator_note"])[:220]
+        except Exception:
+            pass
+
+    poem_uri = f"poem://{chosen['author']}/{chosen['title']}"
+    entry = {
+        "uri": poem_uri,
+        "author": chosen["author"],
+        "title": chosen["title"],
+        "lines": chosen["lines"],
+        "curator_note": curator_note,
+        "curated_at": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M MT")
+    }
+    data["current_poem"] = entry
+    save_curriculum(data, f"Poem Desk Curated: {chosen['title']} ({chosen['author']})")
+    return entry
