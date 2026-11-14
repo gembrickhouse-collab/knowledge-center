@@ -890,7 +890,7 @@ def call_gemini_text(prompt_text, max_tokens=280):
                 headers={"Content-Type": "application/json", "User-Agent": "EpochZeroHub/1.0"},
                 method="POST"
             )
-            raw = json.loads(urllib.request.urlopen(req, timeout=20).read().decode("utf-8"))
+            raw = json.loads(urllib.request.urlopen(req, timeout=7).read().decode("utf-8"))
             parts = raw.get("candidates", [{}])[0].get("content", {}).get("parts", [])
             txt = "".join(p.get("text", "") for p in parts).strip()
             if txt:
@@ -1019,7 +1019,13 @@ def handle_voice_interaction(spoken_text="", is_followup=False, raw_debug=""):
         }
         stamps.append(new_s)
         data["stamps"] = stamps
-        save_curriculum(data, f"Voice Stamp #{new_seq:03d}: {note_txt[:40]}")
+        with open(CURRICULUM_FILE, "w", encoding="utf-8") as f_out:
+            json.dump(data, f_out, indent=2, ensure_ascii=False)
+        threading.Thread(
+            target=save_curriculum,
+            args=(data, f"Voice Stamp #{new_seq:03d}: {note_txt[:40]}"),
+            daemon=True
+        ).start()
         return {
             "ok": True,
             "reply": f"Confirmed! Locked permanent Stamp number {new_seq} at {ep_hrs:.4f} hours with note: {note_txt}.",

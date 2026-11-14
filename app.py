@@ -229,14 +229,17 @@ def _extract_telnyx_speech():
 @app.route("/epoch-zero/voice", methods=["GET", "POST"])
 @app.route("/voice", methods=["GET", "POST"])
 def texml_voice_webhook():
-    spoken, raw_dbg = _extract_telnyx_speech()
-    is_followup = bool(spoken)
-    res = ke.handle_voice_interaction(spoken, is_followup=is_followup, raw_debug=raw_dbg if spoken else "")
     from xml.sax.saxutils import escape as xml_esc
-    safe_reply = xml_esc(res.get("reply", "Epoch Zero online."))
+    try:
+        spoken, raw_dbg = _extract_telnyx_speech()
+        is_followup = bool(spoken)
+        res = ke.handle_voice_interaction(spoken, is_followup=is_followup, raw_debug=raw_dbg if spoken else "")
+        safe_reply = xml_esc(res.get("reply", "Epoch Zero online."))
+    except Exception as e:
+        safe_reply = xml_esc(f"Epoch Zero Voice Bridge online. Ready for your command.")
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="speech dtmf" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="10" speechTimeout="auto" language="en-US">
+    <Gather input="dtmf speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="8" speechTimeout="auto" language="en-US">
         <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply, say Stamp followed by a note, or press 1 on your keypad to lock Verbal Handshake One.</Say>
     </Gather>
     <Redirect method="POST">https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather</Redirect>
@@ -247,14 +250,17 @@ def texml_voice_webhook():
 @app.route("/epoch-zero/voice_gather", methods=["GET", "POST"])
 @app.route("/voice_gather", methods=["GET", "POST"])
 def texml_voice_gather():
-    spoken, raw_dbg = _extract_telnyx_speech()
-    res = ke.handle_voice_interaction(spoken, is_followup=True, raw_debug=raw_dbg)
     from xml.sax.saxutils import escape as xml_esc
-    safe_reply = xml_esc(res.get("reply", "Signal received."))
+    try:
+        spoken, raw_dbg = _extract_telnyx_speech()
+        res = ke.handle_voice_interaction(spoken, is_followup=True, raw_debug=raw_dbg)
+        safe_reply = xml_esc(res.get("reply", "Signal received."))
+    except Exception as e:
+        safe_reply = xml_esc(f"Voice handler note: {str(e)[:80]}. Please speak again or press 1.")
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="speech dtmf" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="10" speechTimeout="auto" language="en-US">
-        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak again to continue, or hang up anytime.</Say>
+    <Gather input="dtmf speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="8" speechTimeout="auto" language="en-US">
+        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak again to continue, press 1 to lock a stamp, or hang up anytime.</Say>
     </Gather>
 </Response>"""
     return app.response_class(texml, mimetype="application/xml")
