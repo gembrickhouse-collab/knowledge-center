@@ -60,11 +60,11 @@
     }
   ],
   "heartbeat": {
-    "pulse_seq": 4,
-    "last_pulse_ts": 1794692828,
-    "last_pulse_mt": "2026-11-14 14:47:08 MT",
-    "epoch_hrs": 19.1522,
-    "transmission": "Pulse #0004 locked at 19.1522 HRS (+0.7639 HRS since Stamp #8 'talking with computers LVL ONE'). Holding 'Death, to the Dead for Evermore' by Robert Louis Stevenson on the Reducing Valve desk.",
+    "pulse_seq": 5,
+    "last_pulse_ts": 1794693148,
+    "last_pulse_mt": "2026-11-14 14:52:28 MT",
+    "epoch_hrs": 19.2411,
+    "transmission": "Pulse #0005 locked at 19.2411 HRS (+0.8528 HRS since Stamp #8 'talking with computers LVL ONE'). Holding 'Death, to the Dead for Evermore' by Robert Louis Stevenson on the Reducing Valve desk.",
     "interval_sec": 300
   },
   "stamps": [
