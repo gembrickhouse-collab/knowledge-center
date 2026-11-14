@@ -945,6 +945,11 @@ class KnowledgeDesktopHub(tk.Tk):
                     new_hb["last_pulse_ts"] = int(time.time())
                     self.data["heartbeat"] = new_hb
                     self._save_local()
+                    try:
+                        import knowledge_engine as ke
+                        ke.save_curriculum(self.data, f"Lock Heartbeat Pulse #{new_hb.get('pulse_seq')}")
+                    except Exception:
+                        pass
                     self.after(0, self.render_scene)
                     print(f"✅ [DESKTOP] Locked Heartbeat Pulse #{new_hb.get('pulse_seq')}")
                     return
@@ -954,6 +959,11 @@ class KnowledgeDesktopHub(tk.Tk):
                     new_hb = ke.run_gemini_heartbeat(force_synthesis=True)
                     self.data["heartbeat"] = new_hb
                     self._save_local()
+                    try:
+                        import knowledge_engine as ke
+                        ke.save_curriculum(self.data, f"Lock Heartbeat Pulse #{new_hb.get('pulse_seq')}")
+                    except Exception:
+                        pass
                     self.after(0, self.render_scene)
                 except Exception:
                     pass

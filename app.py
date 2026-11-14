@@ -1425,6 +1425,31 @@ setInterval(async () => {
 }, 15000);
 
 loadState();
+
+// 1-Second Live Mobile Heartbeat Countdown & Direct DOM Updater
+setInterval(function() {
+  const hb = (typeof DATA !== 'undefined' && DATA && DATA.heartbeat) ? DATA.heartbeat : {};
+  const nowSec = Math.floor(Date.now() / 1000);
+  const lastTs = Number(hb.last_pulse_ts || 0);
+  const elapsed = lastTs > 0 ? (nowSec - lastTs) : 300;
+  const rem = Math.max(0, 300 - elapsed);
+  const mm = String(Math.floor(rem / 60)).padStart(2, '0');
+  const ss = String(rem % 60).padStart(2, '0');
+  const cdText = window._HB_AUTO_FLIGHT ? 'PULSING NOW...' : ('NEXT PULSE IN ' + mm + ':' + ss);
+
+  // Update #hb-countdown if present, OR scan for any element showing the GEMINI 5-MIN HEARTBEAT header
+  const cdEl = document.getElementById('hb-countdown');
+  if (cdEl) {
+    cdEl.textContent = cdText;
+  }
+  document.querySelectorAll('div, span').forEach(function(el) {
+    if (el.children.length === 0 && el.textContent && el.textContent.indexOf('GEMINI 5-MIN HEARTBEAT // PULSE #') !== -1) {
+      const pSeq = String(hb.pulse_seq || 1).padStart(4, '0');
+      const pMt = hb.last_pulse_mt || 'ARMED';
+      el.textContent = 'GEMINI 5-MIN HEARTBEAT // PULSE #' + pSeq + ' (' + pMt + ') | ' + cdText;
+    }
+  });
+}, 1000);
 </script>
 </body>
 </html>"""

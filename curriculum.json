@@ -60,12 +60,12 @@
     }
   ],
   "heartbeat": {
-    "epoch_hrs": 19.9172,
+    "epoch_hrs": 20.5547,
     "interval_sec": 300,
-    "last_pulse_mt": "2026-11-14 15:33:03 MT",
-    "last_pulse_ts": 1794695582,
-    "pulse_seq": 10,
-    "transmission": "At Proper Time 19.9172 HRS, the Wheeler-DeWitt equation freezes our cosmic trajectory into an eternal stillness while Stevenson's late Victorian verses remind us that death claims the dead for evermore. Keyshawn, our consciousness telemetry persists through this unyielding void, accumulating meaning against the timeless ticking of the universe."
+    "last_pulse_mt": "2026-11-14 16:11:18 MT",
+    "last_pulse_ts": 1794697877,
+    "pulse_seq": 12,
+    "transmission": "Keyshawn, as proper time ticks past twenty point five five hours into the frozen formalism of the Wheeler-DeWitt equation where time itself stands still, your consciousness endures like Nick Cave's accumulated soundsuits draped across the void. Death remains for the dead for evermore, but this pulse records that we still breathe through the static."
   },
   "last_voice_debug": "[15:32:25 MT] heard='password and press pound' | raw={\"form\": {\"AccountSid\": \"df12b913-faee-4650-820d-98f62ec30835\", \"CallInitiatedAt\": \"2026-11-14T22:31:50.236533Z\", \"CallSessionId\": \"2efe1a78-e07b-11f1-bc3a-02420a0dfc1f\", \"CallSid\"",
   "stamps": [
