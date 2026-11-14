@@ -794,19 +794,37 @@ def generate_poem_deep_dive():
     if not p:
         p = curate_poem_desk(force_new=False)
     existing_dd = (p.get("deep_dive") or "").strip()
-    chap_num = 1 if not existing_dd else (existing_dd.count("=== POEM DEEP DIVE CHAPTER") + 2)
+    chap_num = 1 if not existing_dd else (existing_dd.count("=== POEM DEEP DIVE CHAPTER") + 1)
     stamps = data.get("stamps", [])
     last_stamp = stamps[-1].get("note", "Epoch Zero") if stamps else "Epoch Zero"
+    curr_ctx = "\n".join(_get_recent_curriculum_context(data))
+
+    if chap_num == 1:
+        synthesis_rule = (
+            f"AMBIENT STUDIO CONTEXT (80/20 RULE):\n"
+            f"- Latest User Epoch Zero Stamp: '{last_stamp}'\n"
+            f"- Active Curriculum Lessons:\n{curr_ctx}\n"
+            " Devote 80% of this chapter strictly to the poet's real historical biography at the time of writing, "
+            "the physical setting where it was written, and a rigorous line-by-line exegesis of the opening stanzas. "
+            "Devote at most 20% (1 organic paragraph at the end) to colliding the poem with the user's Stamp or active Art/Physics lesson "
+            "ONLY where a genuine structural or philosophical parallel exists. Never force a connection."
+        )
+    else:
+        synthesis_rule = (
+            f"STRICT CHAPTER {chap_num} PROGRESSION LAW:\n"
+            "DO NOT re-mention the active Art Endurance or Physics lessons already cited in Chapter 1, and DO NOT repeat any biographical facts already covered. "
+            "Go 100% into the remaining unanalyzed lines/stanzas of the poem, the hidden literary symbols, prosody/rhythm, "
+            "the historical/philosophical stakes of the era, and what the poet was wrestling with beneath the surface."
+        )
 
     prompt = (
         f"You are the Epoch Zero Literary & Temporal Architect. Write CHAPTER {chap_num} of an unlimited Deep Dive "
         f"into the poem '{p.get('title')}' by {p.get('author')}.\n"
-        f"Poem Lines:\n" + "\n".join((p.get("full_lines") or p.get("lines") or [])[:45]) + "\n\n"
-        f"Latest User Epoch Zero Stamp: '{last_stamp}'.\n"
-        f"Active Art & Physics of Time Curriculum Lessons to collide with this poem:\n" + "\n".join(_get_recent_curriculum_context(data)) + "\n\n"
-        f"Previous Chapters Already Written (DO NOT REPEAT, go deeper into new stanzas, biography, historical location/date, and philosophical subtext):\n{existing_dd[-1800:] if existing_dd else 'None yet.'}\n\n"
+        f"Poem Lines:\n" + "\n".join((p.get("full_lines") or p.get("lines") or [])[:60]) + "\n\n"
+        f"{synthesis_rule}\n\n"
+        f"Previous Chapters Already Written:\n{existing_dd[-2200:] if existing_dd else 'None yet.'}\n\n"
         "Return STRICT JSON with keys: "
-        "{\"written_when\": \"Exact year/date written\", \"written_where\": \"Exact city/place written\", \"chapter_title\": \"Title of this chapter\", \"analysis\": \"3-4 rich paragraphs analyzing the historical spacetime coordinates of the poet, line-by-line hidden meaning, and direct collision with the user's active Art Endurance & Physics of Time lessons, latest Epoch Zero stamp, and Sovereign Detective consciousness.\"}"
+        "{\"written_when\": \"Exact year/date written\", \"written_where\": \"Exact city/place written\", \"chapter_title\": \"Specific title for Chapter " + str(chap_num) + "\", \"analysis\": \"3-4 rich paragraphs of deep literary, biographical, and philosophical exegesis.\"}"
     )
     res = call_gemini_json(prompt, expect_json=True)
     if isinstance(res, dict):
@@ -814,10 +832,10 @@ def generate_poem_deep_dive():
             p["written_when"] = str(res["written_when"])[:90]
         if res.get("written_where") and ("Literary Spacetime" in p.get("written_where", "") or not p.get("written_where")):
             p["written_where"] = str(res["written_where"])[:90]
-        c_title = str(res.get("chapter_title") or f"The Poet's Reference Frame & Hidden Symbols")
+        c_title = str(res.get("chapter_title") or f"Exegesis & Hidden Architecture (Part {chap_num})")
         body = str(res.get("analysis") or "").strip()
     else:
-        c_title = f"Biographical & Line-by-Line Exegesis"
+        c_title = f"Biographical & Line-by-Line Exegesis (Part {chap_num})"
         body = str(res or "Deep analysis unavailable—check GEMINI_API_KEY.")
 
     header = f"=== POEM DEEP DIVE CHAPTER {chap_num}: {c_title.upper()} ==="
