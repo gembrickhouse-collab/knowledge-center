@@ -797,7 +797,8 @@ class KnowledgeDesktopHub(tk.Tk):
 
     def _tick_epoch_clock(self):
         try:
-            ep_hrs = ke.get_epoch_hours() if hasattr(ke, 'get_epoch_hours') else max(0.0, (time.time() - 1794623880.0) / 3600.0) if hasattr(ke, 'get_epoch_hours') else max(0.0, (time.time() - 1794623880.0) / 3600.0)
+            import time, knowledge_engine as ke
+            ep_hrs = self._get_epoch_hours() if hasattr(self, '_get_epoch_hours') else (ke.get_epoch_hours() if hasattr(ke, 'get_epoch_hours') else max(0.0, (time.time() - 1794623880.0) / 3600.0)) if hasattr(ke, 'get_epoch_hours') else max(0.0, (time.time() - 1794623880.0) / 3600.0)
             hrs_fmt = self._fmt_epoch_hrs(ep_hrs)
             self.cv.itemconfigure("live_monolith_txt", text=hrs_fmt + " HRS")
             if hasattr(self, "lbl_cap"):
