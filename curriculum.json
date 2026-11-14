@@ -123,6 +123,13 @@
       "note": "talking with computers LVL ONE",
       "seq": 8,
       "ts": 1794690077
+    },
+    {
+      "seq": 9,
+      "epoch_hrs": 19.4081,
+      "delta_hrs": 1.0198,
+      "note": "verbal handshake one (locked via phone keypad)",
+      "created_mt": "2026-11-14 15:02:29 MT"
     }
   ],
   "tracks": {
@@ -1756,5 +1763,6 @@
       ],
       "title": "Physics & Architecture of Time"
     }
-  }
+  },
+  "last_voice_debug": "[15:02:29 MT] heard='1' | raw={\"form\": {\"AccountSid\": \"df12b913-faee-4650-820d-98f62ec30835\", \"CallInitiatedAt\": \"2026-11-14T22:01:27.404885Z\", \"CallSessionId\": \"f09bbd84-e076-11f1-8535-02420aef89a0\", \"CallSid\""
 }
