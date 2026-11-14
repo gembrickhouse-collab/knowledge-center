@@ -262,7 +262,7 @@ WEB_TEMPLATE = """<!doctype html>
 <div class="tabs">
   {% if mode == 'matrix' %}
     <button class="tab active" id="tab-matrix" onclick="switchTrack('matrix')">🧬 MATRIX CODE ANATOMY</button>
-    <a class="tab" href="/">🎨 SWITCH TO KNOWLEDGE CENTER (ART + UNIVERSE) ↗</a>
+    <a class="tab" href="/epoch-zero">🎨 SWITCH TO KNOWLEDGE CENTER (ART + UNIVERSE) ↗</a>
   {% else %}
     <button class="tab" id="tab-foundations" onclick="switchTrack('foundations')" style="border-color:#d2a8ff;color:#d2a8ff;">⏳ FOUNDATIONS (EPOCH ZERO)</button>
     <button class="tab active" id="tab-art" onclick="switchTrack('art')">🎨 ART ENDURANCE</button>
@@ -920,6 +920,10 @@ loadState();
 
 
 @app.route("/")
+def dead_root():
+    return "404 Not Found — Service Decommissioned", 404
+
+@app.route("/epoch-zero")
 def index():
     return render_template_string(
         WEB_TEMPLATE,

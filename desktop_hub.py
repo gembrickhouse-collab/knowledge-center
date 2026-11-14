@@ -35,7 +35,7 @@ def get_cloud_url():
         u = open(CLOUD_URL_FILE).read().strip().rstrip("/")
         if u:
             return u
-    return "https://consciousness-irreverser-lab.onrender.com"
+    return "https://knowledge-center-dsog.onrender.com"
 
 
 def _normalize_pil_image(raw_im):
