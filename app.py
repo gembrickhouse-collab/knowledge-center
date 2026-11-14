@@ -207,28 +207,55 @@ def api_voice_comm():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _extract_telnyx_speech():
+    jbody = request.get_json(silent=True) or {}
+    form_dict = request.form.to_dict() if request.form else {}
+    args_dict = request.args.to_dict() if request.args else {}
+    spoken = (
+        form_dict.get("SpeechResult")
+        or form_dict.get("speech_result")
+        or form_dict.get("Digits")
+        or args_dict.get("SpeechResult")
+        or args_dict.get("Digits")
+        or jbody.get("SpeechResult")
+        or jbody.get("speech_result")
+        or jbody.get("Digits")
+        or ""
+    ).strip()
+    raw_dbg = json.dumps({"form": form_dict, "args": args_dict, "json": jbody})
+    return spoken, raw_dbg
+
+
 @app.route("/epoch-zero/voice", methods=["GET", "POST"])
 @app.route("/voice", methods=["GET", "POST"])
 def texml_voice_webhook():
-    jbody = request.get_json(silent=True) or {}
-    spoken = (
-        request.form.get("SpeechResult")
-        or request.form.get("speech_result")
-        or request.args.get("SpeechResult")
-        or jbody.get("SpeechResult")
-        or jbody.get("speech_result")
-        or ""
-    ).strip()
-    is_followup = bool(request.args.get("turn")) or bool(spoken)
-    res = ke.handle_voice_interaction(spoken, is_followup=is_followup)
+    spoken, raw_dbg = _extract_telnyx_speech()
+    is_followup = bool(spoken)
+    res = ke.handle_voice_interaction(spoken, is_followup=is_followup, raw_debug=raw_dbg if spoken else "")
     from xml.sax.saxutils import escape as xml_esc
     safe_reply = xml_esc(res.get("reply", "Epoch Zero online."))
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="speech dtmf" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice?turn=2" method="POST" timeout="8" speechTimeout="auto" language="en-US">
-        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply, or say Stamp followed by your note.</Say>
+    <Gather input="speech dtmf" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="10" speechTimeout="auto" language="en-US">
+        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply, say Stamp followed by a note, or press 1 on your keypad to lock Verbal Handshake One.</Say>
     </Gather>
-    <Redirect method="POST">https://knowledge-center-dsog.onrender.com/epoch-zero/voice?turn=2</Redirect>
+    <Redirect method="POST">https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather</Redirect>
+</Response>"""
+    return app.response_class(texml, mimetype="application/xml")
+
+
+@app.route("/epoch-zero/voice_gather", methods=["GET", "POST"])
+@app.route("/voice_gather", methods=["GET", "POST"])
+def texml_voice_gather():
+    spoken, raw_dbg = _extract_telnyx_speech()
+    res = ke.handle_voice_interaction(spoken, is_followup=True, raw_debug=raw_dbg)
+    from xml.sax.saxutils import escape as xml_esc
+    safe_reply = xml_esc(res.get("reply", "Signal received."))
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech dtmf" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="10" speechTimeout="auto" language="en-US">
+        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak again to continue, or hang up anytime.</Say>
+    </Gather>
 </Response>"""
     return app.response_class(texml, mimetype="application/xml")
 

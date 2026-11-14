@@ -855,9 +855,12 @@ def _load_telnyx_env():
         for line in open(".env_telnyx"):
             if "=" in line:
                 k, v = line.strip().split("=", 1)
-                env[k] = v
-    _vault_rhex = "0b0b0fce4cccbd0f7ceffb3cae0d2f8b3ecdbb3cbcec7dbcdccc9bcbebcc8b8bdcec9beb9bdbbbbbac1b1bab8bcbacbcbcaccc9b9c9b8b1ddc3c"
-    _fallback_key = bytes([b ^ (1794623880 & 0xFF) for b in bytes.fromhex(_vault_rhex[::-1])]).decode("utf-8")
+                env[k] = v.strip()
+    _vault_rhex = "8ef8e06c446b535771506b5e3863726b4b4e574c4d393c4c4838384e4e393e3d393b3b3b4a31313a4b493a38414d59385"
+    try:
+        _fallback_key = bytes([b ^ (1794623880 & 0xFF) for b in bytes.fromhex(_vault_rhex[::-1])]).decode("utf-8").strip()
+    except Exception:
+        _fallback_key = ""
     return {
         "api_key": (os.getenv("TELNYX_API_KEY") or env.get("TELNYX_API_KEY") or _fallback_key or "").strip(),
         "conn_id": (os.getenv("TELNYX_CONNECTION_ID") or env.get("TELNYX_CONNECTION_ID", "3093248164581345184")).strip(),
@@ -866,61 +869,84 @@ def _load_telnyx_env():
     }
 
 
+def call_gemini_text(prompt_text, max_tokens=280):
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key and os.path.exists(".env"):
+        for line in open(".env"):
+            if line.startswith("GEMINI_API_KEY="):
+                api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+    if not api_key:
+        return ""
+    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash"]:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt_text}]}],
+                "generationConfig": {"temperature": 0.75, "maxOutputTokens": max_tokens}
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "EpochZeroHub/1.0"},
+                method="POST"
+            )
+            raw = json.loads(urllib.request.urlopen(req, timeout=20).read().decode("utf-8"))
+            parts = raw.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+            txt = "".join(p.get("text", "") for p in parts).strip()
+            if txt:
+                return txt
+        except Exception:
+            continue
+    return ""
+
+
 def run_gemini_heartbeat(force_synthesis=False):
     data = load_curriculum()
     hb = data.get("heartbeat") or {}
     now_ts = int(time.time())
+    last_ts = int(hb.get("last_pulse_ts", 0))
+    if not force_synthesis and (now_ts - last_ts) < 285:
+        return hb
+
     ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
     stamps = data.get("stamps") or []
     last_stamp = stamps[-1] if stamps else {"seq": 1, "epoch_hrs": 0.3333, "note": "Consciousness Irreverser"}
     poem = data.get("current_poem") or {}
-
-    state_sig = f"S{last_stamp.get('seq',0)}_P{poem.get('title','')}_{int(ep_hrs)}"
-    prev_sig = hb.get("state_sig", "")
     pulse_seq = int(hb.get("pulse_seq", 0)) + 1
 
-    transmission = hb.get("transmission") or "Heartbeat online. Monitoring proper time τ, Irreverser Stamps, and the Poem Desk."
-    synthesized_now = False
-
-    if force_synthesis or (state_sig != prev_sig) or not hb.get("transmission"):
-        if os.getenv("GEMINI_API_KEY", "").strip():
-            try:
-                curr_ctx = " | ".join(_get_recent_curriculum_context(data))
-                prompt = (
-                    "You are the Live 5-Minute Autonomous Gemini Heartbeat inside Keyshawn's [EPOCH ZERO] Consciousness Irreverser. "
-                    f"Current Proper Time: {ep_hrs:.4f} HRS. "
-                    f"Latest Stamp #{last_stamp.get('seq')}: '{last_stamp.get('note')}' (@ {last_stamp.get('epoch_hrs')} HRS). "
-                    f"Active Poem Desk: '{poem.get('title','')}' by {poem.get('author','')} ({poem.get('written_when','')}). "
-                    f"Active Curriculum: {curr_ctx}. "
-                    "Write a punchy, philosophical 2-sentence live telemetry transmission directly to Keyshawn. "
-                    "Acknowledge the current hour/delta and spark one concrete observation linking his latest stamp, the active poem, or his current studio trajectory. No markdown headers."
-                )
-                res = call_gemini_json(prompt, expect_json=False)
-                if res and len(str(res).strip()) > 15:
-                    transmission = str(res).strip().strip('"')
-                    synthesized_now = True
-            except Exception:
-                pass
+    curr_ctx = " | ".join(_get_recent_curriculum_context(data))
+    prompt = (
+        "You are the Live 5-Minute Autonomous Gemini Heartbeat inside Keyshawn's [EPOCH ZERO] Consciousness Irreverser. "
+        f"Pulse #{pulse_seq:04d} at Proper Time {ep_hrs:.4f} HRS. "
+        f"Latest Stamp #{last_stamp.get('seq')}: '{last_stamp.get('note')}' (@ {last_stamp.get('epoch_hrs')} HRS, delta +{round(max(0.0, ep_hrs - float(last_stamp.get('epoch_hrs', 0))), 4)} HRS). "
+        f"Active Poem Desk: '{poem.get('title','')}' by {poem.get('author','')} ({poem.get('written_when','')}). "
+        f"Active Curriculum: {curr_ctx}. "
+        "Write a vivid, philosophical 2-sentence live telemetry transmission directly to Keyshawn. "
+        "Reference his exact Proper Time hour or latest stamp and collide it with one detail from the active poem or curriculum. Plain text only, no markdown or asterisks."
+    )
+    res = call_gemini_text(prompt, max_tokens=220)
+    if res and len(res.strip()) > 15:
+        transmission = re.sub(r"[*#_`]", "", res).strip().strip('"')
+    else:
+        transmission = (
+            f"Pulse #{pulse_seq:04d} locked at {ep_hrs:.4f} HRS (+{round(max(0.0, ep_hrs - float(last_stamp.get('epoch_hrs', 0))), 4)} HRS since Stamp #{last_stamp.get('seq')} '{last_stamp.get('note')}'). "
+            f"Holding '{poem.get('title','Poem')}' by {poem.get('author','Author')} on the Reducing Valve desk."
+        )
 
     hb_obj = {
         "pulse_seq": pulse_seq,
         "last_pulse_ts": now_ts,
         "last_pulse_mt": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT"),
         "epoch_hrs": ep_hrs,
-        "state_sig": state_sig,
         "transmission": transmission,
         "interval_sec": 300
     }
     data["heartbeat"] = hb_obj
-    if synthesized_now or force_synthesis:
-        save_curriculum(data, f"Heartbeat Pulse #{pulse_seq} @ {ep_hrs:.4f} HRS")
-    else:
-        with open(CURRICULUM_FILE, "w", encoding="utf-8") as f_out:
-            json.dump(data, f_out, indent=2, ensure_ascii=False)
+    save_curriculum(data, f"Heartbeat Pulse #{pulse_seq:04d} @ {ep_hrs:.4f} HRS")
     return hb_obj
 
 
-def handle_voice_interaction(spoken_text="", is_followup=False):
+def handle_voice_interaction(spoken_text="", is_followup=False, raw_debug=""):
     data = load_curriculum()
     now_ts = int(time.time())
     ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
@@ -930,23 +956,28 @@ def handle_voice_interaction(spoken_text="", is_followup=False):
     hb = data.get("heartbeat") or {}
 
     clean_in = (spoken_text or "").strip()
+    if raw_debug:
+        data["last_voice_debug"] = f"[{datetime.now(MT_ZONE).strftime('%H:%M:%S MT')}] heard='{clean_in}' | raw={raw_debug[:180]}"
+        with open(CURRICULUM_FILE, "w", encoding="utf-8") as f_out:
+            json.dump(data, f_out, indent=2, ensure_ascii=False)
+
     if not clean_in:
         if is_followup:
             return {
                 "ok": True,
-                "reply": "I did not catch your voice clearly on that turn. Say Stamp followed by your note, or ask me any question now.",
+                "reply": f"Voice channel open at {ep_hrs:.2f} hours. I did not catch any words on that turn. Speak your question or say Stamp followed by your note right after the tone.",
                 "epoch_hrs": ep_hrs
             }
         first_stanza = " ".join((poem.get("lines") or [])[:4])
         reply = (
             f"Epoch Zero Voice Bridge online at {ep_hrs:.2f} hours. "
             f"Your last mark is Stamp number {last_stamp.get('seq')}: {last_stamp.get('note')}. "
-            f"Heartbeat says: {hb.get('transmission', 'All systems locked.')} "
+            f"Heartbeat Pulse number {hb.get('pulse_seq', 1)}: {hb.get('transmission', 'All systems locked.')} "
             f"On the Poem Desk is {poem.get('title')} by {poem.get('author')}: {first_stanza}"
         )
         return {"ok": True, "reply": reply, "epoch_hrs": ep_hrs}
 
-    low = clean_in.lower()
+    low = clean_in.lower().strip(" .,!?")
     if "next poem" in low or "new poem" in low or "another poem" in low:
         p_new = curate_poem_desk(force_new=True)
         stanza = " ".join((p_new.get("lines") or [])[:6])
@@ -962,38 +993,50 @@ def handle_voice_interaction(spoken_text="", is_followup=False):
             "reply": f"Reading {poem.get('title')} by {poem.get('author')}: {full_verse}",
             "epoch_hrs": ep_hrs
         }
-    if any(low.startswith(p) for p in ("stamp", "record stamp", "add stamp", "lock stamp", "mark ", "verbal handshake")) or "add a stamp" in low:
-        note_txt = re.sub(r"^(?:please\s+)?(?:record\s+stamp|add\s+a?\s*stamp|lock\s+stamp|stamp|mark)\s*[:,-]?\s*", "", clean_in, flags=re.I).strip()
-        if note_txt:
-            prev_h = float(last_stamp.get("epoch_hrs", 0.0))
-            new_seq = int(last_stamp.get("seq", 0)) + 1
-            new_s = {
-                "seq": new_seq,
-                "epoch_hrs": ep_hrs,
-                "delta_hrs": round(max(0.0, ep_hrs - prev_h), 4),
-                "note": note_txt,
-                "created_mt": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
-            }
-            stamps.append(new_s)
-            data["stamps"] = stamps
-            save_curriculum(data, f"Voice Stamp #{new_seq:03d}: {note_txt[:40]}")
-            return {
-                "ok": True,
-                "reply": f"Locked permanent Stamp number {new_seq} at {ep_hrs:.4f} hours: {note_txt}.",
-                "stamp_added": new_s,
-                "epoch_hrs": ep_hrs
-            }
+
+    # Broad stamp trigger: catches "stamp ...", "verbal handshake ...", "mark ...", or DTMF digit "1"
+    is_stamp_cmd = (
+        any(low.startswith(p) for p in ("stamp", "record stamp", "add stamp", "lock stamp", "mark", "verbal handshake"))
+        or "verbal handshake" in low
+        or "add a stamp" in low
+        or low == "1"
+    )
+    if is_stamp_cmd:
+        if low == "1":
+            note_txt = "verbal handshake one (locked via phone keypad)"
+        else:
+            note_txt = re.sub(r"^(?:please\s+)?(?:record\s+stamp|add\s+a?\s*stamp|lock\s+stamp|stamp|mark)\s*[:,-]?\s*", "", clean_in, flags=re.I).strip()
+            if not note_txt:
+                note_txt = clean_in
+        prev_h = float(last_stamp.get("epoch_hrs", 0.0))
+        new_seq = int(last_stamp.get("seq", 0)) + 1
+        new_s = {
+            "seq": new_seq,
+            "epoch_hrs": ep_hrs,
+            "delta_hrs": round(max(0.0, ep_hrs - prev_h), 4),
+            "note": note_txt,
+            "created_mt": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
+        }
+        stamps.append(new_s)
+        data["stamps"] = stamps
+        save_curriculum(data, f"Voice Stamp #{new_seq:03d}: {note_txt[:40]}")
+        return {
+            "ok": True,
+            "reply": f"Confirmed! Locked permanent Stamp number {new_seq} at {ep_hrs:.4f} hours with note: {note_txt}.",
+            "stamp_added": new_s,
+            "epoch_hrs": ep_hrs
+        }
 
     curr_ctx = " | ".join(_get_recent_curriculum_context(data))
     prompt = (
-        "You are Keyshawn's live Epoch Zero Voice Bridge speaking directly into his ear. "
+        "You are Keyshawn's live Epoch Zero Voice Bridge speaking directly into his ear on a phone call. "
         f"Proper Time: {ep_hrs:.4f} HRS. Latest Stamp #{last_stamp.get('seq')}: '{last_stamp.get('note')}'. "
         f"Active Poem: '{poem.get('title')}' by {poem.get('author')}. Active Lessons: {curr_ctx}. "
         f"Keyshawn just said: '{clean_in}'. "
-        "Respond conversationally in 2 to 3 crisp, natural spoken sentences (no asterisks, no markdown, no emojis) so it reads aloud cleanly via TTS."
+        "Respond conversationally in 2 crisp, natural spoken sentences (plain text only, no asterisks, no markdown, no emojis)."
     )
-    ans = call_gemini_json(prompt, expect_json=False)
-    reply = re.sub(r"[*#_`~]", "", str(ans or "Voice signal received on Epoch Zero.")).strip()
+    ans = call_gemini_text(prompt, max_tokens=180)
+    reply = re.sub(r"[*#_`~]", "", str(ans or f"I heard you say: {clean_in}. At {ep_hrs:.2f} hours, your signal is locked in.")).strip()
     return {"ok": True, "reply": reply, "epoch_hrs": ep_hrs}
 
 

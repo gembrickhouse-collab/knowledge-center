@@ -60,13 +60,12 @@
     }
   ],
   "heartbeat": {
-    "epoch_hrs": 18.3389,
-    "interval_sec": 300,
-    "last_pulse_mt": "2026-11-14 13:58:20 MT",
-    "last_pulse_ts": 1794689900,
-    "pulse_seq": 2,
-    "state_sig": "S7_PDeath, to the Dead for Evermore_18",
-    "transmission": "Heartbeat online. Monitoring proper time \u03c4, Irreverser Stamps, and the Poem Desk."
+    "pulse_seq": 3,
+    "last_pulse_ts": 1794691885,
+    "last_pulse_mt": "2026-11-14 14:31:25 MT",
+    "epoch_hrs": 18.8903,
+    "transmission": "Pulse #0003 locked at 18.8903 HRS (+0.502 HRS since Stamp #8 'talking with computers LVL ONE'). Holding 'Death, to the Dead for Evermore' by Robert Louis Stevenson on the Reducing Valve desk.",
+    "interval_sec": 300
   },
   "stamps": [
     {
