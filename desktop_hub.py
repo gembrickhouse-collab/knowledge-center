@@ -797,9 +797,25 @@ class KnowledgeDesktopHub(tk.Tk):
 
     def _tick_epoch_clock(self):
         try:
-            hrs_str, _, _ = ke.get_epoch_telemetry(self.data)
-            self.canvas.itemconfigure("epoch_clock_txt", text=f"{hrs_str} HRS")
-            self.header_epoch_lbl.configure(text=f"EPOCH ZERO: {hrs_str} HRS")
+            ep_hrs = ke.get_epoch_hours()
+            hrs_fmt = self._fmt_epoch_hrs(ep_hrs)
+            self.cv.itemconfigure("live_monolith_txt", text=hrs_fmt + " HRS")
+            if hasattr(self, "lbl_cap"):
+                v_kb = float(self.cap.get("used_kb", 0))
+                v_pct = float(self.cap.get("pct_of_limit", 0))
+                rem_h = int(self.cap.get("est_hours_remaining", 165000))
+                self.lbl_cap.configure(
+                    text=f"EPOCH ZERO: {hrs_fmt} HRS  |  Vault: {v_kb:.1f} KB ({v_pct:.2f}%)  |  Auto-Drop Runway: {rem_h:,} HRS"
+                )
+            stamps = (self.data or {}).get("stamps") or []
+            if stamps:
+                last = stamps[-1]
+                since = max(0.0, ep_hrs - float(last.get("epoch_hrs", 0.0)))
+                sub_txt = _fast_ascii(
+                    f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT"
+                )
+                self.cv.itemconfigure("live_lap_txt", text=sub_txt)
+
             # Live 1-second countdown for the 5-Minute Gemini Heartbeat
             hb = (self.data or {}).get("heartbeat") or {}
             hb_seq = int(hb.get("pulse_seq", 1))
@@ -813,16 +829,15 @@ class KnowledgeDesktopHub(tk.Tk):
                 cd_str = "PULSING NOW..."
             else:
                 cd_str = f"NEXT PULSE IN {mm:02d}:{ss:02d}"
-            self.canvas.itemconfigure(
+            self.cv.itemconfigure(
                 "hb_header_txt",
-                text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{hb_seq:04d}   ({hb_mt})   |   {cd_str}"
+                text=_fast_ascii(f"GEMINI 5-MIN HEARTBEAT // PULSE #{hb_seq:04d}  ({hb_mt})  |  {cd_str}")
             )
-            # Fire automatically the moment the 5-minute countdown hits 00:00 (with 15s cooldown guard)
             if elapsed >= 300 and not getattr(self, "_hb_busy", False) and (now_s - getattr(self, "_last_hb_attempt", 0)) >= 15:
                 self._last_hb_attempt = now_s
                 self._trigger_heartbeat_now()
-        except Exception:
-            pass
+        except Exception as e:
+            print("Tick error:", e)
         self.after(250, self._tick_epoch_clock)
 
     def _prompt_epoch_stamp(self):
@@ -1031,7 +1046,7 @@ class KnowledgeDesktopHub(tk.Tk):
         }
         hb_top = y
         y += 12
-        self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw")
+        self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw", tags=("hb_header_txt",))
         b_ring_txt = self._busy_btns.get(("foundations", 1, "ring"), "[RING CELL PHONE]")
         self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#21262d", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_ring_now", "<Button-1>", lambda e: self._ring_phone_now())
