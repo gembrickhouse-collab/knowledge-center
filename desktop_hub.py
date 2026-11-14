@@ -89,7 +89,7 @@ class KnowledgeDesktopHub(tk.Tk):
         global _BLANK_TK, _BLANK_GAL_TK
         _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
-        self.title("EPOCH ZERO // Consciousness Irreverser Lab (Pure-Canvas Engine)")
+        self.title("[EPOCH ZERO] // CONSCIOUSNESS IRREVERSER")
         self.geometry("960x760")
         self.minsize(480, 440)
         self.configure(bg="#0d1117")
@@ -281,7 +281,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         # 1. Top Header Banner
         self.cv.create_rectangle(0, 0, cw, 82, fill="#090d13", outline="#090d13")
-        self.cv.create_text(cw // 2, 14, text="[EPOCH ZERO] CONSCIOUSNESS IRREVERSER // VISUAL MONOGRAPH ARCHIVE", fill="#fbbf24", font=("DejaVu Sans Mono", 11, "bold"), anchor="n")
+        self.cv.create_text(cw // 2, 14, text="[EPOCH ZERO] // CONSCIOUSNESS IRREVERSER", fill="#fbbf24", font=("DejaVu Sans Mono", 11, "bold"), anchor="n")
         self.cv.create_text(cw // 2, 36, text=_fast_ascii(self.sched_status), fill="#8b949e", font=("DejaVu Sans Mono", 8), anchor="n")
 
         c = self.capacity

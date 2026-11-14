@@ -925,7 +925,7 @@ def index():
         WEB_TEMPLATE,
         mode="knowledge",
         default_track="art",
-        page_title="EPOCH ZERO // CONSCIOUSNESS IRREVERSER LAB",
+        page_title="[EPOCH ZERO] // CONSCIOUSNESS IRREVERSER",
         header_icon="🧠",
         accent="#fbbf24",
     )
