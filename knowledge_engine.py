@@ -859,10 +859,10 @@ def _load_telnyx_env():
     _vault_rhex = "0b0b0fce4cccbd0f7ceffb3cae0d2f8b3ecdbb3cbcec7dbcdccc9bcbebcc8b8bdcec9beb9bdbbbbbac1b1bab8bcbacbcbcaccc9b9c9b8b1ddc3c"
     _fallback_key = bytes([b ^ (1794623880 & 0xFF) for b in bytes.fromhex(_vault_rhex[::-1])]).decode("utf-8")
     return {
-        "api_key": os.getenv("TELNYX_API_KEY") or env.get("TELNYX_API_KEY") or _fallback_key,
-        "conn_id": os.getenv("TELNYX_CONNECTION_ID") or env.get("TELNYX_CONNECTION_ID", "3093248164581345184"),
-        "from_num": os.getenv("TELNYX_FROM_NUMBER") or env.get("TELNYX_FROM_NUMBER") or "+17204607310",
-        "to_num": os.getenv("TELNYX_TO_NUMBER") or env.get("TELNYX_TO_NUMBER") or "+17204607310",
+        "api_key": (os.getenv("TELNYX_API_KEY") or env.get("TELNYX_API_KEY") or _fallback_key or "").strip(),
+        "conn_id": (os.getenv("TELNYX_CONNECTION_ID") or env.get("TELNYX_CONNECTION_ID", "3093248164581345184")).strip(),
+        "from_num": (os.getenv("TELNYX_FROM_NUMBER") or env.get("TELNYX_FROM_NUMBER") or "+17204607310").strip(),
+        "to_num": (os.getenv("TELNYX_TO_NUMBER") or env.get("TELNYX_TO_NUMBER") or "+17204607310").strip(),
     }
 
 
@@ -920,7 +920,7 @@ def run_gemini_heartbeat(force_synthesis=False):
     return hb_obj
 
 
-def handle_voice_interaction(spoken_text=""):
+def handle_voice_interaction(spoken_text="", is_followup=False):
     data = load_curriculum()
     now_ts = int(time.time())
     ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
@@ -931,6 +931,12 @@ def handle_voice_interaction(spoken_text=""):
 
     clean_in = (spoken_text or "").strip()
     if not clean_in:
+        if is_followup:
+            return {
+                "ok": True,
+                "reply": "I did not catch your voice clearly on that turn. Say Stamp followed by your note, or ask me any question now.",
+                "epoch_hrs": ep_hrs
+            }
         first_stanza = " ".join((poem.get("lines") or [])[:4])
         reply = (
             f"Epoch Zero Voice Bridge online at {ep_hrs:.2f} hours. "
@@ -956,8 +962,8 @@ def handle_voice_interaction(spoken_text=""):
             "reply": f"Reading {poem.get('title')} by {poem.get('author')}: {full_verse}",
             "epoch_hrs": ep_hrs
         }
-    if low.startswith("stamp ") or low.startswith("record stamp") or low.startswith("mark "):
-        note_txt = re.sub(r"^(?:record\s+stamp|stamp|mark)\s*[:,-]?\s*", "", clean_in, flags=re.I).strip()
+    if any(low.startswith(p) for p in ("stamp", "record stamp", "add stamp", "lock stamp", "mark ", "verbal handshake")) or "add a stamp" in low:
+        note_txt = re.sub(r"^(?:please\s+)?(?:record\s+stamp|add\s+a?\s*stamp|lock\s+stamp|stamp|mark)\s*[:,-]?\s*", "", clean_in, flags=re.I).strip()
         if note_txt:
             prev_h = float(last_stamp.get("epoch_hrs", 0.0))
             new_seq = int(last_stamp.get("seq", 0)) + 1

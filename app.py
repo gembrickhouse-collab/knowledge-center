@@ -210,15 +210,25 @@ def api_voice_comm():
 @app.route("/epoch-zero/voice", methods=["GET", "POST"])
 @app.route("/voice", methods=["GET", "POST"])
 def texml_voice_webhook():
-    spoken = request.form.get("SpeechResult") or request.args.get("SpeechResult") or ""
-    res = ke.handle_voice_interaction(spoken)
+    jbody = request.get_json(silent=True) or {}
+    spoken = (
+        request.form.get("SpeechResult")
+        or request.form.get("speech_result")
+        or request.args.get("SpeechResult")
+        or jbody.get("SpeechResult")
+        or jbody.get("speech_result")
+        or ""
+    ).strip()
+    is_followup = bool(request.args.get("turn")) or bool(spoken)
+    res = ke.handle_voice_interaction(spoken, is_followup=is_followup)
     from xml.sax.saxutils import escape as xml_esc
     safe_reply = xml_esc(res.get("reply", "Epoch Zero online."))
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice" method="POST" speechTimeout="auto" language="en-US">
-        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply or say Stamp followed by a note.</Say>
+    <Gather input="speech dtmf" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice?turn=2" method="POST" timeout="8" speechTimeout="auto" language="en-US">
+        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply, or say Stamp followed by your note.</Say>
     </Gather>
+    <Redirect method="POST">https://knowledge-center-dsog.onrender.com/epoch-zero/voice?turn=2</Redirect>
 </Response>"""
     return app.response_class(texml, mimetype="application/xml")
 
