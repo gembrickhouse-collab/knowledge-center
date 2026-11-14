@@ -83,7 +83,6 @@ def load_curriculum():
 
 
 def save_curriculum(data, commit_msg="Update curriculum"):
-    # Guardrail: Refuse to overwrite an existing >50KB vault with an empty/wiped dict!
     if os.path.exists(CURRICULUM_FILE) and os.path.getsize(CURRICULUM_FILE) > 50000:
         new_raw = json.dumps(data, indent=2, ensure_ascii=False)
         if len(new_raw) < 20000 or len(data.get("stamps") or []) < 2:
@@ -98,10 +97,26 @@ def save_curriculum(data, commit_msg="Update curriculum"):
         with open(bak_path, "w", encoding="utf-8") as f:
             f.write(raw_out)
     try:
-        subprocess.run(["git", "add", CURRICULUM_FILE], cwd=BASE_DIR, timeout=10, check=False)
-        subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, timeout=10, check=False)
-        # Pull with --strategy-option=ours on rebase so git NEVER leaves <<<<<<< conflict markers in curriculum.json!
-        subprocess.run(["git", "pull", "--rebase", "-X", "theirs", "origin", "main"], cwd=BASE_DIR, timeout=18, check=False)
+        # 1. Fetch & reset cleanly to origin/main FIRST, then write our new data on top so it NEVER gets reverted!
+        subprocess.run(["git", "fetch", "origin", "main"], cwd=BASE_DIR, timeout=12, check=False)
+        # Merge any remote stamps so neither side ever loses a stamp
+        try:
+            rem_raw = subprocess.check_output(["git", "show", "origin/main:curriculum.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL).decode("utf-8")
+            rem_data = json.loads(rem_raw)
+            local_seqs = {int(s.get("seq", 0)) for s in (data.get("stamps") or [])}
+            for rs in (rem_data.get("stamps") or []):
+                if int(rs.get("seq", 0)) not in local_seqs:
+                    data.setdefault("stamps", []).append(rs)
+            data["stamps"] = sorted(data.get("stamps") or [], key=lambda x: int(x.get("seq", 0)))
+            raw_out = json.dumps(data, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+        subprocess.run(["git", "pull", "--rebase", "-X", "theirs", "origin", "main"], cwd=BASE_DIR, timeout=15, check=False)
+        # Re-write raw_out AFTER pull so our new pulse_seq / stamp is ALWAYS the winner on disk!
+        with open(CURRICULUM_FILE, "w", encoding="utf-8") as f:
+            f.write(raw_out)
+        subprocess.run(["git", "add", CURRICULUM_FILE], cwd=BASE_DIR, timeout=8, check=False)
+        subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, timeout=8, check=False)
         subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, timeout=18, check=False)
     except Exception:
         pass

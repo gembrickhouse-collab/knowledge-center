@@ -876,31 +876,62 @@ class KnowledgeDesktopHub(tk.Tk):
             self.after(0, self.render_scene)
         threading.Thread(target=_worker, daemon=True).start()
 
-    def _trigger_heartbeat_now(self):
-        bkey = ("foundations", 1, "hb")
-        if bkey in self._busy_btns:
-            return
-        self._busy_btns[bkey] = "... Pulsing Heartbeat ..."
-        self.render_scene()
-
-        def _worker():
+    def _ring_cell_now(self):
+        self.status_var.set("DIALING +17204607310 VIA TELNYX CLOUD BRIDGE...")
+        def _bg():
             try:
-                u = get_cloud_url() + "/api/heartbeat"
-                req = urllib.request.Request(u, data=json.dumps({"force": True}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
-                j = json.loads(urllib.request.urlopen(req, timeout=40).read().decode())
+                # 1. Try cloud /api/call_me first (identical to mobile button!)
+                u = get_cloud_url().rstrip("/") + "/api/call_me"
+                req = urllib.request.Request(
+                    u,
+                    data=b"{}",
+                    headers={"Content-Type": "application/json", "User-Agent": _UA},
+                    method="POST"
+                )
+                j = json.loads(urllib.request.urlopen(req, timeout=15).read().decode())
+                if j.get("ok"):
+                    self.after(0, lambda: self.status_var.set("RINGING +17204607310! ANSWER YOUR CELL PHONE."))
+                    return
+            except Exception:
+                pass
+            # 2. Fallback to local knowledge_engine call
+            res = ke.trigger_telnyx_outbound_call()
+            if res.get("ok"):
+                self.after(0, lambda: self.status_var.set("RINGING +17204607310 (DIRECT)! ANSWER YOUR CELL PHONE."))
+            else:
+                err = str(res.get("error", "Unknown error"))[:70]
+                self.after(0, lambda: self.status_var.set(f"CALL ERROR: {err}"))
+        threading.Thread(target=_bg, daemon=True).start()
+
+    def _trigger_heartbeat_now(self):
+        if getattr(self, "_hb_busy", False):
+            return
+        self._hb_busy = True
+        self.status_var.set("PULSING GEMINI 5-MIN HEARTBEAT ON CLOUD...")
+        def _bg():
+            try:
+                u = get_cloud_url().rstrip("/") + "/api/heartbeat"
+                req = urllib.request.Request(
+                    u,
+                    data=json.dumps({"force": True}).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "User-Agent": _UA},
+                    method="POST"
+                )
+                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
                 if j.get("ok") and j.get("heartbeat"):
                     self.data["heartbeat"] = j["heartbeat"]
                     self._save_local()
-            except Exception:
-                try:
-                    import knowledge_engine as ke
-                    self.data["heartbeat"] = ke.run_gemini_heartbeat(force_synthesis=True)
-                    self._save_local()
-                except Exception:
-                    pass
-            self._busy_btns.pop(bkey, None)
-            self.after(0, self.render_scene)
-        threading.Thread(target=_worker, daemon=True).start()
+                    p_seq = j["heartbeat"].get("pulse_seq", "?")
+                    self.after(0, lambda: (
+                        self.status_var.set(f"HEARTBEAT PULSE #{int(p_seq):04d} LOCKED!"),
+                        self.render_scene()
+                    ))
+                    return
+            except Exception as e:
+                self.after(0, lambda err=str(e)[:60]: self.status_var.set(f"HB SYNC NOTE: {err}"))
+            finally:
+                self._hb_busy = False
+        threading.Thread(target=_bg, daemon=True).start()
 
     def _toggle_expand_poem(self):
         self._poem_expanded = not getattr(self, "_poem_expanded", False)
