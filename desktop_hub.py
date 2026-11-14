@@ -796,29 +796,34 @@ class KnowledgeDesktopHub(tk.Tk):
         return f"{whole:06,d}.{dec:04d}"
 
     def _tick_epoch_clock(self):
-        if self._closing:
-            return
         try:
-            ep_hrs = max(0.0, (time.time() - 1794623880) / 3600.0)
-            ep_str = self._fmt_epoch_hrs(ep_hrs) + " HRS"
-            if self.cur_track == "foundations":
-                self.cv.itemconfigure("live_monolith_txt", text=ep_str)
-                stamps = self.data.get("stamps") or []
-                if stamps:
-                    last = stamps[-1]
-                    since = max(0.0, ep_hrs - float(last.get("epoch_hrs", 0.0)))
-                    sub = _fast_ascii(f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT")
-                    self.cv.itemconfigure("live_lap_txt", text=sub)
-            c = self.capacity
-            if c:
-                r_hrs = c.get("runway_hours") or int(round(float(c.get("runway_years", 18.8)) * 8766))
-                cap_txt = f"EPOCH ZERO: {ep_str}  |  Vault: {c.get('json_kb', 0)} KB ({c.get('gh_pct', 0)}%)  |  Auto-Drop Runway: {r_hrs:,} HRS"
+            hrs_str, _, _ = ke.get_epoch_telemetry(self.data)
+            self.canvas.itemconfigure("epoch_clock_txt", text=f"{hrs_str} HRS")
+            self.header_epoch_lbl.configure(text=f"EPOCH ZERO: {hrs_str} HRS")
+            # Live 1-second countdown for the 5-Minute Gemini Heartbeat
+            hb = (self.data or {}).get("heartbeat") or {}
+            hb_seq = int(hb.get("pulse_seq", 1))
+            hb_mt = hb.get("last_pulse_mt", "ARMED")
+            last_ts = int(hb.get("last_pulse_ts", 0))
+            now_s = int(time.time())
+            elapsed = now_s - last_ts if last_ts > 0 else 300
+            rem = max(0, 300 - elapsed)
+            mm, ss = rem // 60, rem % 60
+            if getattr(self, "_hb_busy", False):
+                cd_str = "PULSING NOW..."
             else:
-                cap_txt = f"EPOCH ZERO: {ep_str}  |  Vault: Synced Locally  |  Auto-Drop Runway: 165,000 HRS"
-            self.cv.itemconfigure("top_cap_bar", text=cap_txt)
+                cd_str = f"NEXT PULSE IN {mm:02d}:{ss:02d}"
+            self.canvas.itemconfigure(
+                "hb_header_txt",
+                text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{hb_seq:04d}   ({hb_mt})   |   {cd_str}"
+            )
+            # Fire automatically the moment the 5-minute countdown hits 00:00 (with 15s cooldown guard)
+            if elapsed >= 300 and not getattr(self, "_hb_busy", False) and (now_s - getattr(self, "_last_hb_attempt", 0)) >= 15:
+                self._last_hb_attempt = now_s
+                self._trigger_heartbeat_now()
         except Exception:
             pass
-        self.after(200, self._tick_epoch_clock)
+        self.after(250, self._tick_epoch_clock)
 
     def _prompt_epoch_stamp(self):
         note = simpledialog.askstring("WARNING: PERMANENT STAMP", "WARNING: TIME STAMPS PERMANENT AND UNEDITABLE.\n\nEnter anchor note for this exact hour:", parent=self)
@@ -904,8 +909,10 @@ class KnowledgeDesktopHub(tk.Tk):
         if getattr(self, "_hb_busy", False):
             return
         self._hb_busy = True
+        self._last_hb_attempt = int(time.time())
         def _bg():
             cloud_base = "https://knowledge-center-dsog.onrender.com"
+            old_seq = int(((self.data or {}).get("heartbeat") or {}).get("pulse_seq", 0))
             try:
                 u = cloud_base + "/api/heartbeat"
                 req = urllib.request.Request(
@@ -916,13 +923,24 @@ class KnowledgeDesktopHub(tk.Tk):
                 )
                 j = json.loads(urllib.request.urlopen(req, timeout=45).read().decode())
                 if j.get("ok") and j.get("heartbeat"):
-                    self.data["heartbeat"] = j["heartbeat"]
+                    new_hb = j["heartbeat"]
+                    if int(new_hb.get("pulse_seq", 0)) <= old_seq:
+                        new_hb["pulse_seq"] = old_seq + 1
+                    new_hb["last_pulse_ts"] = int(time.time())
+                    self.data["heartbeat"] = new_hb
                     self._save_local()
                     self.after(0, self.render_scene)
-                    print(f"✅ [DESKTOP] Locked Heartbeat Pulse #{j['heartbeat'].get('pulse_seq')}")
+                    print(f"✅ [DESKTOP] Locked Heartbeat Pulse #{new_hb.get('pulse_seq')}")
                     return
             except Exception as e:
-                print("Desktop Heartbeat Sync Note:", e)
+                print("Desktop Heartbeat Cloud Note (falling back to local):", e)
+                try:
+                    new_hb = ke.run_gemini_heartbeat(force_synthesis=True)
+                    self.data["heartbeat"] = new_hb
+                    self._save_local()
+                    self.after(0, self.render_scene)
+                except Exception:
+                    pass
             finally:
                 self._hb_busy = False
         threading.Thread(target=_bg, daemon=True).start()
