@@ -871,7 +871,6 @@ def _load_telnyx_env():
 
 def call_gemini_text(prompt_text, max_tokens=280):
     try:
-        # Use call_gemini_json's existing working pipeline by asking for a JSON wrapper {"text": "..."}
         res = call_gemini_json(
             prompt_text + '\n\nReturn ONLY valid JSON in this exact format: {"transmission": "your 2-sentence plain text response here"}',
             temperature=0.75
