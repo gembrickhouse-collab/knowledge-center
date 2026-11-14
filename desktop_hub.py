@@ -859,6 +859,23 @@ class KnowledgeDesktopHub(tk.Tk):
         total_h = max(760, getattr(self, "_total_canvas_h", 1600))
         self.cv.yview_moveto(max(0.0, min(1.0, (y_target - 20) / float(total_h))))
 
+    def _ring_phone_now(self):
+        bkey = ("foundations", 1, "ring")
+        if bkey in self._busy_btns:
+            return
+        self._busy_btns[bkey] = "... Ringing Cell ..."
+        self.render_scene()
+
+        def _worker():
+            try:
+                import knowledge_engine as ke
+                ke.trigger_telnyx_outbound_call()
+            except Exception:
+                pass
+            self._busy_btns.pop(bkey, None)
+            self.after(0, self.render_scene)
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _trigger_heartbeat_now(self):
         bkey = ("foundations", 1, "hb")
         if bkey in self._busy_btns:
@@ -972,8 +989,11 @@ class KnowledgeDesktopHub(tk.Tk):
         hb_top = y
         y += 12
         self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw")
+        b_ring_txt = self._busy_btns.get(("foundations", 1, "ring"), "[RING CELL PHONE]")
+        self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#21262d", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
+        self.cv.tag_bind("btn_ring_now", "<Button-1>", lambda e: self._ring_phone_now())
         b_hb_txt = self._busy_btns.get(("foundations", 1, "hb"), "[PULSE HEARTBEAT NOW]")
-        self._draw_pill_btn(cw - 220, y - 2, b_hb_txt, "#21262d", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
+        self._draw_pill_btn(cw - 205, y - 2, b_hb_txt, "#21262d", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_hb_now", "<Button-1>", lambda e: self._trigger_heartbeat_now())
         y += 24
         tid_hb = self.cv.create_text(28, y, text=_fast_ascii(hb.get("transmission", "")), fill="#e6edf3", font=("DejaVu Sans Mono", 8), anchor="nw", width=cw - 56)

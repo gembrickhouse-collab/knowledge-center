@@ -939,6 +939,21 @@ def handle_voice_interaction(spoken_text=""):
         return {"ok": True, "reply": reply, "epoch_hrs": ep_hrs}
 
     low = clean_in.lower()
+    if "next poem" in low or "new poem" in low or "another poem" in low:
+        p_new = curate_poem_desk(force_new=True)
+        stanza = " ".join((p_new.get("lines") or [])[:6])
+        return {
+            "ok": True,
+            "reply": f"Pulled a new poem onto the desk: {p_new.get('title')} by {p_new.get('author')}, written {p_new.get('written_when')}. Listen: {stanza}",
+            "epoch_hrs": ep_hrs
+        }
+    if "full poem" in low or "read the rest" in low or "whole poem" in low:
+        full_verse = " ".join((poem.get("full_lines") or poem.get("lines") or [])[:28])
+        return {
+            "ok": True,
+            "reply": f"Reading {poem.get('title')} by {poem.get('author')}: {full_verse}",
+            "epoch_hrs": ep_hrs
+        }
     if low.startswith("stamp ") or low.startswith("record stamp") or low.startswith("mark "):
         note_txt = re.sub(r"^(?:record\s+stamp|stamp|mark)\s*[:,-]?\s*", "", clean_in, flags=re.I).strip()
         if note_txt:

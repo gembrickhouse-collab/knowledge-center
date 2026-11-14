@@ -3,6 +3,25 @@
     "author": "Robert Louis Stevenson",
     "curated_at": "2026-11-14 12:29 MT",
     "curator_note": "Matched to Stamp 'Gemini heartbeat, poem desk, phone calls connection conception' across the 1,000-author corpus.",
+    "deep_dive": "=== POEM DEEP DIVE CHAPTER 1: BIOGRAPHICAL & LINE-BY-LINE EXEGESIS ===\n({'written_when': 'September 1894', 'written_where': 'Vailima, Upolu, Samoa', 'analysis': \"Sitting at his wide wooden desk in the tropical heat of Vailima, Robert Louis Stevenson grapples with the permanent geography of mortality, his hand moving across the page while telephone wires hum faintly in distant, industrialized continents\u2014a ghostly connection conception linking the dying Victorian literary titan to the modern epoch. In this opening movement of 'Death, to the Dead for Evermore', death is meticulously constructed not as a thief, but as an architectural host standing at a tranquil threshold. This accumulation of comforting metaphors functions precisely like Nick Cave\u2019s Soundsuits from Art Endurance #032, where thousands of disparate discarded fragments\u2014buttons, twigs, and memory scraps\u2014are obsessively layered to build a rigid, protective exterior against a hostile void. Stevenson gathers the frayed threads of Christian iconography, Stoic philosophy, and Scottish melancholy, stitching them into a dense, tactile armor designed to ward off the terrifying formlessness of the grave.\", 'chapter_title': 'Chapter 1: The Architecture of the Threshold and the Frozen Formalism of the Void'}, '3.5-FLASH-LITE')",
+    "full_lines": [
+      "DEATH, to the dead for evermore",
+      "A King, a God, the last, the best of friends -",
+      "Whene'er this mortal journey ends",
+      "Death, like a host, comes smiling to the door;",
+      "Smiling, he greets us, on that tranquil shore",
+      "Where neither piping bird nor peeping dawn",
+      "Disturbs the eternal sleep,",
+      "But in the stillness far withdrawn",
+      "Our dreamless rest for evermore we keep.",
+      "",
+      "For as from open windows forth we peep",
+      "Upon the night-time star beset",
+      "And with dews for ever wet;",
+      "So from this garish life the spirit peers;",
+      "And lo! as a sleeping city death outspread,",
+      "Where breathe the sleepers evenly; and lo!"
+    ],
     "lines": [
       "DEATH, to the dead for evermore",
       "A King, a God, the last, the best of friends -",
@@ -22,29 +41,10 @@
       "Where breathe the sleepers evenly; and lo!"
     ],
     "title": "Death, to the Dead for Evermore",
-    "uri": "poem://Robert Louis Stevenson/Death, to the Dead for Evermore",
-    "full_lines": [
-      "DEATH, to the dead for evermore",
-      "A King, a God, the last, the best of friends -",
-      "Whene'er this mortal journey ends",
-      "Death, like a host, comes smiling to the door;",
-      "Smiling, he greets us, on that tranquil shore",
-      "Where neither piping bird nor peeping dawn",
-      "Disturbs the eternal sleep,",
-      "But in the stillness far withdrawn",
-      "Our dreamless rest for evermore we keep.",
-      "",
-      "For as from open windows forth we peep",
-      "Upon the night-time star beset",
-      "And with dews for ever wet;",
-      "So from this garish life the spirit peers;",
-      "And lo! as a sleeping city death outspread,",
-      "Where breathe the sleepers evenly; and lo!"
-    ],
     "total_lines": 16,
+    "uri": "poem://Robert Louis Stevenson/Death, to the Dead for Evermore",
     "written_when": "c. 1890\u20131894 (Late Victorian Fin-de-Si\u00e8cle)",
-    "written_where": "Vailima Estate, Upolu, Samoa (born Edinburgh, Scotland)",
-    "deep_dive": "=== POEM DEEP DIVE CHAPTER 1: BIOGRAPHICAL & LINE-BY-LINE EXEGESIS ===\n({'written_when': 'September 1894', 'written_where': 'Vailima, Upolu, Samoa', 'analysis': \"Sitting at his wide wooden desk in the tropical heat of Vailima, Robert Louis Stevenson grapples with the permanent geography of mortality, his hand moving across the page while telephone wires hum faintly in distant, industrialized continents\u2014a ghostly connection conception linking the dying Victorian literary titan to the modern epoch. In this opening movement of 'Death, to the Dead for Evermore', death is meticulously constructed not as a thief, but as an architectural host standing at a tranquil threshold. This accumulation of comforting metaphors functions precisely like Nick Cave\u2019s Soundsuits from Art Endurance #032, where thousands of disparate discarded fragments\u2014buttons, twigs, and memory scraps\u2014are obsessively layered to build a rigid, protective exterior against a hostile void. Stevenson gathers the frayed threads of Christian iconography, Stoic philosophy, and Scottish melancholy, stitching them into a dense, tactile armor designed to ward off the terrifying formlessness of the grave.\", 'chapter_title': 'Chapter 1: The Architecture of the Threshold and the Frozen Formalism of the Void'}, '3.5-FLASH-LITE')"
+    "written_where": "Vailima Estate, Upolu, Samoa (born Edinburgh, Scotland)"
   },
   "epoch_zero": 1794623880,
   "favorites": [
@@ -59,6 +59,15 @@
       "url": "https://upload.wikimedia.org/wikipedia/commons/9/96/TehchingHsiehExhibitMOMA.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled"
     }
   ],
+  "heartbeat": {
+    "epoch_hrs": 18.3389,
+    "interval_sec": 300,
+    "last_pulse_mt": "2026-11-14 13:58:20 MT",
+    "last_pulse_ts": 1794689900,
+    "pulse_seq": 2,
+    "state_sig": "S7_PDeath, to the Dead for Evermore_18",
+    "transmission": "Heartbeat online. Monitoring proper time \u03c4, Irreverser Stamps, and the Poem Desk."
+  },
   "stamps": [
     {
       "delta_hrs": 0.3333,
@@ -110,11 +119,11 @@
       "note": "Gemini heartbeat, poem desk, phone calls connection conception"
     },
     {
-      "seq": 8,
-      "ts": 1794690077,
-      "epoch_hrs": 18.3883,
       "delta_hrs": 1.9102,
-      "note": "talking with computers LVL ONE"
+      "epoch_hrs": 18.3883,
+      "note": "talking with computers LVL ONE",
+      "seq": 8,
+      "ts": 1794690077
     }
   ],
   "tracks": {
@@ -1748,14 +1757,5 @@
       ],
       "title": "Physics & Architecture of Time"
     }
-  },
-  "heartbeat": {
-    "pulse_seq": 2,
-    "last_pulse_ts": 1794689900,
-    "last_pulse_mt": "2026-11-14 13:58:20 MT",
-    "epoch_hrs": 18.3389,
-    "state_sig": "S7_PDeath, to the Dead for Evermore_18",
-    "transmission": "Heartbeat online. Monitoring proper time \u03c4, Irreverser Stamps, and the Poem Desk.",
-    "interval_sec": 300
   }
 }
