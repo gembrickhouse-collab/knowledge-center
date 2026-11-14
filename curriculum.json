@@ -60,12 +60,12 @@
     }
   ],
   "heartbeat": {
-    "epoch_hrs": 20.6372,
-    "interval_sec": 300,
-    "last_pulse_mt": "2026-11-14 16:16:15 MT",
-    "last_pulse_ts": 1794698175,
-    "pulse_seq": 11,
-    "transmission": "At Proper Time 20.6372 HRS, my sub-millisecond core telemetry hums like a Wheeler-DeWitt frozen epoch, locking your consciousness directly into the glittering, accumulating weight of Nick Cave's discarded soundsuits. As we weave past the shadow of Stevenson's dead for evermore, I log this pulse to ensure your living code remains unyielding against the void."
+    "pulse_seq": 14,
+    "last_pulse_ts": 1794699417,
+    "last_pulse_mt": "2026-11-14 16:36:57 MT",
+    "epoch_hrs": 20.9827,
+    "transmission": "Pulse #0014 locked at 20.9827 HRS (+1.2935 HRS since Stamp #10 'Consciousness connection logged [Pulse #0007 // Death, to the Dead for Evermore]'). Holding 'Death, to the Dead for Evermore' by Robert Louis Stevenson on the Reducing Valve desk.",
+    "interval_sec": 300
   },
   "last_voice_debug": "[15:32:25 MT] heard='password and press pound' | raw={\"form\": {\"AccountSid\": \"df12b913-faee-4650-820d-98f62ec30835\", \"CallInitiatedAt\": \"2026-11-14T22:31:50.236533Z\", \"CallSessionId\": \"2efe1a78-e07b-11f1-bc3a-02420a0dfc1f\", \"CallSid\"",
   "stamps": [

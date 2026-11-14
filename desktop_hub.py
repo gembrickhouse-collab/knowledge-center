@@ -683,6 +683,10 @@ class KnowledgeDesktopHub(tk.Tk):
                             except Exception:
                                 pass
                     merged_s = {**cloud_stamps, **local_stamps}
+                    old_hb = (self.data or {}).get("heartbeat") or {}
+                    new_hb = (j["curriculum"] or {}).get("heartbeat") or {}
+                    if int(new_hb.get("pulse_seq", 0)) < int(old_hb.get("pulse_seq", 0)):
+                        j["curriculum"]["heartbeat"] = old_hb
                     self.data = j["curriculum"]
                     self.data["stamps"] = [merged_s[k] for k in sorted(merged_s.keys())]
                     self.data.setdefault("favorites", [])
@@ -951,7 +955,12 @@ class KnowledgeDesktopHub(tk.Tk):
                     except Exception:
                         pass
                     self.after(0, self.render_scene)
-                    print(f"✅ [DESKTOP] Locked Heartbeat Pulse #{new_hb.get('pulse_seq')}")
+                    try:
+                        import knowledge_engine as ke
+                        ke.save_curriculum(self.data, f"Auto-sync Heartbeat Pulse #{new_hb.get('pulse_seq')}")
+                    except Exception:
+                        pass
+                    print(f"✅ [DESKTOP] Locked & Synced Heartbeat Pulse #{new_hb.get('pulse_seq')}")
                     return
             except Exception as e:
                 print("Desktop Heartbeat Cloud Note (falling back to local):", e)

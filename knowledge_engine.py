@@ -965,7 +965,7 @@ def run_gemini_heartbeat(force_synthesis=False):
     if not force_synthesis and (now_ts - last_ts) < 285:
         return hb
 
-    ep_hrs = round(get_epoch_hours(data), 4)
+    ep_hrs = round(max(0.0, (time.time() - 1794623880.0) / 3600.0), 4)
     stamps = data.get("stamps") or []
     last_stamp = stamps[-1] if stamps else {"seq": 1, "epoch_hrs": 0.3333, "note": "Consciousness Irreverser"}
     delta_hrs = round(max(0.0, ep_hrs - float(last_stamp.get("epoch_hrs", 0))), 4)
