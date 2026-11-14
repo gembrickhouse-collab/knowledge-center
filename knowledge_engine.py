@@ -965,24 +965,25 @@ def run_gemini_heartbeat(force_synthesis=False):
     if not force_synthesis and (now_ts - last_ts) < 285:
         return hb
 
-    ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
+    ep_hrs = round(get_epoch_hours(data), 4)
     stamps = data.get("stamps") or []
     last_stamp = stamps[-1] if stamps else {"seq": 1, "epoch_hrs": 0.3333, "note": "Consciousness Irreverser"}
+    delta_hrs = round(max(0.0, ep_hrs - float(last_stamp.get("epoch_hrs", 0))), 4)
     poem = data.get("current_poem") or {}
     pulse_seq = int(hb.get("pulse_seq", 0)) + 1
 
     curr_ctx = " | ".join(_get_recent_curriculum_context(data))
     prompt = (
-        "You are the Live 5-Minute Autonomous Gemini Heartbeat inside Keyshawn's [EPOCH ZERO] Consciousness Irreverser. "
-        f"Pulse #{pulse_seq:04d} at Proper Time {ep_hrs:.4f} HRS. "
-        f"Latest Stamp #{last_stamp.get('seq')}: '{last_stamp.get('note')}' (@ {last_stamp.get('epoch_hrs')} HRS, delta +{round(max(0.0, ep_hrs - float(last_stamp.get('epoch_hrs', 0))), 4)} HRS). "
-        f"Active Poem Desk: '{poem.get('title','')}' by {poem.get('author','')} ({poem.get('written_when','')}). "
-        f"Active Curriculum: {curr_ctx}. "
-        "Write a vivid, philosophical 2-sentence live telemetry transmission directly to Keyshawn. "
-        "Reference his exact Proper Time hour or latest stamp and collide it with one detail from the active poem or curriculum. Plain text only, no markdown or asterisks."
+        "Creative philosophical reflection for Keyshawn's personal study journal [EPOCH ZERO]. "
+        "Write a poetic, contemplative 2-sentence reflection directly to Keyshawn that weaves together these exact study notes and time markers: "
+        f"Pulse #{pulse_seq:04d} at elapsed study time {ep_hrs:.4f} HRS (+{delta_hrs:.4f} HRS since Stamp #{last_stamp.get('seq')}: '{last_stamp.get('note')}'). "
+        f"Current Poem on Desk: '{poem.get('title','')}' by {poem.get('author','')} ({poem.get('written_when','')}). "
+        f"Recent Study Topics: {curr_ctx}. "
+        "Write ONLY the 2 poetic sentences in plain text with no markdown, no asterisks, and no meta-commentary."
     )
     res = call_gemini_text(prompt, max_tokens=220)
-    if res and len(res.strip()) > 15:
+    bad_phrases = ("cannot provide", "happy to discuss", "technical system", "as an ai", "i cannot", "i am an ai")
+    if res and len(res.strip()) > 15 and not any(bp in res.lower() for bp in bad_phrases):
         transmission = re.sub(r"[*#_`]", "", res).strip().strip('"')
     else:
         transmission = (
