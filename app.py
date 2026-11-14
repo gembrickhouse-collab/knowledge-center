@@ -539,6 +539,14 @@ async function submitEpochStamp() {
   const inp = document.getElementById('stamp-note-inp');
   const btn = document.getElementById('stamp-btn');
   const note = inp ? inp.value.trim() : '';
+  if (!note) {
+    if (inp) {
+      inp.style.borderColor = '#f85149';
+      inp.placeholder = 'WARNING: TYPE AN ANCHOR NOTE FIRST';
+      inp.focus();
+    }
+    return;
+  }
   if (btn) { btn.textContent = '⏳ Stamping...'; btn.disabled = true; }
   const r = await fetch('/api/stamp', {
     method: 'POST',
@@ -582,8 +590,11 @@ function renderFoundationsView() {
       <div id="live-lap-delta" style="font-size:0.78rem;color:#3fb950;margin-bottom:14px;">
         LAST MARK: #${String(last.seq).padStart(3,'0')} @ ${fmtEpochHrs(last.epoch_hrs)} HRS ("${esc(last.note)}")  •  +${fmtEpochHrs(sinceLast)} HRS ADJACENT
       </div>
-      <div style="font-size:0.8rem;color:#c9d1d9;max-width:740px;margin:0 auto 16px;line-height:1.55;">
+      <div style="font-size:0.8rem;color:#c9d1d9;max-width:740px;margin:0 auto 10px;line-height:1.55;">
         No days. No months. No repeating calendar loops. This counter ticks strictly in raw irreversible hours from Epoch Zero. Compare how slowly this fourth decimal crawls during high-friction study against how rapidly integers leap forward during deep creative flow.
+      </div>
+      <div style="font-size:0.82rem;font-weight:bold;color:#f85149;letter-spacing:1px;margin:0 auto 14px;padding:6px 12px;background:rgba(248,81,73,0.12);border:1px solid #f85149;border-radius:5px;display:inline-block;">
+        WARNING: TIME STAMPS PERMANENT AND UNEDITABLE
       </div>
       <div style="display:flex;gap:8px;max-width:640px;margin:0 auto;flex-wrap:wrap;">
         <input id="stamp-note-inp" placeholder="Anchor note (e.g. 'Legion p.48', 'The Upside cross windows', 'Matrix study')..." onkeydown="if(event.key==='Enter')submitEpochStamp()" style="flex:1;min-width:220px;background:#161b22;color:#f0f6fc;border:1px solid #fbbf24;border-radius:6px;padding:8px 12px;font-family:inherit;font-size:0.82rem;">

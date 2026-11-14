@@ -814,10 +814,10 @@ class KnowledgeDesktopHub(tk.Tk):
         self.after(200, self._tick_epoch_clock)
 
     def _prompt_epoch_stamp(self):
-        note = simpledialog.askstring("Epoch Zero Lap Stamp", "Enter anchor note for this exact hour (e.g., 'Legion p.48', 'The Upside cross windows'):", parent=self)
-        if note is None:
+        note = simpledialog.askstring("WARNING: PERMANENT STAMP", "WARNING: TIME STAMPS PERMANENT AND UNEDITABLE.\n\nEnter anchor note for this exact hour:", parent=self)
+        if not note or not note.strip():
             return
-        note_clean = note.strip() or "Session Lock-In"
+        note_clean = note.strip()
         stamps = self.data.setdefault("stamps", [])
         now_ts = time.time()
         ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
@@ -851,15 +851,16 @@ class KnowledgeDesktopHub(tk.Tk):
         since = max(0.0, ep_hrs - float(last.get("epoch_hrs", 0.0)))
 
         # Monolith Box
-        self.cv.create_rectangle(16, y, cw - 16, y + 168, fill="#090d13", outline="#fbbf24", width=2)
+        self.cv.create_rectangle(16, y, cw - 16, y + 192, fill="#090d13", outline="#fbbf24", width=2)
         self.cv.create_text(cw // 2, y + 14, text="EPOCH ZERO MONOLITH // GENESIS: 2026-11-13T19:38:00-07:00 (PROPER TIME)", fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="n")
         self.cv.create_text(cw // 2, y + 38, text=self._fmt_epoch_hrs(ep_hrs) + " HRS", fill="#fbbf24", font=("DejaVu Sans Mono", 22, "bold"), anchor="n", tags=("live_monolith_txt",))
         sub_txt = _fast_ascii(f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT")
         self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="n", tags=("live_lap_txt",))
         self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#c9d1d9", font=("DejaVu Sans Mono", 8), anchor="n")
-        _, _ = self._draw_pill_btn(cw // 2 - 115, y + 128, "+ LAP STAMP CURRENT HOUR", "#fbbf24", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
+        self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#f85149", font=("DejaVu Sans Mono", 9, "bold"), anchor="n")
+        _, _ = self._draw_pill_btn(cw // 2 - 115, y + 150, "+ LAP STAMP CURRENT HOUR", "#fbbf24", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
-        y += 182
+        y += 206
 
         # Stamp Ledger Box
         led_top = y
