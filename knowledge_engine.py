@@ -667,6 +667,16 @@ def add_epoch_stamp(note=""):
     return {"stamp": entry, "stamps": stamps}
 
 
+def _get_recent_curriculum_context(data):
+    tracks = data.get("tracks", {})
+    summary = []
+    for t_key, label in (("art", "Art Endurance"), ("universe", "Physics of Time"), ("matrix", "Matrix")):
+        lessons = tracks.get(t_key, {}).get("lessons", [])
+        if lessons:
+            latest = lessons[-1]
+            summary.append(f"{label} #{int(latest.get('seq', 0)):03d}: {latest.get('title', '')} — {(latest.get('core') or '')[:140]}...")
+    return summary
+
 POEM_THEMES = ["time", "eternity", "dream", "shadow", "star", "night", "infinite", "silence", "flame", "clock", "soul", "light", "sleep", "memory", "void"]
 
 def curate_poem_desk(force_new=False):
@@ -735,6 +745,7 @@ def curate_poem_desk(force_new=False):
             prompt = {
                 "task": "Select the single poem index (0 to N-1) that best resonates with the user's latest Epoch Zero stamp note and starred poet taste, and provide the historical date/year and geographical location where the author wrote it.",
                 "latest_stamp_note": last_stamp,
+                "active_curriculum_lessons": _get_recent_curriculum_context(data),
                 "starred_poets": fav_authors[:8],
                 "candidates": [{"idx": i, "author": c["author"], "title": c["title"], "preview": " / ".join(c["lines"][:4])} for i, c in enumerate(pool)],
                 "return_json": {
@@ -792,9 +803,10 @@ def generate_poem_deep_dive():
         f"into the poem '{p.get('title')}' by {p.get('author')}.\n"
         f"Poem Lines:\n" + "\n".join((p.get("full_lines") or p.get("lines") or [])[:45]) + "\n\n"
         f"Latest User Epoch Zero Stamp: '{last_stamp}'.\n"
+        f"Active Art & Physics of Time Curriculum Lessons to collide with this poem:\n" + "\n".join(_get_recent_curriculum_context(data)) + "\n\n"
         f"Previous Chapters Already Written (DO NOT REPEAT, go deeper into new stanzas, biography, historical location/date, and philosophical subtext):\n{existing_dd[-1800:] if existing_dd else 'None yet.'}\n\n"
         "Return STRICT JSON with keys: "
-        "{\"written_when\": \"Exact year/date written\", \"written_where\": \"Exact city/place written\", \"chapter_title\": \"Title of this chapter\", \"analysis\": \"3-4 rich paragraphs analyzing the historical spacetime coordinates of the poet, line-by-line hidden meaning, and resonance with serial time / The Reducing Valve / Sovereign Detective consciousness.\"}"
+        "{\"written_when\": \"Exact year/date written\", \"written_where\": \"Exact city/place written\", \"chapter_title\": \"Title of this chapter\", \"analysis\": \"3-4 rich paragraphs analyzing the historical spacetime coordinates of the poet, line-by-line hidden meaning, and direct collision with the user's active Art Endurance & Physics of Time lessons, latest Epoch Zero stamp, and Sovereign Detective consciousness.\"}"
     )
     res = call_gemini_json(prompt, expect_json=True)
     if isinstance(res, dict):
