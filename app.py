@@ -181,18 +181,51 @@ def api_stamp():
 
 
 
+
 @app.route("/api/heartbeat", methods=["POST"])
 def api_heartbeat():
     try:
         body = request.get_json(silent=True) or {}
         hb = ke.run_gemini_heartbeat(force_synthesis=bool(body.get("force", True)))
-        return jsonify({
-            "ok": True,
-            "heartbeat": hb,
-            "capacity": ke.get_capacity_telemetry(),
-        })
+        return jsonify({"ok": True, "heartbeat": hb, "capacity": ke.get_capacity_telemetry()})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/voice_comm", methods=["POST"])
+def api_voice_comm():
+    try:
+        body = request.get_json(silent=True) or {}
+        action = body.get("action", "talk")
+        if action == "telnyx_call":
+            return jsonify(ke.trigger_telnyx_outbound_call())
+        spoken = body.get("text", "")
+        res = ke.handle_voice_interaction(spoken)
+        res["curriculum"] = ke.load_curriculum()
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/epoch-zero/voice", methods=["GET", "POST"])
+@app.route("/voice", methods=["GET", "POST"])
+def texml_voice_webhook():
+    spoken = request.form.get("SpeechResult") or request.args.get("SpeechResult") or ""
+    res = ke.handle_voice_interaction(spoken)
+    from xml.sax.saxutils import escape as xml_esc
+    safe_reply = xml_esc(res.get("reply", "Epoch Zero online."))
+    texml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice" method="POST" speechTimeout="auto" language="en-US">
+        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply or say Stamp followed by a note.</Say>
+    </Gather>
+</Response>"""
+    return app.response_class(texml, mimetype="application/xml")
+
+
+@app.route("/epoch-zero/voice_status", methods=["POST"])
+def texml_voice_status():
+    return jsonify({"ok": True})
 
 
 @app.route("/api/poem", methods=["POST"])
@@ -620,6 +653,83 @@ async function submitEpochStamp() {
 
 
 var POEM_EXPANDED = false;
+var VOICE_LAST_REPLY = '';
+
+function speakTextAloud(txt) {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(txt);
+    u.rate = 1.02;
+    window.speechSynthesis.speak(u);
+  }
+}
+
+async function sendVoiceComm(spokenText) {
+  const st = document.getElementById('voice-status-box');
+  if (st) st.textContent = '🛰️ Transmitting to Gemini Voice Bridge: "' + (spokenText || 'Briefing Request') + '"...';
+  try {
+    const r = await fetch('/api/voice_comm', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'talk', text: spokenText || ''})
+    });
+    const j = await r.json();
+    if (j.ok) {
+      VOICE_LAST_REPLY = j.reply || '';
+      if (j.curriculum) DATA = j.curriculum;
+      renderHeaderStats();
+      renderFeed();
+      speakTextAloud(VOICE_LAST_REPLY);
+    }
+  } catch (e) {
+    if (st) st.textContent = '⚠️ Voice comm error: ' + e;
+  }
+}
+
+function startLiveVoiceMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    const manual = prompt('Speak/Type to Gemini Voice Bridge (leave blank for full audio briefing, or start with "Stamp: ..."):');
+    if (manual !== null) sendVoiceComm(manual);
+    return;
+  }
+  const rec = new SR();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  const btn = document.getElementById('voice-mic-btn');
+  if (btn) btn.textContent = '🔴 LISTENING... SPEAK NOW';
+  rec.onresult = function(ev) {
+    const transcript = ev.results[0][0].transcript;
+    sendVoiceComm(transcript);
+  };
+  rec.onerror = function() {
+    const manual = prompt('Mic fallback — Speak/Type to Gemini Voice Bridge (or leave blank for audio briefing):');
+    if (manual !== null) sendVoiceComm(manual);
+  };
+  rec.start();
+}
+
+async function ringTelnyxCell() {
+  const btn = document.getElementById('telnyx-ring-btn');
+  if (btn) btn.textContent = '📞 Dialing +17204607310...';
+  try {
+    const r = await fetch('/api/voice_comm', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'telnyx_call'})
+    });
+    const j = await r.json();
+    if (j.ok) {
+      alert('Telnyx Call Dispatched! Pick up your phone.');
+    } else {
+      alert('Telnyx Status: ' + (j.error || 'Use [🔊 HEAR VOICE BRIEFING] or [🎙️ SPEAK TO GEMINI] for instant voice!'));
+    }
+  } catch (e) {
+    alert('Call error: ' + e);
+  }
+  if (btn) btn.textContent = '📞 RING CELL (TELNYX)';
+}
+
 var STAMPS_SHOW_ALL = false;
 
 function toggleStampsShowAll() {
@@ -789,12 +899,19 @@ function buildHeartbeatHtml() {
   let h = '<div class="card" style="background:#090d13;border:1.5px solid #3fb950;">';
   h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">';
   h += '<div><span class="pill" style="border-color:#3fb950;color:#3fb950;">💓 GEMINI 5-MIN HEARTBEAT // PULSE #' + String(hb.pulse_seq || 1).padStart(4, '0') + '</span>';
-  h += '<span style="color:#8b949e;font-size:0.74rem;margin-left:8px;">LAST: ' + esc(hb.last_pulse_mt || 'LIVE') + ' • NEXT AUTO-PULSE: ' + mm + ':' + ss + '</span></div>';
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
-  h += '<button class="btn" id="hb-pulse-btn" onclick="triggerHeartbeatNow()" style="border-color:#3fb950;color:#3fb950;">⚡ PULSE HEARTBEAT NOW</button>';
-  h += '<button class="btn" onclick="jumpToPoemDesk()" style="border-color:#d2a8ff;color:#d2a8ff;">✒️ JUMP TO POEM DESK ↘</button>';
+  h += '<span style="color:#8b949e;font-size:0.74rem;margin-left:8px;">LAST: ' + esc(hb.last_pulse_mt || 'LIVE') + ' • NEXT AUTO: ' + mm + ':' + ss + '</span></div>';
+  h += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+  h += '<button class="btn" id="hb-pulse-btn" onclick="triggerHeartbeatNow()" style="border-color:#3fb950;color:#3fb950;">⚡ PULSE NOW</button>';
+  h += '<button class="btn" onclick="sendVoiceComm()" style="border-color:#58a6ff;color:#58a6ff;">🔊 HEAR VOICE BRIEFING</button>';
+  h += '<button class="btn" id="voice-mic-btn" onclick="startLiveVoiceMic()" style="border-color:#fbbf24;color:#fbbf24;">🎙️ SPEAK TO GEMINI</button>';
+  h += '<button class="btn" id="telnyx-ring-btn" onclick="ringTelnyxCell()" style="border-color:#d2a8ff;color:#d2a8ff;">📞 RING CELL (TELNYX)</button>';
   h += '</div></div>';
   h += '<div style="padding:12px 14px;background:#111822;border-left:3px solid #3fb950;border-radius:6px;color:#e6edf3;font-size:0.86rem;line-height:1.6;">' + esc(hb.transmission || '') + '</div>';
+  if (VOICE_LAST_REPLY) {
+    h += '<div id="voice-status-box" style="margin-top:8px;padding:10px 12px;background:#0d1117;border:1px solid #58a6ff;border-radius:6px;color:#58a6ff;font-size:0.82rem;">🔊 <strong>LIVE VOICE BRIDGE:</strong> ' + esc(VOICE_LAST_REPLY) + '</div>';
+  } else {
+    h += '<div id="voice-status-box" style="margin-top:6px;color:#8b949e;font-size:0.74rem;">Voice Bridge Ready (/epoch-zero/voice) • Tap [🔊 HEAR VOICE BRIEFING] or [🎙️ SPEAK TO GEMINI] to converse aloud or voice-stamp a mark.</div>';
+  }
   h += '</div>';
   return h;
 }

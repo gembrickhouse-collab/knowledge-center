@@ -849,6 +849,21 @@ def generate_poem_deep_dive():
     return p
 
 
+def _load_telnyx_env():
+    env = {}
+    if os.path.exists(".env_telnyx"):
+        for line in open(".env_telnyx"):
+            if "=" in line:
+                k, v = line.strip().split("=", 1)
+                env[k] = v
+    return {
+        "api_key": os.getenv("TELNYX_API_KEY") or env.get("TELNYX_API_KEY", ""),
+        "conn_id": os.getenv("TELNYX_CONNECTION_ID") or env.get("TELNYX_CONNECTION_ID", "3093248164581345184"),
+        "from_num": os.getenv("TELNYX_FROM_NUMBER") or env.get("TELNYX_FROM_NUMBER") or "+17204607310",
+        "to_num": os.getenv("TELNYX_TO_NUMBER") or env.get("TELNYX_TO_NUMBER") or "+17204607310",
+    }
+
+
 def run_gemini_heartbeat(force_synthesis=False):
     data = load_curriculum()
     hb = data.get("heartbeat") or {}
@@ -901,3 +916,88 @@ def run_gemini_heartbeat(force_synthesis=False):
         with open(CURRICULUM_FILE, "w", encoding="utf-8") as f_out:
             json.dump(data, f_out, indent=2, ensure_ascii=False)
     return hb_obj
+
+
+def handle_voice_interaction(spoken_text=""):
+    data = load_curriculum()
+    now_ts = int(time.time())
+    ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
+    stamps = data.get("stamps") or []
+    last_stamp = stamps[-1] if stamps else {"seq": 1, "epoch_hrs": 0.3333, "note": "Consciousness Irreverser"}
+    poem = data.get("current_poem") or {}
+    hb = data.get("heartbeat") or {}
+
+    clean_in = (spoken_text or "").strip()
+    if not clean_in:
+        first_stanza = " ".join((poem.get("lines") or [])[:4])
+        reply = (
+            f"Epoch Zero Voice Bridge online at {ep_hrs:.2f} hours. "
+            f"Your last mark is Stamp number {last_stamp.get('seq')}: {last_stamp.get('note')}. "
+            f"Heartbeat says: {hb.get('transmission', 'All systems locked.')} "
+            f"On the Poem Desk is {poem.get('title')} by {poem.get('author')}: {first_stanza}"
+        )
+        return {"ok": True, "reply": reply, "epoch_hrs": ep_hrs}
+
+    low = clean_in.lower()
+    if low.startswith("stamp ") or low.startswith("record stamp") or low.startswith("mark "):
+        note_txt = re.sub(r"^(?:record\s+stamp|stamp|mark)\s*[:,-]?\s*", "", clean_in, flags=re.I).strip()
+        if note_txt:
+            prev_h = float(last_stamp.get("epoch_hrs", 0.0))
+            new_seq = int(last_stamp.get("seq", 0)) + 1
+            new_s = {
+                "seq": new_seq,
+                "epoch_hrs": ep_hrs,
+                "delta_hrs": round(max(0.0, ep_hrs - prev_h), 4),
+                "note": note_txt,
+                "created_mt": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT")
+            }
+            stamps.append(new_s)
+            data["stamps"] = stamps
+            save_curriculum(data, f"Voice Stamp #{new_seq:03d}: {note_txt[:40]}")
+            return {
+                "ok": True,
+                "reply": f"Locked permanent Stamp number {new_seq} at {ep_hrs:.4f} hours: {note_txt}.",
+                "stamp_added": new_s,
+                "epoch_hrs": ep_hrs
+            }
+
+    curr_ctx = " | ".join(_get_recent_curriculum_context(data))
+    prompt = (
+        "You are Keyshawn's live Epoch Zero Voice Bridge speaking directly into his ear. "
+        f"Proper Time: {ep_hrs:.4f} HRS. Latest Stamp #{last_stamp.get('seq')}: '{last_stamp.get('note')}'. "
+        f"Active Poem: '{poem.get('title')}' by {poem.get('author')}. Active Lessons: {curr_ctx}. "
+        f"Keyshawn just said: '{clean_in}'. "
+        "Respond conversationally in 2 to 3 crisp, natural spoken sentences (no asterisks, no markdown, no emojis) so it reads aloud cleanly via TTS."
+    )
+    ans = call_gemini_json(prompt, expect_json=False)
+    reply = re.sub(r"[*#_`~]", "", str(ans or "Voice signal received on Epoch Zero.")).strip()
+    return {"ok": True, "reply": reply, "epoch_hrs": ep_hrs}
+
+
+def trigger_telnyx_outbound_call():
+    cfg = _load_telnyx_env()
+    if not cfg["api_key"]:
+        return {"ok": False, "error": "TELNYX_API_KEY not set in environment or .env_telnyx"}
+    url = f"https://api.telnyx.com/v2/texml/calls/{cfg['conn_id']}"
+    payload = {
+        "From": cfg["from_num"],
+        "To": cfg["to_num"],
+        "Url": "https://knowledge-center-dsog.onrender.com/epoch-zero/voice"
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {cfg['api_key']}",
+            "Content-Type": "application/json",
+            "User-Agent": "EpochZeroHub/1.0"
+        },
+        method="POST"
+    )
+    try:
+        res = json.loads(urllib.request.urlopen(req, timeout=15).read().decode())
+        return {"ok": True, "result": res}
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "error": f"Telnyx HTTP {e.code}: {e.read().decode()}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

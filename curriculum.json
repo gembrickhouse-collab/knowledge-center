@@ -1743,11 +1743,11 @@
     }
   },
   "heartbeat": {
-    "pulse_seq": 1,
-    "last_pulse_ts": 1794688455,
-    "last_pulse_mt": "2026-11-14 13:34:15 MT",
-    "epoch_hrs": 17.9375,
-    "state_sig": "S7_PDeath, to the Dead for Evermore_17",
+    "pulse_seq": 2,
+    "last_pulse_ts": 1794689900,
+    "last_pulse_mt": "2026-11-14 13:58:20 MT",
+    "epoch_hrs": 18.3389,
+    "state_sig": "S7_PDeath, to the Dead for Evermore_18",
     "transmission": "Heartbeat online. Monitoring proper time \u03c4, Irreverser Stamps, and the Poem Desk.",
     "interval_sec": 300
   }
