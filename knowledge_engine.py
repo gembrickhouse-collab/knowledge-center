@@ -37,11 +37,17 @@ def sync_curriculum_from_github():
             local_data = load_curriculum()
             c_tot = sum(len(v.get("lessons", [])) for v in cloud_data.get("tracks", {}).values())
             l_tot = sum(len(v.get("lessons", [])) for v in local_data.get("tracks", {}).values())
-            if c_tot >= l_tot:
-                with _LOCK:
-                    with open(CURRICULUM_FILE, "w") as f:
-                        json.dump(cloud_data, f, indent=2)
-                return True
+            # Merge stamps by seq + note so neither GitHub nor container ever drops a stamp
+            merged_stamps = {int(s.get("seq", 0)): s for s in local_data.get("stamps", [])}
+            for s in cloud_data.get("stamps", []):
+                merged_stamps[int(s.get("seq", 0))] = s
+            base = cloud_data if c_tot >= l_tot else local_data
+            base["stamps"] = [merged_stamps[k] for k in sorted(merged_stamps.keys())]
+            base["epoch_zero"] = 1794623880
+            with _LOCK:
+                with open(CURRICULUM_FILE, "w") as f:
+                    json.dump(base, f, indent=2)
+            return True
     except Exception as e:
         print(f"[GitHub Boot Pull Warn] {e}", flush=True)
     return False

@@ -666,7 +666,18 @@ class KnowledgeDesktopHub(tk.Tk):
                 req = urllib.request.Request(u, headers={"User-Agent": _UA})
                 j = json.loads(urllib.request.urlopen(req, timeout=22).read().decode())
                 if j.get("curriculum") and not self._closing:
+                    local_stamps = {int(s.get("seq", 0)): s for s in (self.data.get("stamps") or [])}
+                    cloud_stamps = {int(s.get("seq", 0)): s for s in (j["curriculum"].get("stamps") or [])}
+                    for sq, st_obj in local_stamps.items():
+                        if sq not in cloud_stamps:
+                            try:
+                                req_s = urllib.request.Request(get_cloud_url() + "/api/stamp", data=json.dumps({"note": st_obj.get("note", "")}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                                urllib.request.urlopen(req_s, timeout=15).read()
+                            except Exception:
+                                pass
+                    merged_s = {**cloud_stamps, **local_stamps}
                     self.data = j["curriculum"]
+                    self.data["stamps"] = [merged_s[k] for k in sorted(merged_s.keys())]
                     self.data.setdefault("favorites", [])
                     if j.get("capacity"):
                         self.capacity = j["capacity"]

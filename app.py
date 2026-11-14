@@ -913,6 +913,23 @@ async function sendAsk(track, seq) {
   else { if (btn) { btn.textContent = '💬 Ask Gemini'; btn.disabled = false; } inp.disabled = false; }
 }
 
+
+setInterval(async () => {
+  try {
+    const r = await fetch('/state');
+    const j = await r.json();
+    if (j.ok && j.curriculum) {
+      const oldStampsLen = ((DATA && DATA.stamps) || []).length;
+      DATA = j.curriculum;
+      if (j.capacity) CAP = j.capacity;
+      renderHeaderStats();
+      if (CUR_TRACK === 'foundations' && (DATA.stamps || []).length !== oldStampsLen) {
+        renderFoundationsView();
+      }
+    }
+  } catch (e) {}
+}, 15000);
+
 loadState();
 </script>
 </body>
