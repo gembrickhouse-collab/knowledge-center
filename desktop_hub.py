@@ -856,7 +856,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(28, y, text=f"THE IRREVERSER STAMP LEDGER ({len(stamps)} MARKS ANCHORED)", fill="#fbbf24", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw")
         y += 24
         for s in stamps[:12]:
-            row_txt = _fast_ascii(f"STAMP #{int(s.get('seq',1)):03d}  |  {self._fmt_epoch_hrs(s.get('epoch_hrs',0))} HRS  (Delta +{self._fmt_epoch_hrs(s.get('delta_hrs',0))} HRS)  -->  "{s.get('note','')}"")
+            row_txt = _fast_ascii(f"STAMP #{int(s.get('seq',1)):03d}  |  {self._fmt_epoch_hrs(s.get('epoch_hrs',0))} HRS  (Delta +{self._fmt_epoch_hrs(s.get('delta_hrs',0))} HRS)  -->  '{s.get("note","")}'")
             self.cv.create_rectangle(28, y, cw - 28, y + 26, fill="#090d13", outline="#30363d")
             self.cv.create_text(38, y + 6, text=row_txt, fill="#e6edf3", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw")
             y += 30
