@@ -681,7 +681,6 @@ def curate_poem_desk(force_new=False):
     last_stamp = stamps[-1].get("note", "Epoch Zero") if stamps else "Epoch Zero"
 
     candidates = []
-    # Pull from PoetryDB 1,000-author archive using themes + starred author preference
     import random
     search_terms = random.sample(POEM_THEMES, min(3, len(POEM_THEMES)))
     for term in search_terms:
@@ -690,14 +689,14 @@ def curate_poem_desk(force_new=False):
             res = _http_json(url)
             if isinstance(res, list):
                 for p in res:
-                    lc = int(p.get("linecount", 99) or 99)
                     lines = p.get("lines", [])
-                    if 4 <= lc <= 20 and lines:
+                    if len(lines) >= 4:
                         candidates.append({
                             "author": p.get("author", "Unknown"),
                             "title": p.get("title", "Untitled"),
-                            "lines": lines[:20],
-                            "linecount": len(lines[:20])
+                            "lines": lines[:16],
+                            "full_lines": lines[:140],
+                            "linecount": len(lines)
                         })
         except Exception:
             pass
@@ -707,34 +706,43 @@ def curate_poem_desk(force_new=False):
             res = _http_json("https://poetrydb.org/random/6/author,title,lines,linecount.json")
             if isinstance(res, list):
                 for p in res:
-                    lines = p.get("lines", [])[:16]
+                    lines = p.get("lines", [])
                     if lines:
                         candidates.append({
                             "author": p.get("author", "Archival Poet"),
                             "title": p.get("title", "Fragment"),
-                            "lines": lines,
+                            "lines": lines[:16],
+                            "full_lines": lines[:140],
                             "linecount": len(lines)
                         })
         except Exception:
             pass
 
     chosen = candidates[0] if candidates else {
-        "author": "Archival Signal",
-        "title": "Temporal Anchor",
-        "lines": ["The clock ticks strictly forward in raw hours,", "Yet attention steps outside the narrow groove."],
+        "author": "Robert Louis Stevenson",
+        "title": "Death, to the Dead for Evermore",
+        "lines": ["DEATH, to the dead for evermore", "A King, a God, the last, the best of friends -"],
+        "full_lines": ["DEATH, to the dead for evermore", "A King, a God, the last, the best of friends -"],
         "linecount": 2
     }
     curator_note = f"Matched to Stamp '{last_stamp}' across the 1,000-author corpus."
+    written_when = "Historical Era (Archival Corpus)"
+    written_where = "Literary Spacetime Coordinate"
 
-    if len(candidates) > 1 and os.getenv("GEMINI_API_KEY", "").strip():
+    if os.getenv("GEMINI_API_KEY", "").strip():
         try:
-            pool = random.sample(candidates, min(6, len(candidates)))
+            pool = random.sample(candidates, min(6, len(candidates))) if len(candidates) > 1 else [chosen]
             prompt = {
-                "task": "Select the single poem index (0 to N-1) that best resonates with the user's current Epoch Zero stamp note and starred poet taste.",
+                "task": "Select the single poem index (0 to N-1) that best resonates with the user's latest Epoch Zero stamp note and starred poet taste, and provide the historical date/year and geographical location where the author wrote it.",
                 "latest_stamp_note": last_stamp,
                 "starred_poets": fav_authors[:8],
                 "candidates": [{"idx": i, "author": c["author"], "title": c["title"], "preview": " / ".join(c["lines"][:4])} for i, c in enumerate(pool)],
-                "return_json": {"idx": 0, "curator_note": "1-sentence synthesis linking this stanza to the stamp note and serial time."}
+                "return_json": {
+                    "idx": 0,
+                    "written_when": "Exact year or historical decade written/published (e.g. 'c. 1891 (Late Victorian Era)')",
+                    "written_where": "City/Country or estate where the poet lived when writing this (e.g. 'Vailima, Samoa / Edinburgh, Scotland')",
+                    "curator_note": "1-2 sentence synthesis linking this poem to the user's latest stamp note and consciousness/time."
+                }
             }
             g_res = call_gemini_json(json.dumps(prompt), expect_json=True)
             if isinstance(g_res, dict):
@@ -742,7 +750,11 @@ def curate_poem_desk(force_new=False):
                 if 0 <= idx < len(pool):
                     chosen = pool[idx]
                 if g_res.get("curator_note"):
-                    curator_note = str(g_res["curator_note"])[:220]
+                    curator_note = str(g_res["curator_note"])[:280]
+                if g_res.get("written_when"):
+                    written_when = str(g_res["written_when"])[:90]
+                if g_res.get("written_where"):
+                    written_where = str(g_res["written_where"])[:90]
         except Exception:
             pass
 
@@ -752,9 +764,56 @@ def curate_poem_desk(force_new=False):
         "author": chosen["author"],
         "title": chosen["title"],
         "lines": chosen["lines"],
+        "full_lines": chosen.get("full_lines") or chosen["lines"],
+        "total_lines": chosen.get("linecount") or len(chosen["lines"]),
+        "written_when": written_when,
+        "written_where": written_where,
         "curator_note": curator_note,
+        "deep_dive": "",
         "curated_at": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M MT")
     }
     data["current_poem"] = entry
     save_curriculum(data, f"Poem Desk Curated: {chosen['title']} ({chosen['author']})")
     return entry
+
+
+def generate_poem_deep_dive():
+    data = load_curriculum()
+    p = data.get("current_poem")
+    if not p:
+        p = curate_poem_desk(force_new=False)
+    existing_dd = (p.get("deep_dive") or "").strip()
+    chap_num = 1 if not existing_dd else (existing_dd.count("=== POEM DEEP DIVE CHAPTER") + 2)
+    stamps = data.get("stamps", [])
+    last_stamp = stamps[-1].get("note", "Epoch Zero") if stamps else "Epoch Zero"
+
+    prompt = (
+        f"You are the Epoch Zero Literary & Temporal Architect. Write CHAPTER {chap_num} of an unlimited Deep Dive "
+        f"into the poem '{p.get('title')}' by {p.get('author')}.\n"
+        f"Poem Lines:\n" + "\n".join((p.get("full_lines") or p.get("lines") or [])[:45]) + "\n\n"
+        f"Latest User Epoch Zero Stamp: '{last_stamp}'.\n"
+        f"Previous Chapters Already Written (DO NOT REPEAT, go deeper into new stanzas, biography, historical location/date, and philosophical subtext):\n{existing_dd[-1800:] if existing_dd else 'None yet.'}\n\n"
+        "Return STRICT JSON with keys: "
+        "{\"written_when\": \"Exact year/date written\", \"written_where\": \"Exact city/place written\", \"chapter_title\": \"Title of this chapter\", \"analysis\": \"3-4 rich paragraphs analyzing the historical spacetime coordinates of the poet, line-by-line hidden meaning, and resonance with serial time / The Reducing Valve / Sovereign Detective consciousness.\"}"
+    )
+    res = call_gemini_json(prompt, expect_json=True)
+    if isinstance(res, dict):
+        if res.get("written_when") and ("Historical Era" in p.get("written_when", "") or not p.get("written_when")):
+            p["written_when"] = str(res["written_when"])[:90]
+        if res.get("written_where") and ("Literary Spacetime" in p.get("written_where", "") or not p.get("written_where")):
+            p["written_where"] = str(res["written_where"])[:90]
+        c_title = str(res.get("chapter_title") or f"The Poet's Reference Frame & Hidden Symbols")
+        body = str(res.get("analysis") or "").strip()
+    else:
+        c_title = f"Biographical & Line-by-Line Exegesis"
+        body = str(res or "Deep analysis unavailable—check GEMINI_API_KEY.")
+
+    header = f"=== POEM DEEP DIVE CHAPTER {chap_num}: {c_title.upper()} ==="
+    if existing_dd:
+        p["deep_dive"] = existing_dd + "\n\n" + header + "\n" + body
+    else:
+        p["deep_dive"] = header + "\n" + body
+
+    data["current_poem"] = p
+    save_curriculum(data, f"Poem Deep Dive Ch.{chap_num}: {p.get('title')} ({p.get('author')})")
+    return p

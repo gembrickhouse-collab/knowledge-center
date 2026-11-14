@@ -850,25 +850,57 @@ class KnowledgeDesktopHub(tk.Tk):
                 pass
         threading.Thread(target=_sync_stamp, daemon=True).start()
 
+    def _toggle_expand_poem(self):
+        self._poem_expanded = not getattr(self, "_poem_expanded", False)
+        self.render_scene()
+
     def _pull_next_poem(self):
         bkey = ("foundations", 1, "poem")
         if bkey in self._busy_btns:
             return
-        self._busy_btns[bkey] = "... Consulting 1,000-Author Corpus ..."
+        self._busy_btns[bkey] = "... Consulting Corpus ..."
         self.render_scene()
 
         def _worker():
             try:
                 u = get_cloud_url() + "/api/poem"
                 req = urllib.request.Request(u, data=json.dumps({"force_new": True}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
-                j = json.loads(urllib.request.urlopen(req, timeout=30).read().decode())
+                j = json.loads(urllib.request.urlopen(req, timeout=35).read().decode())
+                if j.get("ok") and j.get("current_poem"):
+                    self.data["current_poem"] = j["current_poem"]
+                    self._poem_expanded = False
+                    self._save_local()
+            except Exception:
+                try:
+                    import knowledge_engine as ke
+                    self.data["current_poem"] = ke.curate_poem_desk(force_new=True)
+                    self._poem_expanded = False
+                    self._save_local()
+                except Exception:
+                    pass
+            self._busy_btns.pop(bkey, None)
+            self.after(0, self.render_scene)
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _pull_poem_deep_dive(self):
+        bkey = ("foundations", 1, "poem_dd")
+        if bkey in self._busy_btns:
+            return
+        self._busy_btns[bkey] = "... Gemini Dissecting Poet ..."
+        self.render_scene()
+
+        def _worker():
+            try:
+                u = get_cloud_url() + "/api/poem_deep_dive"
+                req = urllib.request.Request(u, data=json.dumps({}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                j = json.loads(urllib.request.urlopen(req, timeout=55).read().decode())
                 if j.get("ok") and j.get("current_poem"):
                     self.data["current_poem"] = j["current_poem"]
                     self._save_local()
             except Exception:
                 try:
                     import knowledge_engine as ke
-                    self.data["current_poem"] = ke.curate_poem_desk(force_new=True)
+                    self.data["current_poem"] = ke.generate_poem_deep_dive()
                     self._save_local()
                 except Exception:
                     pass
@@ -900,7 +932,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(28, y, text=f"THE IRREVERSER STAMP LEDGER ({len(stamps)} MARKS ANCHORED)", fill="#fbbf24", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw")
         y += 24
         for s in stamps[:12]:
-            row_txt = _fast_ascii(f"STAMP #{int(s.get('seq',1)):03d}  |  {self._fmt_epoch_hrs(s.get('epoch_hrs',0))} HRS  (Delta +{self._fmt_epoch_hrs(s.get('delta_hrs',0))} HRS)  -->  '{s.get("note","")}'")
+            row_txt = _fast_ascii(f"STAMP #{int(s.get('seq',1)):03d}  |  {self._fmt_epoch_hrs(s.get('epoch_hrs',0))} HRS  (Delta +{self._fmt_epoch_hrs(s.get('delta_hrs',0))} HRS)  -->  '{s.get('note','')}'")
             self.cv.create_rectangle(28, y, cw - 28, y + 26, fill="#090d13", outline="#30363d")
             self.cv.create_text(38, y + 6, text=row_txt, fill="#e6edf3", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw")
             y += 30
@@ -913,8 +945,12 @@ class KnowledgeDesktopHub(tk.Tk):
             "uri": "poem://Archival/Default",
             "title": "Awaiting First Curated Stanza",
             "author": "1,000-Author Corpus",
-            "lines": ["Click [PULL NEXT CURATED STANZA] to query the live PoetryDB archive + Gemini Curator."],
+            "written_when": "Archival Era",
+            "written_where": "Literary Coordinate",
+            "lines": ["Click [PULL NEXT STANZA] to query the live PoetryDB archive + Gemini Curator."],
+            "full_lines": [],
             "curator_note": "Tuned to your latest Epoch Zero stamp and starred poets.",
+            "deep_dive": "",
             "curated_at": "LIVE"
         }
         p_top = y
@@ -922,20 +958,43 @@ class KnowledgeDesktopHub(tk.Tk):
         p_uri = p_obj.get("uri", "poem://Archival/Default")
         p_title = _fast_ascii(p_obj.get("title", "Untitled"))
         p_author = _fast_ascii(p_obj.get("author", "Unknown"))
-        p_lines = _fast_ascii("\n".join(p_obj.get("lines") or []))
+        p_when = _fast_ascii(p_obj.get("written_when") or "Historical Archive")
+        p_where = _fast_ascii(p_obj.get("written_where") or "Spacetime Coordinate")
+        full_arr = p_obj.get("full_lines") or p_obj.get("lines") or []
+        prev_arr = p_obj.get("lines") or full_arr[:16]
+        is_exp = getattr(self, "_poem_expanded", False)
+        active_arr = full_arr if is_exp else prev_arr
+        p_lines = _fast_ascii("\n".join(active_arr))
         p_note = _fast_ascii(p_obj.get("curator_note") or "")
+        p_dd = _fast_ascii((p_obj.get("deep_dive") or "").strip())
+        dd_cnt = p_dd.count("=== POEM DEEP DIVE CHAPTER") if p_dd else 0
         p_starred = self._is_starred(p_uri)
 
         self.cv.create_text(28, y, text=f"POEM DESK // REDUCING VALVE CURATOR (1,000-AUTHOR ARCHIVE • {_fast_ascii(p_obj.get('curated_at','LIVE'))})", fill="#d2a8ff", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw")
-        b_pull_txt = self._busy_btns.get(("foundations", 1, "poem"), "[PULL NEXT CURATED STANZA]")
-        bx_p, _ = self._draw_pill_btn(cw - 420, y - 2, "* STARRED" if p_starred else "+ STAR POEM", "#fbbf24" if p_starred else "#21262d", "#090d13" if p_starred else "#fbbf24", "btn_star_poem", pad_x=10, pad_y=4, font_sz=8)
-        self.cv.tag_bind("btn_star_poem", "<Button-1>", lambda e, u=p_uri, t=p_title, a=p_author, ln=p_lines: self._toggle_star("foundations", 1, u, caption=f"{t} -- {a}", study_note=ln, source=a))
-        self._draw_pill_btn(bx_p + 8, y - 2, b_pull_txt, "#21262d", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
+        y += 22
+
+        # Action Buttons Row
+        bx_p, _ = self._draw_pill_btn(28, y, "* STARRED" if p_starred else "+ STAR POEM", "#fbbf24" if p_starred else "#21262d", "#090d13" if p_starred else "#fbbf24", "btn_star_poem", pad_x=10, pad_y=4, font_sz=8)
+        self.cv.tag_bind("btn_star_poem", "<Button-1>", lambda e, u=p_uri, t=p_title, a=p_author, ln=_fast_ascii("\n".join(full_arr)): self._toggle_star("foundations", 1, u, caption=f"{t} -- {a} ({p_when})", study_note=ln, source=f"{a} | {p_where}"))
+
+        b_dd_txt = self._busy_btns.get(("foundations", 1, "poem_dd"), f"[+ DEEP DIVE CHAPTER ({dd_cnt})]")
+        bx_dd, _ = self._draw_pill_btn(bx_p + 8, y, b_dd_txt, "#21262d", "#3fb950", "btn_dd_poem", pad_x=10, pad_y=4, font_sz=8)
+        self.cv.tag_bind("btn_dd_poem", "<Button-1>", lambda e: self._pull_poem_deep_dive())
+
+        b_pull_txt = self._busy_btns.get(("foundations", 1, "poem"), "[PULL NEXT STANZA]")
+        bx_nx, _ = self._draw_pill_btn(bx_dd + 8, y, b_pull_txt, "#21262d", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_next_poem", "<Button-1>", lambda e: self._pull_next_poem())
-        y += 26
+
+        if len(full_arr) > len(prev_arr):
+            exp_txt = "[- COLLAPSE STANZAS]" if is_exp else f"[+ EXPAND FULL POEM ({len(full_arr)} LINES)]"
+            self._draw_pill_btn(bx_nx + 8, y, exp_txt, "#21262d", "#58a6ff", "btn_exp_poem", pad_x=10, pad_y=4, font_sz=8)
+            self.cv.tag_bind("btn_exp_poem", "<Button-1>", lambda e: self._toggle_expand_poem())
+        y += 30
 
         self.cv.create_text(28, y, text=f'"{p_title}"  --  {p_author}', fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=cw - 56)
-        y += 24
+        y += 20
+        self.cv.create_text(28, y, text=f"Written: {p_when}   |   Location: {p_where}", fill="#fbbf24", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=cw - 56)
+        y += 22
 
         tid_p = self.cv.create_text(38, y + 8, text=p_lines, fill="#e6edf3", font=("DejaVu Sans Mono", 9, "italic"), anchor="nw", width=cw - 76)
         pb = self.cv.bbox(tid_p) or (38, y, cw - 38, y + 60)
@@ -946,6 +1005,13 @@ class KnowledgeDesktopHub(tk.Tk):
         tid_n = self.cv.create_text(28, y, text=f"Gemini Heartbeat Synthesis: {p_note}", fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=cw - 56)
         nb = self.cv.bbox(tid_n) or (28, y, cw - 28, y + 20)
         y = nb[3] + 10
+
+        if p_dd:
+            tid_dd = self.cv.create_text(38, y + 10, text=p_dd, fill="#c9d1d9", font=("DejaVu Sans Mono", 8), anchor="nw", width=cw - 76)
+            ddb = self.cv.bbox(tid_dd) or (38, y, cw - 38, y + 60)
+            dd_bg = self.cv.create_rectangle(28, y, cw - 28, ddb[3] + 12, fill="#111822", outline="#3fb950")
+            self.cv.tag_lower(dd_bg)
+            y = ddb[3] + 18
 
         p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#161b22", outline="#d2a8ff", width=1)
         self.cv.tag_lower(p_card_bg)

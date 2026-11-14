@@ -194,6 +194,20 @@ def api_poem():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+
+@app.route("/api/poem_deep_dive", methods=["POST"])
+def api_poem_deep_dive():
+    try:
+        poem = ke.generate_poem_deep_dive()
+        return jsonify({
+            "ok": True,
+            "current_poem": poem,
+            "capacity": ke.get_capacity_telemetry(),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/ask", methods=["POST"])
 def api_ask():
     b = request.get_json(force=True)
@@ -590,6 +604,13 @@ async function submitEpochStamp() {
 }
 
 
+var POEM_EXPANDED = false;
+
+function toggleExpandPoem() {
+  POEM_EXPANDED = !POEM_EXPANDED;
+  renderFeed();
+}
+
 async function pullNextPoem() {
   const btn = document.getElementById('poem-next-btn');
   if (btn) { btn.textContent = '⏳ Consulting 1,000-Author Corpus...'; btn.disabled = true; }
@@ -598,11 +619,32 @@ async function pullNextPoem() {
     const j = await r.json();
     if (j.ok && j.current_poem) {
       DATA.current_poem = j.current_poem;
+      POEM_EXPANDED = false;
       if (j.capacity) CAP = j.capacity;
       renderHeaderStats();
       renderFeed();
     } else if (btn) {
       btn.textContent = '⚠️ Retry Pull';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    if (btn) { btn.textContent = '⚠️ Error'; btn.disabled = false; }
+  }
+}
+
+async function pullPoemDeepDive() {
+  const btn = document.getElementById('poem-dd-btn');
+  if (btn) { btn.textContent = '⏳ Gemini Dissecting Poet & Stanzas...'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/poem_deep_dive', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({})});
+    const j = await r.json();
+    if (j.ok && j.current_poem) {
+      DATA.current_poem = j.current_poem;
+      if (j.capacity) CAP = j.capacity;
+      renderHeaderStats();
+      renderFeed();
+    } else if (btn) {
+      btn.textContent = '⚠️ Retry Deep Dive';
       btn.disabled = false;
     }
   } catch (e) {
@@ -620,9 +662,9 @@ async function toggleStarPoem() {
       track: 'foundations',
       seq: 1,
       url: p.uri,
-      caption: `${p.title} — ${p.author}`,
-      study_note: (p.lines || []).join('\n'),
-      source: p.author || 'PoetryDB'
+      caption: p.title + ' — ' + p.author + ' (' + (p.written_when || 'Archive') + ')',
+      study_note: (p.full_lines || p.lines || []).join('\n'),
+      source: (p.author || 'PoetryDB') + ' • ' + (p.written_where || '')
     })
   });
   const j = await r.json();
@@ -632,6 +674,53 @@ async function toggleStarPoem() {
     renderHeaderStats();
     renderFeed();
   }
+}
+
+function buildPoemDeskHtml() {
+  const p = (DATA && DATA.current_poem) || {
+    uri: 'poem://Archival/Default',
+    title: 'Awaiting First Stanza',
+    author: '1,000-Author Corpus',
+    written_when: 'Historical Archive',
+    written_where: 'Spacetime Coordinate',
+    lines: ['Tap Pull Next Stanza below to query the live PoetryDB archive and Gemini Curator.'],
+    full_lines: [],
+    curator_note: 'Tuned to your latest Epoch Zero stamp and starred poets.',
+    deep_dive: ''
+  };
+  const starred = isStarred(p.uri);
+  const fullArr = (p.full_lines && p.full_lines.length) ? p.full_lines : (p.lines || []);
+  const previewArr = (p.lines && p.lines.length) ? p.lines : fullArr.slice(0, 16);
+  const activeLines = POEM_EXPANDED ? fullArr : previewArr;
+  const hasMoreLines = fullArr.length > previewArr.length;
+  const linesHtml = activeLines.map(l => esc(l)).join('<br>');
+  const ddText = (p.deep_dive || '').trim();
+  const ddChaps = ddText ? (1 + (ddText.match(/=== POEM DEEP DIVE CHAPTER/g) || []).length - 1) : 0;
+
+  let h = '<div class="card" style="background:#090d13;border:1.5px solid #d2a8ff;">';
+  h += '<div class="meta"><span class="pill" style="border-color:#d2a8ff;color:#d2a8ff;">POEM DESK // REDUCING VALVE CURATOR</span>';
+  h += '<span>1,000-AUTHOR ARCHIVE • ' + esc(p.curated_at || 'LIVE') + '</span></div>';
+  h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
+  h += '<div>';
+  h += '<div class="title" style="color:#f0f6fc;margin-bottom:3px;">✒️ "' + esc(p.title) + '"</div>';
+  h += '<div style="color:#d2a8ff;font-size:0.84rem;font-weight:bold;">— ' + esc(p.author) + '</div>';
+  h += '<div style="color:#fbbf24;font-size:0.75rem;margin-top:4px;">🗓️ <strong>Written:</strong> ' + esc(p.written_when || 'Archival Era') + ' &nbsp;|&nbsp; 📍 <strong>Location:</strong> ' + esc(p.written_where || 'Historical Coordinate') + '</div>';
+  h += '</div>';
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  h += '<button class="btn" onclick="toggleStarPoem()" style="border-color:#fbbf24;color:' + (starred ? '#090d13' : '#fbbf24') + ';background:' + (starred ? '#fbbf24' : 'transparent') + ';">' + (starred ? '⭐ STARRED IN FAVORITES' : '☆ STAR TO FAVORITES') + '</button>';
+  h += '<button class="btn" id="poem-dd-btn" onclick="pullPoemDeepDive()" style="border-color:#3fb950;color:#3fb950;">🧠 + DEEP DIVE CHAPTER (' + ddChaps + ')</button>';
+  h += '<button class="btn" id="poem-next-btn" onclick="pullNextPoem()" style="border-color:#d2a8ff;color:#d2a8ff;">🔄 PULL NEXT STANZA</button>';
+  h += '</div></div>';
+  h += '<div style="padding:14px 18px;background:#161b22;border-left:3px solid #d2a8ff;border-radius:6px;font-style:italic;color:#f0f6fc;font-size:0.92rem;line-height:1.65;margin-bottom:10px;">' + linesHtml + '</div>';
+  if (hasMoreLines) {
+    h += '<div style="margin-bottom:10px;"><button class="btn" onclick="toggleExpandPoem()" style="border-color:#58a6ff;color:#58a6ff;width:100%;">' + (POEM_EXPANDED ? '🔼 COLLAPSE TO OPENING STANZA' : '📖 EXPAND FULL POEM (' + fullArr.length + ' LINES TOTAL)') + '</button></div>';
+  }
+  h += '<div class="maker" style="border-color:#d2a8ff;color:#c9d1d9;">🧠 <strong>Gemini Heartbeat Synthesis:</strong> ' + esc(p.curator_note || '') + '</div>';
+  if (ddText) {
+    h += '<div style="margin-top:12px;padding:14px 16px;background:#111822;border:1px solid #3fb950;border-radius:6px;color:#e6edf3;font-size:0.84rem;line-height:1.65;white-space:pre-wrap;">' + esc(ddText) + '</div>';
+  }
+  h += '</div>';
+  return h;
 }
 
 function renderFoundationsView() {
@@ -651,6 +740,8 @@ function renderFoundationsView() {
       <div style="color:#d2a8ff;font-weight:bold;font-size:0.83rem;">"${esc(s.note)}"</div>
     </div>
   `).join('');
+
+  const poemDeskHtml = buildPoemDeskHtml();
 
   feed.innerHTML = `
     <div class="card" style="background:#090d13;border:2px solid #fbbf24;text-align:center;padding:22px 16px;">
@@ -677,44 +768,7 @@ function renderFoundationsView() {
       ${stampsRows}
     </div>
 
-    ${(() => {
-      const p = (DATA && DATA.current_poem) || {
-        uri: 'poem://Archival/Default',
-        title: 'Awaiting First Stanza',
-        author: '1,000-Author Corpus',
-        lines: ['Tap Pull Next Stanza below to query the live PoetryDB archive and Gemini Curator.'],
-        curator_note: 'Tuned to your latest Epoch Zero stamp and starred poets.'
-      };
-      const starred = isStarred(p.uri);
-      const linesHtml = (p.lines || []).map(l => esc(l)).join('<br>');
-      return `
-      <div class="card" style="background:#090d13;border:1.5px solid #d2a8ff;">
-        <div class="meta">
-          <span class="pill" style="border-color:#d2a8ff;color:#d2a8ff;">POEM DESK // REDUCING VALVE CURATOR</span>
-          <span>1,000-AUTHOR ARCHIVE • ${esc(p.curated_at || 'LIVE')}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
-          <div>
-            <div class="title" style="color:#f0f6fc;margin-bottom:2px;">✒️ "${esc(p.title)}"</div>
-            <div style="color:#d2a8ff;font-size:0.82rem;font-weight:bold;">— ${esc(p.author)}</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn" onclick="toggleStarPoem()" style="border-color:#fbbf24;color:${starred ? '#090d13' : '#fbbf24'};background:${starred ? '#fbbf24' : 'transparent'};">
-              ${starred ? '⭐ STARRED IN FAVORITES' : '☆ STAR TO FAVORITES'}
-            </button>
-            <button class="btn" id="poem-next-btn" onclick="pullNextPoem()" style="border-color:#d2a8ff;color:#d2a8ff;">
-              🔄 PULL NEXT CURATED STANZA
-            </button>
-          </div>
-        </div>
-        <div style="padding:14px 18px;background:#161b22;border-left:3px solid #d2a8ff;border-radius:6px;font-style:italic;color:#f0f6fc;font-size:0.92rem;line-height:1.65;margin-bottom:10px;">
-          ${linesHtml}
-        </div>
-        <div class="maker" style="border-color:#d2a8ff;color:#c9d1d9;">
-          🧠 <strong>Gemini Heartbeat Synthesis:</strong> ${esc(p.curator_note || '')}
-        </div>
-      </div>`;
-    })()}
+    ${poemDeskHtml}
 
     <div class="card" style="border-color:#58a6ff;">
       <div class="meta"><span class="pill">FOUNDATION 01 // QUANTUM RETROACTION</span><span>JOHN ARCHIBALD WHEELER (1978)</span></div>
