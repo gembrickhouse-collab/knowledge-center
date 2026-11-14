@@ -654,17 +654,48 @@ async function submitEpochStamp() {
 
 var POEM_EXPANDED = false;
 var VOICE_LAST_REPLY = '';
+var VOICE_IS_SPEAKING = false;
 
-function speakTextAloud(txt) {
+function stopVoiceAloud() {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(txt);
-    u.rate = 1.02;
-    window.speechSynthesis.speak(u);
   }
+  VOICE_IS_SPEAKING = false;
+  const stopBtn = document.getElementById('voice-stop-btn');
+  if (stopBtn) stopBtn.style.display = 'none';
+  const briefBtn = document.getElementById('voice-brief-btn');
+  if (briefBtn) briefBtn.textContent = '🔊 HEAR VOICE BRIEFING';
+  const st = document.getElementById('voice-status-box');
+  if (st) st.textContent = '⏹️ Voice playback stopped.';
+}
+
+function speakTextAloud(txt) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  if (!txt) return;
+  const u = new SpeechSynthesisUtterance(txt);
+  u.rate = 1.02;
+  VOICE_IS_SPEAKING = true;
+  const stopBtn = document.getElementById('voice-stop-btn');
+  if (stopBtn) stopBtn.style.display = 'inline-block';
+  u.onend = function() {
+    VOICE_IS_SPEAKING = false;
+    const sb = document.getElementById('voice-stop-btn');
+    if (sb) sb.style.display = 'none';
+  };
+  u.onerror = function() {
+    VOICE_IS_SPEAKING = false;
+    const sb = document.getElementById('voice-stop-btn');
+    if (sb) sb.style.display = 'none';
+  };
+  window.speechSynthesis.speak(u);
 }
 
 async function sendVoiceComm(spokenText) {
+  if (VOICE_IS_SPEAKING && !spokenText) {
+    stopVoiceAloud();
+    return;
+  }
   const st = document.getElementById('voice-status-box');
   if (st) st.textContent = '🛰️ Transmitting to Gemini Voice Bridge: "' + (spokenText || 'Briefing Request') + '"...';
   try {
@@ -686,27 +717,48 @@ async function sendVoiceComm(spokenText) {
   }
 }
 
+function promptAndSendVoice() {
+  const manual = prompt('🎙️ Speak (use keyboard mic) or type to Gemini Voice Bridge (or start with "Stamp: ..."):');
+  if (manual && manual.trim()) {
+    sendVoiceComm(manual.trim());
+  }
+}
+
 function startLiveVoiceMic() {
+  stopVoiceAloud();
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    const manual = prompt('Speak/Type to Gemini Voice Bridge (leave blank for full audio briefing, or start with "Stamp: ..."):');
-    if (manual !== null) sendVoiceComm(manual);
+    promptAndSendVoice();
     return;
   }
-  const rec = new SR();
-  rec.lang = 'en-US';
-  rec.interimResults = false;
-  const btn = document.getElementById('voice-mic-btn');
-  if (btn) btn.textContent = '🔴 LISTENING... SPEAK NOW';
-  rec.onresult = function(ev) {
-    const transcript = ev.results[0][0].transcript;
-    sendVoiceComm(transcript);
-  };
-  rec.onerror = function() {
-    const manual = prompt('Mic fallback — Speak/Type to Gemini Voice Bridge (or leave blank for audio briefing):');
-    if (manual !== null) sendVoiceComm(manual);
-  };
-  rec.start();
+  try {
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.interimResults = false;
+    const btn = document.getElementById('voice-mic-btn');
+    if (btn) btn.textContent = '🔴 LISTENING... SPEAK NOW';
+    let gotResult = false;
+    rec.onresult = function(ev) {
+      const transcript = (ev.results[0][0].transcript || '').trim();
+      if (transcript) {
+        gotResult = true;
+        sendVoiceComm(transcript);
+      }
+    };
+    rec.onerror = function() {
+      if (btn) btn.textContent = '🎙️ SPEAK TO GEMINI';
+      promptAndSendVoice();
+    };
+    rec.onend = function() {
+      if (btn) btn.textContent = '🎙️ SPEAK TO GEMINI';
+      if (!gotResult) {
+        promptAndSendVoice();
+      }
+    };
+    rec.start();
+  } catch (e) {
+    promptAndSendVoice();
+  }
 }
 
 async function ringTelnyxCell() {
@@ -902,8 +954,9 @@ function buildHeartbeatHtml() {
   h += '<span style="color:#8b949e;font-size:0.74rem;margin-left:8px;">LAST: ' + esc(hb.last_pulse_mt || 'LIVE') + ' • NEXT AUTO: ' + mm + ':' + ss + '</span></div>';
   h += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
   h += '<button class="btn" id="hb-pulse-btn" onclick="triggerHeartbeatNow()" style="border-color:#3fb950;color:#3fb950;">⚡ PULSE NOW</button>';
-  h += '<button class="btn" onclick="sendVoiceComm()" style="border-color:#58a6ff;color:#58a6ff;">🔊 HEAR VOICE BRIEFING</button>';
+  h += '<button class="btn" id="voice-brief-btn" onclick="sendVoiceComm()" style="border-color:#58a6ff;color:#58a6ff;">🔊 HEAR VOICE BRIEFING</button>';
   h += '<button class="btn" id="voice-mic-btn" onclick="startLiveVoiceMic()" style="border-color:#fbbf24;color:#fbbf24;">🎙️ SPEAK TO GEMINI</button>';
+  h += '<button class="btn" id="voice-stop-btn" onclick="stopVoiceAloud()" style="border-color:#f85149;color:#f85149;background:#2d1117;">⏹️ STOP VOICE</button>';
   h += '<button class="btn" id="telnyx-ring-btn" onclick="ringTelnyxCell()" style="border-color:#d2a8ff;color:#d2a8ff;">📞 RING CELL (TELNYX)</button>';
   h += '</div></div>';
   h += '<div style="padding:12px 14px;background:#111822;border-left:3px solid #3fb950;border-radius:6px;color:#e6edf3;font-size:0.86rem;line-height:1.6;">' + esc(hb.transmission || '') + '</div>';
