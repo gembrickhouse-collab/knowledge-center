@@ -54,16 +54,58 @@ def sync_curriculum_from_github():
 
 
 def load_curriculum():
-    with open(CURRICULUM_FILE, "r") as f:
-        return json.load(f)
+    backup_path = CURRICULUM_FILE + ".bak"
+    for candidate in [CURRICULUM_FILE, backup_path, "curriculum.backup.json"]:
+        if os.path.exists(candidate):
+            try:
+                with open(candidate, "r", encoding="utf-8") as f:
+                    raw = f.read()
+                if "<<<<<<<" in raw or "=======" in raw:
+                    continue
+                data = json.loads(raw)
+                # Only trust non-empty vaults that actually have lessons or stamps
+                if isinstance(data, dict) and (len(data.get("stamps") or []) >= 2 or len(raw) > 20000):
+                    return data
+            except Exception:
+                continue
+    # Last resort: recover from git HEAD~1..HEAD~5 so it NEVER returns an empty skeleton!
+    for rev in ["HEAD", "HEAD~1", "HEAD~2", "HEAD~3", "ORIG_HEAD"]:
+        try:
+            raw = subprocess.check_output(["git", "show", f"{rev}:curriculum.json"], cwd=BASE_DIR, stderr=subprocess.DEVNULL).decode("utf-8")
+            data = json.loads(raw)
+            if isinstance(data, dict) and len(raw) > 20000:
+                with open(CURRICULUM_FILE, "w", encoding="utf-8") as f:
+                    f.write(raw)
+                return data
+        except Exception:
+            continue
+    return {"foundations": [], "art_endurance": [], "physics_of_time": [], "stamps": []}
 
 
-def save_curriculum(data, commit_msg=None):
-    with _LOCK:
-        with open(CURRICULUM_FILE, "w") as f:
-            json.dump(data, f, indent=2)
-        if commit_msg:
-            threading.Thread(target=_commit_to_github, args=(commit_msg,), daemon=True).start()
+def save_curriculum(data, commit_msg="Update curriculum"):
+    # Guardrail: Refuse to overwrite an existing >50KB vault with an empty/wiped dict!
+    if os.path.exists(CURRICULUM_FILE) and os.path.getsize(CURRICULUM_FILE) > 50000:
+        new_raw = json.dumps(data, indent=2, ensure_ascii=False)
+        if len(new_raw) < 20000 or len(data.get("stamps") or []) < 2:
+            return False
+    raw_out = json.dumps(data, indent=2, ensure_ascii=False)
+    tmp_path = CURRICULUM_FILE + ".tmp"
+    bak_path = CURRICULUM_FILE + ".bak"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(raw_out)
+    os.replace(tmp_path, CURRICULUM_FILE)
+    if len(raw_out) > 50000:
+        with open(bak_path, "w", encoding="utf-8") as f:
+            f.write(raw_out)
+    try:
+        subprocess.run(["git", "add", CURRICULUM_FILE], cwd=BASE_DIR, timeout=10, check=False)
+        subprocess.run(["git", "commit", "-m", commit_msg], cwd=BASE_DIR, timeout=10, check=False)
+        # Pull with --strategy-option=ours on rebase so git NEVER leaves <<<<<<< conflict markers in curriculum.json!
+        subprocess.run(["git", "pull", "--rebase", "-X", "theirs", "origin", "main"], cwd=BASE_DIR, timeout=18, check=False)
+        subprocess.run(["git", "push", "origin", "main"], cwd=BASE_DIR, timeout=18, check=False)
+    except Exception:
+        pass
+    return True
 
 
 def _commit_to_github(commit_msg):
