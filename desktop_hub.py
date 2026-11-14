@@ -35,7 +35,7 @@ def get_cloud_url():
         u = open(CLOUD_URL_FILE).read().strip().rstrip("/")
         if u:
             return u
-    return "https://knowledge-center-dsog.onrender.com"
+    return "https://consciousness-irreverser-lab.onrender.com"
 
 
 def _normalize_pil_image(raw_im):
@@ -89,7 +89,7 @@ class KnowledgeDesktopHub(tk.Tk):
         global _BLANK_TK, _BLANK_GAL_TK
         _log_t("Entering tk.Tk.__init__")
         super().__init__(className="knowledge-hub")
-        self.title("Knowledge Command Center // v4.4 Pure-Canvas 1.1s Engine")
+        self.title("EPOCH ZERO // Consciousness Irreverser Lab (Pure-Canvas Engine)")
         self.geometry("960x760")
         self.minsize(480, 440)
         self.configure(bg="#0d1117")
@@ -134,6 +134,7 @@ class KnowledgeDesktopHub(tk.Tk):
         for _ in range(3):
             threading.Thread(target=self._image_worker_loop, daemon=True).start()
         self.after(2500, lambda: threading.Thread(target=self._cloud_sync_loop, daemon=True).start())
+        self._tick_epoch_clock()
 
     def _instant_quit(self):
         self._closing = True
@@ -280,17 +281,19 @@ class KnowledgeDesktopHub(tk.Tk):
 
         # 1. Top Header Banner
         self.cv.create_rectangle(0, 0, cw, 82, fill="#090d13", outline="#090d13")
-        self.cv.create_text(cw // 2, 14, text="[KCC] KNOWLEDGE COMMAND CENTER // VISUAL MONOGRAPH ARCHIVE", fill="#fbbf24", font=("DejaVu Sans Mono", 11, "bold"), anchor="n")
+        self.cv.create_text(cw // 2, 14, text="[EPOCH ZERO] CONSCIOUSNESS IRREVERSER // VISUAL MONOGRAPH ARCHIVE", fill="#fbbf24", font=("DejaVu Sans Mono", 11, "bold"), anchor="n")
         self.cv.create_text(cw // 2, 36, text=_fast_ascii(self.sched_status), fill="#8b949e", font=("DejaVu Sans Mono", 8), anchor="n")
 
         c = self.capacity
+        ep_hrs = max(0.0, (time.time() - 1794623880) / 3600.0)
+        ep_str = f"{int(ep_hrs):06,d}.{int((ep_hrs - int(ep_hrs))*10000):04d} HRS"
         if c:
-            ram_part = f"Render RAM: {c.get('ram_mb', 0)}/{c.get('ram_limit_mb', 512)} MB ({c.get('ram_pct', 0)}%)" if c.get("ram_mb") else "Cloud: Synced"
-            cap_txt = f"GitHub Vault: {c.get('json_kb', 0)} KB / {c.get('gh_limit_mb', 75)} MB ({c.get('gh_pct', 0)}%)  |  {ram_part}  |  Auto-Drop Runway: ~{c.get('runway_years', 18.9)} yrs"
+            r_hrs = c.get("runway_hours") or int(round(float(c.get("runway_years", 18.8)) * 8766))
+            cap_txt = f"EPOCH ZERO: {ep_str}  |  Vault: {c.get('json_kb', 0)} KB ({c.get('gh_pct', 0)}%)  |  Auto-Drop Runway: {r_hrs:,} HRS"
         else:
-            cap_txt = "GitHub Vault: Synced Locally  |  0ms Pure-Canvas Engine Active  |  Auto-Drop Runway: ~18.9 yrs"
+            cap_txt = f"EPOCH ZERO: {ep_str}  |  Vault: Synced Locally  |  Auto-Drop Runway: 165,000 HRS"
         self.cv.create_rectangle(16, 54, cw - 16, 76, fill="#111822", outline="#238636", width=1)
-        self.cv.create_text(cw // 2, 65, text=cap_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+        self.cv.create_text(cw // 2, 65, text=cap_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="center", tags=("top_cap_bar",))
 
         # 2. Navigation Bar
         y = 92
@@ -299,6 +302,10 @@ class KnowledgeDesktopHub(tk.Tk):
         f_n = len(self.data.get("favorites") or [])
 
         x_cur = 16
+        s_n = len(self.data.get("stamps") or [])
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#d2a8ff" if self.cur_track == "foundations" else "#21262d", "#090d13" if self.cur_track == "foundations" else "#d2a8ff", "nav_fnd")
+        self.cv.tag_bind("nav_fnd", "<Button-1>", lambda e: self.switch_track("foundations"))
+        x_cur += 8
         x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#fbbf24" if self.cur_track == "art" else "#21262d", "#090d13" if self.cur_track == "art" else "#c9d1d9", "nav_art")
         self.cv.tag_bind("nav_art", "<Button-1>", lambda e: self.switch_track("art"))
 
@@ -321,6 +328,12 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.tag_bind("nav_matrix", "<Button-1>", lambda e: webbrowser.open(get_cloud_url() + "/matrix"))
 
         y += 34
+
+        # 2.5 Foundations (Epoch Zero) View
+        if self.cur_track == "foundations":
+            y = self._draw_foundations_on_canvas(y, cw)
+            self.cv.configure(scrollregion=(0, 0, cw, max(760, y + 20)))
+            return
 
         # 3. Favorites View
         if self.cur_track == "favorites":
@@ -756,6 +769,122 @@ class KnowledgeDesktopHub(tk.Tk):
         else:
             self.page_idx[track] = 0
         self.switch_track(track)
+
+
+    def _fmt_epoch_hrs(self, hrs):
+        hrs = max(0.0, float(hrs))
+        whole = int(hrs)
+        dec = int((hrs - whole) * 10000)
+        return f"{whole:06,d}.{dec:04d}"
+
+    def _tick_epoch_clock(self):
+        if self._closing:
+            return
+        try:
+            ep_hrs = max(0.0, (time.time() - 1794623880) / 3600.0)
+            ep_str = self._fmt_epoch_hrs(ep_hrs) + " HRS"
+            if self.cur_track == "foundations":
+                self.cv.itemconfigure("live_monolith_txt", text=ep_str)
+                stamps = self.data.get("stamps") or []
+                if stamps:
+                    last = stamps[-1]
+                    since = max(0.0, ep_hrs - float(last.get("epoch_hrs", 0.0)))
+                    sub = _fast_ascii(f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT")
+                    self.cv.itemconfigure("live_lap_txt", text=sub)
+            c = self.capacity
+            if c:
+                r_hrs = c.get("runway_hours") or int(round(float(c.get("runway_years", 18.8)) * 8766))
+                cap_txt = f"EPOCH ZERO: {ep_str}  |  Vault: {c.get('json_kb', 0)} KB ({c.get('gh_pct', 0)}%)  |  Auto-Drop Runway: {r_hrs:,} HRS"
+            else:
+                cap_txt = f"EPOCH ZERO: {ep_str}  |  Vault: Synced Locally  |  Auto-Drop Runway: 165,000 HRS"
+            self.cv.itemconfigure("top_cap_bar", text=cap_txt)
+        except Exception:
+            pass
+        self.after(200, self._tick_epoch_clock)
+
+    def _prompt_epoch_stamp(self):
+        note = simpledialog.askstring("Epoch Zero Lap Stamp", "Enter anchor note for this exact hour (e.g., 'Legion p.48', 'The Upside cross windows'):", parent=self)
+        if note is None:
+            return
+        note_clean = note.strip() or "Session Lock-In"
+        stamps = self.data.setdefault("stamps", [])
+        now_ts = time.time()
+        ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
+        prev_hrs = float(stamps[-1].get("epoch_hrs", 0.0)) if stamps else 0.0
+        delta_hrs = round(max(0.0, ep_hrs - prev_hrs), 4)
+        next_seq = max((int(s.get("seq", 0)) for s in stamps), default=0) + 1
+        entry = {"seq": next_seq, "ts": int(now_ts), "epoch_hrs": ep_hrs, "delta_hrs": delta_hrs, "note": note_clean}
+        stamps.append(entry)
+        self._save_local()
+        self.render_scene()
+
+        def _sync_stamp():
+            try:
+                u = get_cloud_url() + "/api/stamp"
+                req = urllib.request.Request(u, data=json.dumps({"note": note_clean}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+                if j.get("ok") and j.get("stamps"):
+                    self.data["stamps"] = j["stamps"]
+                    if j.get("capacity"):
+                        self.capacity = j["capacity"]
+                    self._save_local()
+                    self.after(0, self.render_scene)
+            except Exception:
+                pass
+        threading.Thread(target=_sync_stamp, daemon=True).start()
+
+    def _draw_foundations_on_canvas(self, y, cw):
+        ep_hrs = max(0.0, (time.time() - 1794623880) / 3600.0)
+        stamps = list(reversed(self.data.get("stamps") or []))
+        last = stamps[0] if stamps else {"seq": 1, "epoch_hrs": 0.3333, "note": "Consciousness Irreverser"}
+        since = max(0.0, ep_hrs - float(last.get("epoch_hrs", 0.0)))
+
+        # Monolith Box
+        self.cv.create_rectangle(16, y, cw - 16, y + 168, fill="#090d13", outline="#fbbf24", width=2)
+        self.cv.create_text(cw // 2, y + 14, text="EPOCH ZERO MONOLITH // GENESIS: 2026-11-13T19:38:00-07:00 (PROPER TIME)", fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="n")
+        self.cv.create_text(cw // 2, y + 38, text=self._fmt_epoch_hrs(ep_hrs) + " HRS", fill="#fbbf24", font=("DejaVu Sans Mono", 22, "bold"), anchor="n", tags=("live_monolith_txt",))
+        sub_txt = _fast_ascii(f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT")
+        self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="n", tags=("live_lap_txt",))
+        self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#c9d1d9", font=("DejaVu Sans Mono", 8), anchor="n")
+        _, _ = self._draw_pill_btn(cw // 2 - 115, y + 128, "+ LAP STAMP CURRENT HOUR", "#fbbf24", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
+        self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
+        y += 182
+
+        # Stamp Ledger Box
+        led_top = y
+        y += 12
+        self.cv.create_text(28, y, text=f"THE IRREVERSER STAMP LEDGER ({len(stamps)} MARKS ANCHORED)", fill="#fbbf24", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw")
+        y += 24
+        for s in stamps[:12]:
+            row_txt = _fast_ascii(f"STAMP #{int(s.get('seq',1)):03d}  |  {self._fmt_epoch_hrs(s.get('epoch_hrs',0))} HRS  (Delta +{self._fmt_epoch_hrs(s.get('delta_hrs',0))} HRS)  -->  "{s.get('note','')}"")
+            self.cv.create_rectangle(28, y, cw - 28, y + 26, fill="#090d13", outline="#30363d")
+            self.cv.create_text(38, y + 6, text=row_txt, fill="#e6edf3", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw")
+            y += 30
+        led_bg = self.cv.create_rectangle(16, led_top, cw - 16, y + 8, fill="#161b22", outline="#30363d")
+        self.cv.tag_lower(led_bg)
+        y += 20
+
+        # 3 Foundational Modules
+        cards = [
+            ("FOUNDATION 01 // WHEELER'S COSMIC DELAYED-CHOICE PHOTON (50M LIGHT-YEARS)", "#58a6ff",
+             "A photon from a quasar 50 million light-years away bends around a lensing galaxy. Did it travel around one side as a particle or both sides at once as a wave? Quantum mechanics proves that choice is locked in TONIGHT by how you observe it on Earth. How you focus your mind in this exact hour retroactively defines the trajectory of your entire past."),
+            ("FOUNDATION 02 // BE A THINKER: HIVE-MIND (THE CIRCLE) VS. SOVEREIGN DETECTIVE (LEGION)", "#d2a8ff",
+             "Mae Holland and Eamon Bailey broadcast and smooth out every experience for external validation. Lt. Kinderman and Damien Karras wrestle with heavy truths in inner silence: Kinderman tests the frying pan to feel real fire behind newspaper ink, lets his subconscious incubate clues, and knows the brain is just the pocket while the mind is the hand inside it."),
+            ("FOUNDATION 03 // ENDURANCE ART: TEHCHING HSIEH, ROMAN OPALKA & THE UPSIDE", "#3fb950",
+             "Hsieh punched a timeclock 8,760 times on the hour for a year. Opalka painted numbers from 1 toward infinity for decades. Pouring 50 hours of cutting cross windows, layering flannel/Climalite/denim, and hand-stitching raw edges into THE UPSIDE compresses lived spacetime into matter--allowing the viewer to quantum-jump across your hours.")
+        ]
+        for title, col, body in cards:
+            ctop = y
+            y += 12
+            self.cv.create_text(28, y, text=title, fill=col, font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=cw - 56)
+            y += 24
+            tid = self.cv.create_text(28, y, text=body, fill="#c9d1d9", font=("DejaVu Sans Mono", 9), anchor="nw", width=cw - 56)
+            bb = self.cv.bbox(tid) or (28, y, cw - 28, y + 60)
+            y = bb[3] + 12
+            cbg = self.cv.create_rectangle(16, ctop, cw - 16, y, fill="#161b22", outline=col, width=1)
+            self.cv.tag_lower(cbg)
+            y += 12
+        return y
 
     def _open_lightbox(self, url, caption):
         if not url:

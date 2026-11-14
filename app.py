@@ -65,6 +65,8 @@ def health():
 def state():
     curr = ke.load_curriculum()
     curr.setdefault("favorites", [])
+    curr.setdefault("stamps", [])
+    curr.setdefault("epoch_zero", 1794623880)
     return jsonify({
         "ok": True,
         "scheduler": SCHED_STATE,
@@ -87,6 +89,8 @@ def api_sync_drop():
         SCHED_STATE["status"] = "ONLINE • 08:30 MT Auto-Drop Complete & Armed"
     curr = ke.load_curriculum()
     curr.setdefault("favorites", [])
+    curr.setdefault("stamps", [])
+    curr.setdefault("epoch_zero", 1794623880)
     return jsonify({
         "ok": True,
         "result": res,
@@ -149,6 +153,23 @@ def api_delete_plate():
     try:
         res = ke.delete_gallery_plate(b.get("track", "art"), int(b.get("seq", 1)), b.get("url", ""))
         return jsonify({"ok": True, "lesson": res["lesson"], "favorites": res["favorites"], "capacity": ke.get_capacity_telemetry()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
+
+@app.route("/api/stamp", methods=["POST"])
+def api_stamp():
+    b = request.get_json(silent=True) or {}
+    try:
+        res = ke.add_epoch_stamp(b.get("note", ""))
+        return jsonify({
+            "ok": True,
+            "stamp": res["stamp"],
+            "stamps": res["stamps"],
+            "capacity": ke.get_capacity_telemetry(),
+        })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
@@ -243,6 +264,7 @@ WEB_TEMPLATE = """<!doctype html>
     <button class="tab active" id="tab-matrix" onclick="switchTrack('matrix')">🧬 MATRIX CODE ANATOMY</button>
     <a class="tab" href="/">🎨 SWITCH TO KNOWLEDGE CENTER (ART + UNIVERSE) ↗</a>
   {% else %}
+    <button class="tab" id="tab-foundations" onclick="switchTrack('foundations')" style="border-color:#d2a8ff;color:#d2a8ff;">⏳ FOUNDATIONS (EPOCH ZERO)</button>
     <button class="tab active" id="tab-art" onclick="switchTrack('art')">🎨 ART ENDURANCE</button>
     <button class="tab" id="tab-universe" onclick="switchTrack('universe')">🌌 PHYSICS OF TIME</button>
     <button class="tab" id="tab-favorites" onclick="switchTrack('favorites')" style="border-color:#fbbf24;">⭐ KEY'S FAVORITES (0)</button>
@@ -352,7 +374,7 @@ function renderHeaderStats() {
       <span>•</span>
       <span>${ramTxt}</span>
       <span>•</span>
-      <span style="color:#3fb950">🛣️ Auto-Drop Runway: <strong>~${CAP.runway_years} yrs</strong></span>
+      <span style="color:#3fb950">⏱️ Auto-Drop Runway: <strong>${Number(CAP.runway_hours || Math.round((CAP.runway_years||18.8)*8766)).toLocaleString()} HRS</strong></span>
     `;
   }
 }
@@ -485,6 +507,128 @@ function renderFavoritesView() {
   }).join('')}</div>`;
 }
 
+
+const EPOCH_ZERO_MS = 1794623880 * 1000;
+
+function fmtEpochHrs(hrs) {
+  const whole = Math.floor(Math.max(0, hrs));
+  const dec = Math.floor((Math.max(0, hrs) - whole) * 10000);
+  return String(whole).padStart(6, '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + String(dec).padStart(4, '0');
+}
+
+function getLiveEpochHrs() {
+  return Math.max(0, (Date.now() - EPOCH_ZERO_MS) / 3600000);
+}
+
+setInterval(() => {
+  const el = document.getElementById('live-epoch-clock');
+  if (el) {
+    const nowH = getLiveEpochHrs();
+    el.textContent = fmtEpochHrs(nowH) + ' HRS';
+    const stamps = (DATA && DATA.stamps) || [];
+    const subEl = document.getElementById('live-lap-delta');
+    if (subEl && stamps.length > 0) {
+      const last = stamps[stamps.length - 1];
+      const sinceLast = Math.max(0, nowH - Number(last.epoch_hrs || 0));
+      subEl.textContent = `LAST MARK: #${String(last.seq).padStart(3,'0')} @ ${fmtEpochHrs(last.epoch_hrs)} HRS ("${last.note}")  •  +${fmtEpochHrs(sinceLast)} HRS ADJACENT`;
+    }
+  }
+}, 100);
+
+async function submitEpochStamp() {
+  const inp = document.getElementById('stamp-note-inp');
+  const btn = document.getElementById('stamp-btn');
+  const note = inp ? inp.value.trim() : '';
+  if (btn) { btn.textContent = '⏳ Stamping...'; btn.disabled = true; }
+  const r = await fetch('/api/stamp', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({note: note || 'Session Lock-In'})
+  });
+  const j = await r.json();
+  if (j.ok) {
+    DATA.stamps = j.stamps || [];
+    if (j.capacity) CAP = j.capacity;
+    renderHeaderStats();
+    renderFeed();
+  } else if (btn) {
+    btn.textContent = '⚠️ Retry Stamp';
+    btn.disabled = false;
+  }
+}
+
+function renderFoundationsView() {
+  const feed = document.getElementById('feed');
+  const nowH = getLiveEpochHrs();
+  const stamps = ((DATA && DATA.stamps) || []).slice().reverse();
+  const last = stamps[0] || {seq: 1, epoch_hrs: 0.3333, note: 'Consciousness Irreverser'};
+  const sinceLast = Math.max(0, nowH - Number(last.epoch_hrs || 0));
+
+  const stampsRows = stamps.map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:9px 12px;background:#090d13;border:1px solid #30363d;border-left:3px solid #fbbf24;border-radius:6px;margin-bottom:8px;">
+      <div>
+        <span class="pill">STAMP #${String(s.seq).padStart(3,'0')}</span>
+        <strong style="color:#f0f6fc;margin-left:8px;font-size:0.9rem;">${fmtEpochHrs(s.epoch_hrs)} HRS</strong>
+        <span style="color:#3fb950;font-size:0.76rem;margin-left:8px;">(Δ +${fmtEpochHrs(s.delta_hrs || 0)} HRS)</span>
+      </div>
+      <div style="color:#d2a8ff;font-weight:bold;font-size:0.83rem;">"${esc(s.note)}"</div>
+    </div>
+  `).join('');
+
+  feed.innerHTML = `
+    <div class="card" style="background:#090d13;border:2px solid #fbbf24;text-align:center;padding:22px 16px;">
+      <div style="font-size:0.75rem;color:#8b949e;letter-spacing:1.5px;">EPOCH ZERO MONOLITH // GENESIS: 2026-11-13T19:38:00-07:00 (PROPER TIME τ)</div>
+      <div id="live-epoch-clock" style="font-size:2.35rem;font-weight:bold;color:#fbbf24;margin:10px 0;letter-spacing:2px;">${fmtEpochHrs(nowH)} HRS</div>
+      <div id="live-lap-delta" style="font-size:0.78rem;color:#3fb950;margin-bottom:14px;">
+        LAST MARK: #${String(last.seq).padStart(3,'0')} @ ${fmtEpochHrs(last.epoch_hrs)} HRS ("${esc(last.note)}")  •  +${fmtEpochHrs(sinceLast)} HRS ADJACENT
+      </div>
+      <div style="font-size:0.8rem;color:#c9d1d9;max-width:740px;margin:0 auto 16px;line-height:1.55;">
+        No days. No months. No repeating calendar loops. This counter ticks strictly in raw irreversible hours from Epoch Zero. Compare how slowly this fourth decimal crawls during high-friction study against how rapidly integers leap forward during deep creative flow.
+      </div>
+      <div style="display:flex;gap:8px;max-width:640px;margin:0 auto;flex-wrap:wrap;">
+        <input id="stamp-note-inp" placeholder="Anchor note (e.g. 'Legion p.48', 'The Upside cross windows', 'Matrix study')..." onkeydown="if(event.key==='Enter')submitEpochStamp()" style="flex:1;min-width:220px;background:#161b22;color:#f0f6fc;border:1px solid #fbbf24;border-radius:6px;padding:8px 12px;font-family:inherit;font-size:0.82rem;">
+        <button class="btn" id="stamp-btn" onclick="submitEpochStamp()" style="background:#fbbf24;color:#090d13;border-color:#fbbf24;padding:8px 16px;font-size:0.82rem;">⏱️ + LAP STAMP CURRENT HOUR</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title" style="color:#fbbf24;">📜 THE IRREVERSER STAMP LEDGER (${stamps.length} MARKS ANCHORED)</div>
+      <div class="core" style="margin-bottom:12px;">Every stamp locks your mental coordinates permanently against Epoch Zero and exposes the exact Δ hour gap since your previous mark.</div>
+      ${stampsRows}
+    </div>
+
+    <div class="card" style="border-color:#58a6ff;">
+      <div class="meta"><span class="pill">FOUNDATION 01 // QUANTUM RETROACTION</span><span>JOHN ARCHIBALD WHEELER (1978)</span></div>
+      <div class="title" style="color:#58a6ff;">🌌 Wheeler's Cosmic Delayed-Choice Experiment & The 50-Million-Year Photon</div>
+      <div class="core">
+        A photon emitted from a quasar 50 million light-years away approaches a massive lensing galaxy that bends its path around both the left and right edges. For 50 million years of cosmic flight, did the photon travel strictly around one side as a single particle, or around both sides simultaneously as a wave? Quantum mechanics proves the decision was not made 50 million years ago—it is locked in <strong>tonight</strong> at the final nanosecond by how you choose to configure your detector on Earth.<br><br>
+        <strong>The Personal Reference Frame Law:</strong> Just as the observer on Earth retroactively defines whether millions of years of starlight traveled as scattered probability or a focused beam, how you direct your attention in this exact hour retroactively defines the meaning of your entire past. Every detour, warehouse shift, book hunted down, and late-night debugging loop collapses into a single deliberate trajectory the moment you focus the lens today.
+      </div>
+      <div class="maker">⏱️ Temporal Studio Rule: It is 100% necessary to lock into your own spacetime reference frame. Chaos and exploding stars are always happening across the block universe; building order inside your own hours is your sole responsibility.</div>
+    </div>
+
+    <div class="card" style="border-color:#d2a8ff;">
+      <div class="meta"><span class="pill">FOUNDATION 02 // MODES OF CONSCIOUSNESS</span><span>BE A THINKER SYLLABUS</span></div>
+      <div class="title" style="color:#d2a8ff;">🧠 The Hive-Mind vs. The Sovereign Detective (Mae & Eamon vs. Kinderman & Karras)</div>
+      <div class="core">
+        <strong>1. Frictionless External Validation (The Circle — Mae Holland & Eamon Bailey):</strong> Every thought and experience is broadcast, quantified, and smoothed out for the crowd. Inner silence is treated as a defect, and distraction is disguised as connection.<br><br>
+        <strong>2. The Deep Internal Detective (Legion & The Exorcist — Lt. Kinderman & Damien Karras):</strong> Wrestling with the heaviest mysteries of existence in the quiet of your own mind. Kinderman presses his finger to a hot frying pan because he refuses to let a newspaper headline stay an abstract symbol; he lets his subconscious incubate clues while he naps, and he knows the brain is merely the "pocket" while the mind is the hand inside it. Even when the "Stedmans" of the world stare blankly, the sovereign thinker stays anchored in deep observation.
+      </div>
+      <div class="maker">🧵 The Original Sin of Distraction: In Greek, hamartia means the archer missing the mark. Whenever you feel the pull of cheap digital loops, remember that focused reading and creation are how you stitch scattered fragments back into a whole.</div>
+    </div>
+
+    <div class="card" style="border-color:#3fb950;">
+      <div class="meta"><span class="pill">FOUNDATION 03 // TEMPORAL GRAVITY</span><span>ENDURANCE ART MANIFESTO</span></div>
+      <div class="title" style="color:#3fb950;">🎨 Tehching Hsieh, Roman Opałka & Wearable Time-Capsules (THE UPSIDE)</div>
+      <div class="core">
+        <strong>Tehching Hsieh (One Year Performance, 1980–1981):</strong> Punched a mechanical timeclock every single hour on the hour—8,760 times across 365 days—turning raw lived hours into uncompromising sculpture.<br><br>
+        <strong>Roman Opałka (1965 / 1 – ∞):</strong> Painted consecutive numbers in white pigment across dark canvases from 1 toward infinity for 46 years while recording his voice speaking each number and photographing his aging face.<br><br>
+        <strong>THE UPSIDE (Keyshawn Bannister):</strong> When you pour 40 to 60 hours of cutting cross-shaped windows, layering flannel, Climalite, felt, and distressed denim panels, and hand-stitching raw edges into a single garment, you are compressing blocks of lived spacetime into physical matter. Anyone who touches or wears that piece leaps across time—like Kinderman's electron jumping from point to point without traversing the space between.
+      </div>
+    </div>
+  `;
+}
+
 function countChapters(ddText) {
   if (!ddText || ddText.length <= 40) return 0;
   const matches = ddText.match(/=== DEEPER DIVE CHAPTER/g);
@@ -495,6 +639,10 @@ function renderFeed() {
   PLATE_REG = [];
   if (CUR_TRACK === 'favorites') {
     renderFavoritesView();
+    return;
+  }
+  if (CUR_TRACK === 'foundations') {
+    renderFoundationsView();
     return;
   }
   const feed = document.getElementById('feed');
@@ -777,7 +925,7 @@ def index():
         WEB_TEMPLATE,
         mode="knowledge",
         default_track="art",
-        page_title="KNOWLEDGE COMMAND CENTER // KEYSHAWN",
+        page_title="EPOCH ZERO // CONSCIOUSNESS IRREVERSER LAB",
         header_icon="🧠",
         accent="#fbbf24",
     )

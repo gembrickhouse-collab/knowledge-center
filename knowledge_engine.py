@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 CURRICULUM_FILE = os.path.join(os.path.dirname(__file__), "curriculum.json")
 MT_ZONE = ZoneInfo("America/Denver")
+EPOCH_ZERO_TS = 1794623880  # 2026-11-13T19:38:00-07:00 (Epoch Zero)
 _LOCK = threading.Lock()
 _UA = "KnowledgeMatrixHub/2.0 (https://knowledge-center-dsog.onrender.com; educational)"
 
@@ -487,8 +488,11 @@ def get_capacity_telemetry(data=None):
     daily_bytes = avg_bytes * 3.0
     remaining_bytes = max(0, (gh_limit_mb * 1024 * 1024) - raw_bytes)
     runway_years = round((remaining_bytes / daily_bytes) / 365.25, 1)
+    runway_hours = int(round((remaining_bytes / daily_bytes) * 24))
 
     return {
+        "runway_hours": runway_hours,
+        "epoch_zero": EPOCH_ZERO_TS,
         "json_kb": round(raw_bytes / 1024.0, 1),
         "json_mb": round(used_mb, 2),
         "gh_limit_mb": gh_limit_mb,
@@ -634,3 +638,24 @@ def check_and_run_daily_drop(force=False):
         return {"ran": bool(changed), "changed": changed, "errors": errors, "date": today_str}
     finally:
         _DROP_LOCK.release()
+
+
+def add_epoch_stamp(note=""):
+    note_clean = (note or "").strip()[:140] or "Unlabeled Session Mark"
+    data = load_curriculum()
+    stamps = data.setdefault("stamps", [])
+    now_ts = time.time()
+    epoch_hrs = round(max(0.0, (now_ts - EPOCH_ZERO_TS) / 3600.0), 4)
+    prev_hrs = stamps[-1]["epoch_hrs"] if stamps else 0.0
+    delta_hrs = round(max(0.0, epoch_hrs - prev_hrs), 4)
+    next_seq = max((int(s.get("seq", 0)) for s in stamps), default=0) + 1
+    entry = {
+        "seq": next_seq,
+        "ts": int(now_ts),
+        "epoch_hrs": epoch_hrs,
+        "delta_hrs": delta_hrs,
+        "note": note_clean,
+    }
+    stamps.append(entry)
+    save_curriculum(data, f"Epoch Zero Stamp #{next_seq:03d} ({epoch_hrs:011.4f} HRS): {note_clean[:40]}")
+    return {"stamp": entry, "stamps": stamps}
