@@ -63,7 +63,7 @@ def fetch_cached_pil(url, max_size):
             _MEM_PIL_CACHE[cache_key] = im
             return im
         if not os.path.exists(full_path):
-            req = urllib.request.Request(url, headers={"User-Agent": _UA})
+            req = urllib.request.Request(url, headers={"User-Agent": "EpochZeroHub/1.0"})
             raw = urllib.request.urlopen(req, timeout=3.5).read()
             im = _normalize_pil_image(Image.open(io.BytesIO(raw)))
             im.thumbnail((900, 900), Image.Resampling.BILINEAR)
@@ -670,7 +670,7 @@ class KnowledgeDesktopHub(tk.Tk):
         while not self._closing:
             try:
                 u = get_cloud_url() + "/state"
-                req = urllib.request.Request(u, headers={"User-Agent": _UA})
+                req = urllib.request.Request(u, headers={"User-Agent": "EpochZeroHub/1.0"})
                 j = json.loads(urllib.request.urlopen(req, timeout=22).read().decode())
                 if j.get("curriculum") and not self._closing:
                     local_stamps = {int(s.get("seq", 0)): s for s in (self.data.get("stamps") or [])}
@@ -877,58 +877,52 @@ class KnowledgeDesktopHub(tk.Tk):
         threading.Thread(target=_worker, daemon=True).start()
 
     def _ring_cell_now(self):
-        self.status_var.set("DIALING +17204607310 VIA TELNYX CLOUD BRIDGE...")
         def _bg():
+            cloud_base = "https://knowledge-center-dsog.onrender.com"
             try:
-                # 1. Try cloud /api/call_me first (identical to mobile button!)
-                u = get_cloud_url().rstrip("/") + "/api/call_me"
+                u = cloud_base + "/api/call_me"
                 req = urllib.request.Request(
                     u,
                     data=b"{}",
-                    headers={"Content-Type": "application/json", "User-Agent": _UA},
+                    headers={"Content-Type": "application/json", "User-Agent": "EpochZeroHub/1.0"},
                     method="POST"
                 )
                 j = json.loads(urllib.request.urlopen(req, timeout=15).read().decode())
                 if j.get("ok"):
-                    self.after(0, lambda: self.status_var.set("RINGING +17204607310! ANSWER YOUR CELL PHONE."))
+                    print("✅ [DESKTOP] Ringing +17204607310 via Cloud Bridge!")
                     return
-            except Exception:
-                pass
-            # 2. Fallback to local knowledge_engine call
-            res = ke.trigger_telnyx_outbound_call()
-            if res.get("ok"):
-                self.after(0, lambda: self.status_var.set("RINGING +17204607310 (DIRECT)! ANSWER YOUR CELL PHONE."))
-            else:
-                err = str(res.get("error", "Unknown error"))[:70]
-                self.after(0, lambda: self.status_var.set(f"CALL ERROR: {err}"))
+            except Exception as e:
+                print("Cloud call fallback:", e)
+            try:
+                res = ke.trigger_telnyx_outbound_call()
+                print("✅ [DESKTOP] Direct Telnyx Call Result:", res)
+            except Exception as e2:
+                print("❌ [DESKTOP] Call error:", e2)
         threading.Thread(target=_bg, daemon=True).start()
 
     def _trigger_heartbeat_now(self):
         if getattr(self, "_hb_busy", False):
             return
         self._hb_busy = True
-        self.status_var.set("PULSING GEMINI 5-MIN HEARTBEAT ON CLOUD...")
         def _bg():
+            cloud_base = "https://knowledge-center-dsog.onrender.com"
             try:
-                u = get_cloud_url().rstrip("/") + "/api/heartbeat"
+                u = cloud_base + "/api/heartbeat"
                 req = urllib.request.Request(
                     u,
                     data=json.dumps({"force": True}).encode("utf-8"),
-                    headers={"Content-Type": "application/json", "User-Agent": _UA},
+                    headers={"Content-Type": "application/json", "User-Agent": "EpochZeroHub/1.0"},
                     method="POST"
                 )
                 j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
                 if j.get("ok") and j.get("heartbeat"):
                     self.data["heartbeat"] = j["heartbeat"]
                     self._save_local()
-                    p_seq = j["heartbeat"].get("pulse_seq", "?")
-                    self.after(0, lambda: (
-                        self.status_var.set(f"HEARTBEAT PULSE #{int(p_seq):04d} LOCKED!"),
-                        self.render_scene()
-                    ))
+                    self.after(0, self.render_scene)
+                    print(f"✅ [DESKTOP] Locked Heartbeat Pulse #{j['heartbeat'].get('pulse_seq')}")
                     return
             except Exception as e:
-                self.after(0, lambda err=str(e)[:60]: self.status_var.set(f"HB SYNC NOTE: {err}"))
+                print("Desktop Heartbeat Sync Note:", e)
             finally:
                 self._hb_busy = False
         threading.Thread(target=_bg, daemon=True).start()
