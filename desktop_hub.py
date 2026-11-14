@@ -741,7 +741,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 u = get_cloud_url() + "/api/favorite"
                 payload = {"track": track, "seq": seq, "url": url, "caption": caption, "study_note": study_note, "source": source}
                 req = urllib.request.Request(u, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
-                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+                j = json.loads(urllib.request.urlopen(req, timeout=45).read().decode())
                 if j.get("ok"):
                     self.data["favorites"] = j.get("favorites", [])
                     if j.get("capacity"):
@@ -762,7 +762,7 @@ class KnowledgeDesktopHub(tk.Tk):
             try:
                 u = get_cloud_url() + "/api/delete_plate"
                 req = urllib.request.Request(u, data=json.dumps({"track": track, "seq": seq, "url": url}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
-                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+                j = json.loads(urllib.request.urlopen(req, timeout=45).read().decode())
                 if j.get("ok"):
                     arr = self.data["tracks"][track]["lessons"]
                     for idx, item in enumerate(arr):
@@ -840,7 +840,7 @@ class KnowledgeDesktopHub(tk.Tk):
             try:
                 u = get_cloud_url() + "/api/stamp"
                 req = urllib.request.Request(u, data=json.dumps({"note": note_clean}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
-                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+                j = json.loads(urllib.request.urlopen(req, timeout=45).read().decode())
                 if j.get("ok") and j.get("stamps"):
                     self.data["stamps"] = j["stamps"]
                     if j.get("capacity"):
@@ -914,7 +914,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     headers={"Content-Type": "application/json", "User-Agent": "EpochZeroHub/1.0"},
                     method="POST"
                 )
-                j = json.loads(urllib.request.urlopen(req, timeout=25).read().decode())
+                j = json.loads(urllib.request.urlopen(req, timeout=45).read().decode())
                 if j.get("ok") and j.get("heartbeat"):
                     self.data["heartbeat"] = j["heartbeat"]
                     self._save_local()
