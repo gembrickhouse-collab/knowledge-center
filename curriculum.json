@@ -47,6 +47,13 @@
       "epoch_hrs": 1.4036,
       "delta_hrs": 0.2882,
       "note": "permanent time stamps solidified"
+    },
+    {
+      "seq": 6,
+      "ts": 1794637349,
+      "epoch_hrs": 3.7416,
+      "delta_hrs": 2.338,
+      "note": "gnosis stage 1"
     }
   ],
   "tracks": {
