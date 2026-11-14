@@ -352,11 +352,17 @@ class KnowledgeDesktopHub(tk.Tk):
                     f_cap = _fast_ascii(f.get("caption", "Visual Plate"))
                     f_tr = str(f.get("track", "art"))
                     f_sq = int(f.get("seq", 1))
-                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#161b22", outline="#fbbf24")
-                    ph = self._get_cached_tk_img(f_url, (240, 170))
-                    im_tag = f"fav_im_{idx_f}"
-                    self.cv.create_image(28, y + 10, image=ph, anchor="nw", tags=(im_tag,))
-                    self.cv.tag_bind(im_tag, "<Button-1>", lambda e, u=f_url, c=f_cap: self._open_lightbox(u, c))
+                    is_poem = str(f_url).startswith("poem://")
+                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#161b22", outline="#d2a8ff" if is_poem else "#fbbf24")
+                    if is_poem:
+                        self.cv.create_rectangle(28, y + 10, 268, y + 150, fill="#090d13", outline="#d2a8ff")
+                        p_preview = _fast_ascii("\n".join((f.get("study_note") or "").splitlines()[:6]))
+                        self.cv.create_text(36, y + 18, text=p_preview, fill="#d2a8ff", font=("DejaVu Sans Mono", 7, "italic"), anchor="nw", width=224)
+                    else:
+                        ph = self._get_cached_tk_img(f_url, (240, 170))
+                        im_tag = f"fav_im_{idx_f}"
+                        self.cv.create_image(28, y + 10, image=ph, anchor="nw", tags=(im_tag,))
+                        self.cv.tag_bind(im_tag, "<Button-1>", lambda e, u=f_url, c=f_cap: self._open_lightbox(u, c))
                     tx = 284
                     self.cv.create_text(tx, y + 16, text=_fast_ascii(f"{f_tr.upper()} #{f_sq:03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw")
                     self.cv.create_text(tx, y + 40, text=f_cap, fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=max(180, cw - tx - 30))
@@ -844,6 +850,32 @@ class KnowledgeDesktopHub(tk.Tk):
                 pass
         threading.Thread(target=_sync_stamp, daemon=True).start()
 
+    def _pull_next_poem(self):
+        bkey = ("foundations", 1, "poem")
+        if bkey in self._busy_btns:
+            return
+        self._busy_btns[bkey] = "... Consulting 1,000-Author Corpus ..."
+        self.render_scene()
+
+        def _worker():
+            try:
+                u = get_cloud_url() + "/api/poem"
+                req = urllib.request.Request(u, data=json.dumps({"force_new": True}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                j = json.loads(urllib.request.urlopen(req, timeout=30).read().decode())
+                if j.get("ok") and j.get("current_poem"):
+                    self.data["current_poem"] = j["current_poem"]
+                    self._save_local()
+            except Exception:
+                try:
+                    import knowledge_engine as ke
+                    self.data["current_poem"] = ke.curate_poem_desk(force_new=True)
+                    self._save_local()
+                except Exception:
+                    pass
+            self._busy_btns.pop(bkey, None)
+            self.after(0, self.render_scene)
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _draw_foundations_on_canvas(self, y, cw):
         ep_hrs = max(0.0, (time.time() - 1794623880) / 3600.0)
         stamps = list(reversed(self.data.get("stamps") or []))
@@ -875,6 +907,49 @@ class KnowledgeDesktopHub(tk.Tk):
         led_bg = self.cv.create_rectangle(16, led_top, cw - 16, y + 8, fill="#161b22", outline="#30363d")
         self.cv.tag_lower(led_bg)
         y += 20
+
+        # Poem Desk // Reducing Valve Curator Box
+        p_obj = self.data.get("current_poem") or {
+            "uri": "poem://Archival/Default",
+            "title": "Awaiting First Curated Stanza",
+            "author": "1,000-Author Corpus",
+            "lines": ["Click [PULL NEXT CURATED STANZA] to query the live PoetryDB archive + Gemini Curator."],
+            "curator_note": "Tuned to your latest Epoch Zero stamp and starred poets.",
+            "curated_at": "LIVE"
+        }
+        p_top = y
+        y += 12
+        p_uri = p_obj.get("uri", "poem://Archival/Default")
+        p_title = _fast_ascii(p_obj.get("title", "Untitled"))
+        p_author = _fast_ascii(p_obj.get("author", "Unknown"))
+        p_lines = _fast_ascii("\n".join(p_obj.get("lines") or []))
+        p_note = _fast_ascii(p_obj.get("curator_note") or "")
+        p_starred = self._is_starred(p_uri)
+
+        self.cv.create_text(28, y, text=f"POEM DESK // REDUCING VALVE CURATOR (1,000-AUTHOR ARCHIVE • {_fast_ascii(p_obj.get('curated_at','LIVE'))})", fill="#d2a8ff", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw")
+        b_pull_txt = self._busy_btns.get(("foundations", 1, "poem"), "[PULL NEXT CURATED STANZA]")
+        bx_p, _ = self._draw_pill_btn(cw - 420, y - 2, "* STARRED" if p_starred else "+ STAR POEM", "#fbbf24" if p_starred else "#21262d", "#090d13" if p_starred else "#fbbf24", "btn_star_poem", pad_x=10, pad_y=4, font_sz=8)
+        self.cv.tag_bind("btn_star_poem", "<Button-1>", lambda e, u=p_uri, t=p_title, a=p_author, ln=p_lines: self._toggle_star("foundations", 1, u, caption=f"{t} -- {a}", study_note=ln, source=a))
+        self._draw_pill_btn(bx_p + 8, y - 2, b_pull_txt, "#21262d", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
+        self.cv.tag_bind("btn_next_poem", "<Button-1>", lambda e: self._pull_next_poem())
+        y += 26
+
+        self.cv.create_text(28, y, text=f'"{p_title}"  --  {p_author}', fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=cw - 56)
+        y += 24
+
+        tid_p = self.cv.create_text(38, y + 8, text=p_lines, fill="#e6edf3", font=("DejaVu Sans Mono", 9, "italic"), anchor="nw", width=cw - 76)
+        pb = self.cv.bbox(tid_p) or (38, y, cw - 38, y + 60)
+        p_box_bg = self.cv.create_rectangle(28, y, cw - 28, pb[3] + 10, fill="#090d13", outline="#30363d")
+        self.cv.tag_lower(p_box_bg)
+        y = pb[3] + 18
+
+        tid_n = self.cv.create_text(28, y, text=f"Gemini Heartbeat Synthesis: {p_note}", fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=cw - 56)
+        nb = self.cv.bbox(tid_n) or (28, y, cw - 28, y + 20)
+        y = nb[3] + 10
+
+        p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#161b22", outline="#d2a8ff", width=1)
+        self.cv.tag_lower(p_card_bg)
+        y += 14
 
         # 3 Foundational Modules
         cards = [
