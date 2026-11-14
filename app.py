@@ -261,8 +261,8 @@ def texml_voice_webhook():
         safe_reply = xml_esc(f"Epoch Zero emergency diagnostic: {str(e)[:90]}")
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="dtmf speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="8" speechTimeout="auto" language="en-US">
-        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply, say Stamp followed by a note, or press 1 on your keypad to lock Verbal Handshake One.</Say>
+    <Gather input="dtmf speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="8" speechTimeout="3" language="en-US">
+        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak now to reply, say Stamp followed by a note, or press 1 on your keypad to log current consciousness connection.</Say>
     </Gather>
     <Redirect method="POST">https://knowledge-center-dsog.onrender.com/epoch-zero/voice</Redirect>
 </Response>"""
@@ -281,8 +281,8 @@ def texml_voice_gather():
         safe_reply = xml_esc(f"Gather diagnostic: {str(e)[:90]}")
     texml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Gather input="dtmf speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="8" speechTimeout="auto" language="en-US">
-        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak again to continue, press 1 to lock a stamp, or hang up anytime.</Say>
+    <Gather input="dtmf speech" action="https://knowledge-center-dsog.onrender.com/epoch-zero/voice_gather" method="POST" timeout="8" speechTimeout="3" language="en-US">
+        <Say voice="Polly.Matthew-Neural">{safe_reply} ... Speak again to continue, press 1 to log current consciousness connection, or hang up anytime.</Say>
     </Gather>
     <Redirect method="POST">https://knowledge-center-dsog.onrender.com/epoch-zero/voice</Redirect>
 </Response>"""

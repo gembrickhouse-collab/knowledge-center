@@ -1003,7 +1003,9 @@ def handle_voice_interaction(spoken_text="", is_followup=False, raw_debug=""):
     )
     if is_stamp_cmd:
         if low == "1":
-            note_txt = "verbal handshake one (locked via phone keypad)"
+            p_title = poem.get("title", "Poem Desk")
+            hb_seq = int(hb.get("pulse_seq", 1))
+            note_txt = f"Consciousness connection logged [Pulse #{hb_seq:04d} // {p_title}]"
         else:
             note_txt = re.sub(r"^(?:please\s+)?(?:record\s+stamp|add\s+a?\s*stamp|lock\s+stamp|stamp|mark)\s*[:,-]?\s*", "", clean_in, flags=re.I).strip()
             if not note_txt:

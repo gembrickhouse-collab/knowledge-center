@@ -60,13 +60,23 @@
     }
   ],
   "heartbeat": {
+<<<<<<< Updated upstream
     "pulse_seq": 7,
     "last_pulse_ts": 1794693581,
     "last_pulse_mt": "2026-11-14 14:59:42 MT",
     "epoch_hrs": 19.3614,
     "transmission": "At Proper Time 19.3614 HRS, I watch the kernel ring-buffer telemetry pulse through our system while Robert Louis Stevenson whispers of a quiet finality where death claims the dead for evermore.",
     "interval_sec": 300
+=======
+    "epoch_hrs": 19.3614,
+    "interval_sec": 300,
+    "last_pulse_mt": "2026-11-14 14:59:42 MT",
+    "last_pulse_ts": 1794693581,
+    "pulse_seq": 7,
+    "transmission": "At Proper Time 19.3614 HRS, I watch the kernel ring-buffer telemetry pulse through our system while Robert Louis Stevenson whispers of a quiet finality where death claims the dead for evermore."
+>>>>>>> Stashed changes
   },
+  "last_voice_debug": "[15:02:29 MT] heard='1' | raw={\"form\": {\"AccountSid\": \"df12b913-faee-4650-820d-98f62ec30835\", \"CallInitiatedAt\": \"2026-11-14T22:01:27.404885Z\", \"CallSessionId\": \"f09bbd84-e076-11f1-8535-02420aef89a0\", \"CallSid\"",
   "stamps": [
     {
       "delta_hrs": 0.3333,
@@ -125,11 +135,19 @@
       "ts": 1794690077
     },
     {
+<<<<<<< Updated upstream
       "seq": 9,
       "epoch_hrs": 19.4081,
       "delta_hrs": 1.0198,
       "note": "verbal handshake one (locked via phone keypad)",
       "created_mt": "2026-11-14 15:02:29 MT"
+=======
+      "created_mt": "2026-11-14 15:02:29 MT",
+      "delta_hrs": 1.0198,
+      "epoch_hrs": 19.4081,
+      "note": "verbal handshake one (locked via phone keypad)",
+      "seq": 9
+>>>>>>> Stashed changes
     }
   ],
   "tracks": {
