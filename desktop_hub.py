@@ -332,7 +332,8 @@ class KnowledgeDesktopHub(tk.Tk):
         # 2.5 Foundations (Epoch Zero) View
         if self.cur_track == "foundations":
             y = self._draw_foundations_on_canvas(y, cw)
-            self.cv.configure(scrollregion=(0, 0, cw, max(760, y + 20)))
+            self._total_canvas_h = max(760, y + 20)
+            self.cv.configure(scrollregion=(0, 0, cw, self._total_canvas_h))
             return
 
         # 3. Favorites View
@@ -850,6 +851,40 @@ class KnowledgeDesktopHub(tk.Tk):
                 pass
         threading.Thread(target=_sync_stamp, daemon=True).start()
 
+    def _jump_to_poem_desk(self):
+        if self.cur_track != "foundations":
+            self.cur_track = "foundations"
+            self.render_scene()
+        y_target = getattr(self, "_poem_desk_y", 420)
+        total_h = max(760, getattr(self, "_total_canvas_h", 1600))
+        self.cv.yview_moveto(max(0.0, min(1.0, (y_target - 20) / float(total_h))))
+
+    def _trigger_heartbeat_now(self):
+        bkey = ("foundations", 1, "hb")
+        if bkey in self._busy_btns:
+            return
+        self._busy_btns[bkey] = "... Pulsing Heartbeat ..."
+        self.render_scene()
+
+        def _worker():
+            try:
+                u = get_cloud_url() + "/api/heartbeat"
+                req = urllib.request.Request(u, data=json.dumps({"force": True}).encode(), headers={"Content-Type": "application/json", "User-Agent": _UA}, method="POST")
+                j = json.loads(urllib.request.urlopen(req, timeout=40).read().decode())
+                if j.get("ok") and j.get("heartbeat"):
+                    self.data["heartbeat"] = j["heartbeat"]
+                    self._save_local()
+            except Exception:
+                try:
+                    import knowledge_engine as ke
+                    self.data["heartbeat"] = ke.run_gemini_heartbeat(force_synthesis=True)
+                    self._save_local()
+                except Exception:
+                    pass
+            self._busy_btns.pop(bkey, None)
+            self.after(0, self.render_scene)
+        threading.Thread(target=_worker, daemon=True).start()
+
     def _toggle_expand_poem(self):
         self._poem_expanded = not getattr(self, "_poem_expanded", False)
         self.render_scene()
@@ -922,9 +957,31 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="n", tags=("live_lap_txt",))
         self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#c9d1d9", font=("DejaVu Sans Mono", 8), anchor="n")
         self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#f85149", font=("DejaVu Sans Mono", 9, "bold"), anchor="n")
-        _, _ = self._draw_pill_btn(cw // 2 - 115, y + 150, "+ LAP STAMP CURRENT HOUR", "#fbbf24", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
+        bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#fbbf24", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
+        self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#21262d", "#d2a8ff", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
+        self.cv.tag_bind("btn_jmp_poem_top", "<Button-1>", lambda e: self._jump_to_poem_desk())
         y += 206
+
+        # Gemini 5-Minute Heartbeat Box
+        hb = self.data.get("heartbeat") or {
+            "pulse_seq": 1,
+            "last_pulse_mt": "ARMED (5-MIN CYCLE)",
+            "transmission": "Autonomous 5-Minute Gemini Heartbeat armed and locked to Proper Time. Click [PULSE HEARTBEAT NOW] to synthesize your current Stamp + Poem + Curriculum coordinates."
+        }
+        hb_top = y
+        y += 12
+        self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw")
+        b_hb_txt = self._busy_btns.get(("foundations", 1, "hb"), "[PULSE HEARTBEAT NOW]")
+        self._draw_pill_btn(cw - 220, y - 2, b_hb_txt, "#21262d", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
+        self.cv.tag_bind("btn_hb_now", "<Button-1>", lambda e: self._trigger_heartbeat_now())
+        y += 24
+        tid_hb = self.cv.create_text(28, y, text=_fast_ascii(hb.get("transmission", "")), fill="#e6edf3", font=("DejaVu Sans Mono", 8), anchor="nw", width=cw - 56)
+        hbb = self.cv.bbox(tid_hb) or (28, y, cw - 28, y + 36)
+        y = hbb[3] + 12
+        hb_bg = self.cv.create_rectangle(16, hb_top, cw - 16, y, fill="#161b22", outline="#3fb950", width=1)
+        self.cv.tag_lower(hb_bg)
+        y += 16
 
         # Stamp Ledger Box
         led_top = y
@@ -941,6 +998,7 @@ class KnowledgeDesktopHub(tk.Tk):
         y += 20
 
         # Poem Desk // Reducing Valve Curator Box
+        self._poem_desk_y = y
         p_obj = self.data.get("current_poem") or {
             "uri": "poem://Archival/Default",
             "title": "Awaiting First Curated Stanza",

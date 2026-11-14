@@ -180,6 +180,21 @@ def api_stamp():
 
 
 
+
+@app.route("/api/heartbeat", methods=["POST"])
+def api_heartbeat():
+    try:
+        body = request.get_json(silent=True) or {}
+        hb = ke.run_gemini_heartbeat(force_synthesis=bool(body.get("force", True)))
+        return jsonify({
+            "ok": True,
+            "heartbeat": hb,
+            "capacity": ke.get_capacity_telemetry(),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/poem", methods=["POST"])
 def api_poem():
     b = request.get_json(silent=True) or {}
@@ -605,6 +620,42 @@ async function submitEpochStamp() {
 
 
 var POEM_EXPANDED = false;
+var STAMPS_SHOW_ALL = false;
+
+function toggleStampsShowAll() {
+  STAMPS_SHOW_ALL = !STAMPS_SHOW_ALL;
+  renderFeed();
+}
+
+function jumpToPoemDesk() {
+  if (CUR_TRACK !== 'foundations') {
+    switchTrack('foundations');
+  }
+  setTimeout(function() {
+    const el = document.getElementById('poem-desk-card');
+    if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }, 60);
+}
+
+async function triggerHeartbeatNow() {
+  const btn = document.getElementById('hb-pulse-btn');
+  if (btn) { btn.textContent = '⏳ Pulsing Gemini Heartbeat...'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/heartbeat', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({force: true})});
+    const j = await r.json();
+    if (j.ok && j.heartbeat) {
+      DATA.heartbeat = j.heartbeat;
+      if (j.capacity) CAP = j.capacity;
+      renderHeaderStats();
+      renderFeed();
+    } else if (btn) {
+      btn.textContent = '⚠️ Retry Pulse';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    if (btn) { btn.textContent = '⚠️ Error'; btn.disabled = false; }
+  }
+}
 
 function toggleExpandPoem() {
   POEM_EXPANDED = !POEM_EXPANDED;
@@ -697,7 +748,7 @@ function buildPoemDeskHtml() {
   const ddText = (p.deep_dive || '').trim();
   const ddChaps = ddText ? (1 + (ddText.match(/=== POEM DEEP DIVE CHAPTER/g) || []).length - 1) : 0;
 
-  let h = '<div class="card" style="background:#090d13;border:1.5px solid #d2a8ff;">';
+  let h = '<div id="poem-desk-card" class="card" style="background:#090d13;border:1.5px solid #d2a8ff;">';
   h += '<div class="meta"><span class="pill" style="border-color:#d2a8ff;color:#d2a8ff;">POEM DESK // REDUCING VALVE CURATOR</span>';
   h += '<span>1,000-AUTHOR ARCHIVE • ' + esc(p.curated_at || 'LIVE') + '</span></div>';
   h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
@@ -723,6 +774,31 @@ function buildPoemDeskHtml() {
   return h;
 }
 
+function buildHeartbeatHtml() {
+  const hb = (DATA && DATA.heartbeat) || {
+    pulse_seq: 1,
+    last_pulse_mt: 'ARMED (5-MIN CYCLE)',
+    last_pulse_ts: Math.floor(Date.now() / 1000),
+    transmission: 'Autonomous 5-Minute Gemini Heartbeat armed and locked to Proper Time τ. Click [⚡ PULSE NOW] to synthesize your current Stamp + Poem + Curriculum coordinates.'
+  };
+  const elapsed = Math.max(0, Math.floor(Date.now() / 1000) - Number(hb.last_pulse_ts || Math.floor(Date.now() / 1000)));
+  const rem = Math.max(0, 300 - (elapsed % 300));
+  const mm = String(Math.floor(rem / 60)).padStart(2, '0');
+  const ss = String(rem % 60).padStart(2, '0');
+
+  let h = '<div class="card" style="background:#090d13;border:1.5px solid #3fb950;">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">';
+  h += '<div><span class="pill" style="border-color:#3fb950;color:#3fb950;">💓 GEMINI 5-MIN HEARTBEAT // PULSE #' + String(hb.pulse_seq || 1).padStart(4, '0') + '</span>';
+  h += '<span style="color:#8b949e;font-size:0.74rem;margin-left:8px;">LAST: ' + esc(hb.last_pulse_mt || 'LIVE') + ' • NEXT AUTO-PULSE: ' + mm + ':' + ss + '</span></div>';
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  h += '<button class="btn" id="hb-pulse-btn" onclick="triggerHeartbeatNow()" style="border-color:#3fb950;color:#3fb950;">⚡ PULSE HEARTBEAT NOW</button>';
+  h += '<button class="btn" onclick="jumpToPoemDesk()" style="border-color:#d2a8ff;color:#d2a8ff;">✒️ JUMP TO POEM DESK ↘</button>';
+  h += '</div></div>';
+  h += '<div style="padding:12px 14px;background:#111822;border-left:3px solid #3fb950;border-radius:6px;color:#e6edf3;font-size:0.86rem;line-height:1.6;">' + esc(hb.transmission || '') + '</div>';
+  h += '</div>';
+  return h;
+}
+
 function renderFoundationsView() {
   const feed = document.getElementById('feed');
   const nowH = getLiveEpochHrs();
@@ -730,7 +806,8 @@ function renderFoundationsView() {
   const last = stamps[0] || {seq: 1, epoch_hrs: 0.3333, note: 'Consciousness Irreverser'};
   const sinceLast = Math.max(0, nowH - Number(last.epoch_hrs || 0));
 
-  const stampsRows = stamps.map(s => `
+  const visibleStamps = STAMPS_SHOW_ALL ? stamps : stamps.slice(0, 5);
+  const stampsRows = visibleStamps.map(s => `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:9px 12px;background:#090d13;border:1px solid #30363d;border-left:3px solid #fbbf24;border-radius:6px;margin-bottom:8px;">
       <div>
         <span class="pill">STAMP #${String(s.seq).padStart(3,'0')}</span>
@@ -741,6 +818,11 @@ function renderFoundationsView() {
     </div>
   `).join('');
 
+  const moreStampsBtn = (stamps.length > 5)
+    ? `<button class="btn" onclick="toggleStampsShowAll()" style="width:100%;border-color:#fbbf24;color:#fbbf24;margin-top:4px;">${STAMPS_SHOW_ALL ? '🔼 SHOW LATEST 5 ANCHORED MARKS' : '📜 UNROLL ALL ' + stamps.length + ' PERMANENT MARKS'}</button>`
+    : '';
+
+  const heartbeatHtml = buildHeartbeatHtml();
   const poemDeskHtml = buildPoemDeskHtml();
 
   feed.innerHTML = `
@@ -762,10 +844,13 @@ function renderFoundationsView() {
       </div>
     </div>
 
+    ${heartbeatHtml}
+
     <div class="card">
       <div class="title" style="color:#fbbf24;">📜 THE IRREVERSER STAMP LEDGER (${stamps.length} MARKS ANCHORED)</div>
-      <div class="core" style="margin-bottom:12px;">Every stamp locks your mental coordinates permanently against Epoch Zero and exposes the exact Δ hour gap since your previous mark.</div>
+      <div class="core" style="margin-bottom:12px;">Standing open permanently so your hours confront you directly. Showing latestmarks first.</div>
       ${stampsRows}
+      ${moreStampsBtn}
     </div>
 
     ${poemDeskHtml}

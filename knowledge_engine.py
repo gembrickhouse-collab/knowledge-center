@@ -847,3 +847,57 @@ def generate_poem_deep_dive():
     data["current_poem"] = p
     save_curriculum(data, f"Poem Deep Dive Ch.{chap_num}: {p.get('title')} ({p.get('author')})")
     return p
+
+
+def run_gemini_heartbeat(force_synthesis=False):
+    data = load_curriculum()
+    hb = data.get("heartbeat") or {}
+    now_ts = int(time.time())
+    ep_hrs = round(max(0.0, (now_ts - 1794623880) / 3600.0), 4)
+    stamps = data.get("stamps") or []
+    last_stamp = stamps[-1] if stamps else {"seq": 1, "epoch_hrs": 0.3333, "note": "Consciousness Irreverser"}
+    poem = data.get("current_poem") or {}
+
+    state_sig = f"S{last_stamp.get('seq',0)}_P{poem.get('title','')}_{int(ep_hrs)}"
+    prev_sig = hb.get("state_sig", "")
+    pulse_seq = int(hb.get("pulse_seq", 0)) + 1
+
+    transmission = hb.get("transmission") or "Heartbeat online. Monitoring proper time τ, Irreverser Stamps, and the Poem Desk."
+    synthesized_now = False
+
+    if force_synthesis or (state_sig != prev_sig) or not hb.get("transmission"):
+        if os.getenv("GEMINI_API_KEY", "").strip():
+            try:
+                curr_ctx = " | ".join(_get_recent_curriculum_context(data))
+                prompt = (
+                    "You are the Live 5-Minute Autonomous Gemini Heartbeat inside Keyshawn's [EPOCH ZERO] Consciousness Irreverser. "
+                    f"Current Proper Time: {ep_hrs:.4f} HRS. "
+                    f"Latest Stamp #{last_stamp.get('seq')}: '{last_stamp.get('note')}' (@ {last_stamp.get('epoch_hrs')} HRS). "
+                    f"Active Poem Desk: '{poem.get('title','')}' by {poem.get('author','')} ({poem.get('written_when','')}). "
+                    f"Active Curriculum: {curr_ctx}. "
+                    "Write a punchy, philosophical 2-sentence live telemetry transmission directly to Keyshawn. "
+                    "Acknowledge the current hour/delta and spark one concrete observation linking his latest stamp, the active poem, or his current studio trajectory. No markdown headers."
+                )
+                res = call_gemini_json(prompt, expect_json=False)
+                if res and len(str(res).strip()) > 15:
+                    transmission = str(res).strip().strip('"')
+                    synthesized_now = True
+            except Exception:
+                pass
+
+    hb_obj = {
+        "pulse_seq": pulse_seq,
+        "last_pulse_ts": now_ts,
+        "last_pulse_mt": datetime.now(MT_ZONE).strftime("%Y-%m-%d %H:%M:%S MT"),
+        "epoch_hrs": ep_hrs,
+        "state_sig": state_sig,
+        "transmission": transmission,
+        "interval_sec": 300
+    }
+    data["heartbeat"] = hb_obj
+    if synthesized_now or force_synthesis:
+        save_curriculum(data, f"Heartbeat Pulse #{pulse_seq} @ {ep_hrs:.4f} HRS")
+    else:
+        with open(CURRICULUM_FILE, "w", encoding="utf-8") as f_out:
+            json.dump(data, f_out, indent=2, ensure_ascii=False)
+    return hb_obj
