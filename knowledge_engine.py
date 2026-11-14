@@ -870,13 +870,17 @@ def _load_telnyx_env():
 
 
 def call_gemini_text(prompt_text, max_tokens=280):
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key and os.path.exists(".env"):
-        for line in open(".env"):
-            if line.startswith("GEMINI_API_KEY="):
-                api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
-    if not api_key:
-        return ""
+    try:
+        # Use call_gemini_json's existing working pipeline by asking for a JSON wrapper {"text": "..."}
+        res = call_gemini_json(
+            prompt_text + '\n\nReturn ONLY valid JSON in this exact format: {"transmission": "your 2-sentence plain text response here"}',
+            temperature=0.75
+        )
+        if isinstance(res, dict) and res.get("transmission"):
+            return str(res["transmission"]).strip()
+    except Exception:
+        pass
+    return ""
     for model_name in ["gemini-2.5-flash", "gemini-2.0-flash"]:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
