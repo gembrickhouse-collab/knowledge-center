@@ -312,7 +312,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         x_cur = 16
         s_n = len(self.data.get("stamps") or [])
-        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#d2a8ff" if self.cur_track == "foundations" else "#c49648", "#090d13" if self.cur_track == "foundations" else "#d2a8ff", "nav_fnd")
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#3b0764" if self.cur_track == "foundations" else "#c49648", "#090d13" if self.cur_track == "foundations" else "#3b0764", "nav_fnd")
         self.cv.tag_bind("nav_fnd", "<Button-1>", lambda e: self.switch_track("foundations"))
         x_cur += 8
         x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#b91c1c" if self.cur_track == "art" else "#c49648", "#090d13" if self.cur_track == "art" else "#26221e", "nav_art")
@@ -321,7 +321,7 @@ class KnowledgeDesktopHub(tk.Tk):
         x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHYSICS OF TIME ({u_n})", "#58a6ff" if self.cur_track == "universe" else "#c49648", "#090d13" if self.cur_track == "universe" else "#26221e", "nav_uni")
         self.cv.tag_bind("nav_uni", "<Button-1>", lambda e: self.switch_track("universe"))
 
-        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHILOSOPHY OF CONSCIOUSNESS ({m_n})", "#f778ba" if self.cur_track == "mind" else "#c49648", "#090d13" if self.cur_track == "mind" else "#f778ba", "nav_mind")
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHILOSOPHY OF CONSCIOUSNESS ({m_n})", "#3b0764" if self.cur_track == "mind" else "#c49648", "#090d13" if self.cur_track == "mind" else "#3b0764", "nav_mind")
         self.cv.tag_bind("nav_mind", "<Button-1>", lambda e: self.switch_track("mind"))
 
         x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"* FAVORITES ({f_n})", "#b91c1c" if self.cur_track == "favorites" else "#c49648", "#090d13" if self.cur_track == "favorites" else "#b91c1c", "nav_fav")
@@ -366,11 +366,11 @@ class KnowledgeDesktopHub(tk.Tk):
                     f_tr = str(f.get("track", "art"))
                     f_sq = int(f.get("seq", 1))
                     is_poem = str(f_url).startswith("poem://")
-                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#e2be7e", outline="#d2a8ff" if is_poem else "#b91c1c")
+                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#e2be7e", outline="#3b0764" if is_poem else "#b91c1c")
                     if is_poem:
-                        self.cv.create_rectangle(28, y + 10, 268, y + 150, fill="#090d13", outline="#d2a8ff")
+                        self.cv.create_rectangle(28, y + 10, 268, y + 150, fill="#090d13", outline="#3b0764")
                         p_preview = _fast_ascii("\n".join((f.get("study_note") or "").splitlines()[:6]))
-                        self.cv.create_text(36, y + 18, text=p_preview, fill="#d2a8ff", font=("Courier", 9, "italic"), anchor="nw", width=224)
+                        self.cv.create_text(36, y + 18, text=p_preview, fill="#3b0764", font=("Courier", 9, "italic"), anchor="nw", width=224)
                     else:
                         ph = self._get_cached_tk_img(f_url, (240, 170))
                         im_tag = f"fav_im_{idx_f}"
@@ -525,7 +525,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         ask_wait = self._busy_btns.get((track_key, seq, "ask"), "Ask Gemini...")
         ask_tag = f"btn_ask_{track_key}_{seq}"
-        _, btn_bot = self._draw_pill_btn(bx + 8, y, ask_wait, "#251736", "#d2a8ff", ask_tag)
+        _, btn_bot = self._draw_pill_btn(bx + 8, y, ask_wait, "#251736", "#3b0764", ask_tag)
         self.cv.tag_bind(ask_tag, "<Button-1>", lambda e, t=track_key, s=seq, ti=les.get("title", ""): self._prompt_ask_gemini(t, s, ti))
 
         y = btn_bot + 10
@@ -542,7 +542,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
             dp_wait = self._busy_btns.get((track_key, seq, "deeper"), f"+ Deeper Dive (Ch.{ch_count + 1})")
             dp_tag = f"dd_more_{track_key}_{seq}"
-            self._draw_pill_btn(cw - 355, y + 4, dp_wait, "#251736", "#d2a8ff", dp_tag, pad_x=8, pad_y=3)
+            self._draw_pill_btn(cw - 355, y + 4, dp_wait, "#251736", "#3b0764", dp_tag, pad_x=8, pad_y=3)
             self.cv.tag_bind(dp_tag, "<Button-1>", lambda e, t=track_key, s=seq: self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s, "append": True}, (t, s, "deeper"), "... Diving Deeper..."))
 
             y += 38
@@ -600,13 +600,13 @@ class KnowledgeDesktopHub(tk.Tk):
         if qa_list:
             is_min = (key in self.closed_qa)
             q_tag = f"qatog_{track_key}_{seq}"
-            _, y_qb = self._draw_pill_btn(left_x, y, f"Show Saved Q&A ({len(qa_list)}) [v]" if is_min else f"Minimize Q&A ({len(qa_list)}) [^]", "#251736", "#d2a8ff", q_tag, pad_x=8, pad_y=3)
+            _, y_qb = self._draw_pill_btn(left_x, y, f"Show Saved Q&A ({len(qa_list)}) [v]" if is_min else f"Minimize Q&A ({len(qa_list)}) [^]", "#251736", "#3b0764", q_tag, pad_x=8, pad_y=3)
             self.cv.tag_bind(q_tag, "<Button-1>", lambda e, k=key: (self.closed_qa.remove(k) if k in self.closed_qa else self.closed_qa.add(k), self.render_scene()))
             y = y_qb + 6
             if not is_min:
                 for qa in qa_list:
                     q_top = y
-                    q_h = self.cv.create_text(left_x + 10, y + 6, text=_fast_ascii(f"Q: {qa.get('q','')}  [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fill="#d2a8ff", font=("Courier", 10, "bold"), anchor="nw", width=max(180, cw - 80))
+                    q_h = self.cv.create_text(left_x + 10, y + 6, text=_fast_ascii(f"Q: {qa.get('q','')}  [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fill="#3b0764", font=("Courier", 10, "bold"), anchor="nw", width=max(180, cw - 80))
                     y = (self.cv.bbox(q_h) or (0, 0, 0, y + 18))[3] + 4
                     q_a = self.cv.create_text(left_x + 10, y, text=_fast_ascii(qa.get("a", "")), fill="#ff2a36", font=("Courier", 11), anchor="nw", width=max(180, cw - 80))
                     y = (self.cv.bbox(q_a) or (0, 0, 0, y + 24))[3] + 8
@@ -1056,11 +1056,11 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(cw // 2, y + 38, text=self._fmt_epoch_hrs(ep_hrs) + " HRS", fill="#b91c1c", font=("Courier", 22, "bold"), anchor="n", tags=("live_monolith_txt",))
         sub_txt = _fast_ascii(f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT")
         self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("Courier", 10, "bold"), anchor="n", tags=("live_lap_txt",))
-        self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#ff2a36", font=("Courier", 10), anchor="n")
-        self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#f85149", font=("Courier", 11, "bold"), anchor="n")
-        bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#b91c1c", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
+        self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#141210", font=("Courier", 10), anchor="n")
+        self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#141210", font=("Courier", 11, "bold"), anchor="n")
+        bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#141210", "#141210", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
-        self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#c49648", "#d2a8ff", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
+        self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#c49648", "#141210", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_jmp_poem_top", "<Button-1>", lambda e: self._jump_to_poem_desk())
         y += 206
 
@@ -1074,10 +1074,10 @@ class KnowledgeDesktopHub(tk.Tk):
         y += 12
         self.cv.create_text(28, y, text=f"HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#141210", font=("Courier", 11, "bold"), anchor="nw", tags=("hb_header_txt",))
         b_ring_txt = self._busy_btns.get(("foundations", 1, "ring"), "[RING CELL PHONE]")
-        self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#c49648", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
+        self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#c49648", "#141210", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_ring_now", "<Button-1>", lambda e: self._ring_phone_now())
         b_hb_txt = self._busy_btns.get(("foundations", 1, "hb"), "[PULSE HEARTBEAT NOW]")
-        self._draw_pill_btn(cw - 205, y - 2, b_hb_txt, "#c49648", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
+        self._draw_pill_btn(cw - 205, y - 2, b_hb_txt, "#c49648", "#141210", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_hb_now", "<Button-1>", lambda e: self._trigger_heartbeat_now())
         y += 24
         tid_hb = self.cv.create_text(28, y, text=_fast_ascii(hb.get("transmission", "")), fill="#141210", font=("Courier", 10), anchor="nw", width=cw - 56)
@@ -1140,11 +1140,11 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.tag_bind("btn_star_poem", "<Button-1>", lambda e, u=p_uri, t=p_title, a=p_author, ln=_fast_ascii("\n".join(full_arr)): self._toggle_star("foundations", 1, u, caption=f"{t} -- {a} ({p_when})", study_note=ln, source=f"{a} | {p_where}"))
 
         b_dd_txt = self._busy_btns.get(("foundations", 1, "poem_dd"), f"[+ DEEP DIVE CHAPTER ({dd_cnt})]")
-        bx_dd, _ = self._draw_pill_btn(bx_p + 8, y, b_dd_txt, "#c49648", "#3fb950", "btn_dd_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_dd, _ = self._draw_pill_btn(bx_p + 8, y, b_dd_txt, "#c49648", "#141210", "btn_dd_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_dd_poem", "<Button-1>", lambda e: self._pull_poem_deep_dive())
 
         b_pull_txt = self._busy_btns.get(("foundations", 1, "poem"), "[PULL NEXT STANZA]")
-        bx_nx, _ = self._draw_pill_btn(bx_dd + 8, y, b_pull_txt, "#c49648", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_nx, _ = self._draw_pill_btn(bx_dd + 8, y, b_pull_txt, "#c49648", "#141210", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_next_poem", "<Button-1>", lambda e: self._pull_next_poem())
 
         if len(full_arr) > len(prev_arr):
@@ -1175,7 +1175,7 @@ class KnowledgeDesktopHub(tk.Tk):
             self.cv.tag_lower(dd_bg)
             y = ddb[3] + 18
 
-        p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#e2be7e", outline="#d2a8ff", width=1)
+        p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#e2be7e", outline="#3b0764", width=1)
         self.cv.tag_lower(p_card_bg)
         y += 14
 
@@ -1183,7 +1183,7 @@ class KnowledgeDesktopHub(tk.Tk):
         cards = [
             ("FOUNDATION 01 // WHEELER'S COSMIC DELAYED-CHOICE PHOTON (50M LIGHT-YEARS)", "#58a6ff",
              "A photon from a quasar 50 million light-years away bends around a lensing galaxy. Did it travel around one side as a particle or both sides at once as a wave? Quantum mechanics proves that choice is locked in TONIGHT by how you observe it on Earth. How you focus your mind in this exact hour retroactively defines the trajectory of your entire past."),
-            ("FOUNDATION 02 // BE A THINKER: HIVE-MIND (THE CIRCLE) VS. SOVEREIGN DETECTIVE (LEGION)", "#d2a8ff",
+            ("FOUNDATION 02 // BE A THINKER: HIVE-MIND (THE CIRCLE) VS. SOVEREIGN DETECTIVE (LEGION)", "#3b0764",
              "Mae Holland and Eamon Bailey broadcast and smooth out every experience for external validation. Lt. Kinderman and Damien Karras wrestle with heavy truths in inner silence: Kinderman tests the frying pan to feel real fire behind newspaper ink, lets his subconscious incubate clues, and knows the brain is just the pocket while the mind is the hand inside it."),
             ("FOUNDATION 03 // ENDURANCE ART: TEHCHING HSIEH, ROMAN OPALKA & THE UPSIDE", "#3fb950",
              "Hsieh punched a timeclock 8,760 times on the hour for a year. Opalka painted numbers from 1 toward infinity for decades. Pouring 50 hours of cutting cross windows, layering flannel/Climalite/denim, and hand-stitching raw edges into THE UPSIDE compresses lived spacetime into matter--allowing the viewer to quantum-jump across your hours.")
