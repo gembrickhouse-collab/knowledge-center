@@ -1058,7 +1058,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("Courier", 10, "bold"), anchor="n", tags=("live_lap_txt",))
         self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#ff2a36", font=("Courier", 10), anchor="n")
         self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#ff2a36", font=("Courier", 11, "bold"), anchor="n")
-        bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#141210", "#141210", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
+        bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#c81d25", "#141210", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
         self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#c49648", "#141210", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_jmp_poem_top", "<Button-1>", lambda e: self._jump_to_poem_desk())
