@@ -462,6 +462,16 @@ button:hover, button:active {
     color: #1c1917 !important;
 }
 
+/* fix_web_ink */
+
+p, li, .lesson-body, .summary, div {
+    color: #141210 !important;
+}
+/* Keep dark-box text (monolith, stamps, poem stanza) glowing red/green */
+[style*="#0"], [style*="rgb(11"], [style*="rgb(5"] {
+    color: #ff2a36 !important;
+}
+
 </style>
 </head>
 <body>
