@@ -404,7 +404,7 @@ WEB_TEMPLATE = r"""<!doctype html>
 @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Special+Elite&display=swap');
 
 html, body {
-    background-color: #f4efe6 !important;
+    background-color: #dfd0b0 !important;
     color: #141210 !important;
     font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
     margin: 0 !important;
@@ -426,7 +426,7 @@ body {
 
 /* Structural panels, cards, monolith boxes, heartbeat & stamp ledger containers */
 div[style*="background"], .card, .panel, .box, section, header {
-    background-color: #fbf8f1 !important;
+    background-color: #e8dac0 !important;
     color: #141210 !important;
     border: 2px solid #c81d25 !important;
     box-shadow: 3px 3px 0px rgba(200, 29, 37, 0.18) !important;
@@ -453,7 +453,7 @@ button {
 }
 button:hover, button:active {
     background-color: #c81d25 !important;
-    color: #fbf8f1 !important;
+    color: #e8dac0 !important;
 }
 
 /* Ensure readable high-contrast ink for muted/light text on parchment */
