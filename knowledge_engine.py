@@ -1021,21 +1021,14 @@ def run_gemini_heartbeat(force_synthesis=False):
 
     # --- TIER 3: CROSS-TRACK SYNTHESIS COLLISION ---
     tracks = data.get("tracks") or {}
-    art_items = (tracks.get("art_endurance") or {}).get("items") or (tracks.get("art") or {}).get("items") or []
-    phys_items = (tracks.get("physics_of_time") or {}).get("items") or (tracks.get("universe") or {}).get("items") or []
-    found_items = (tracks.get("foundations") or {}).get("items") or []
-    if not art_items or not phys_items:
-        all_lessons = data.get("lessons") or []
-        for l in all_lessons:
-            tr = str(l.get("track", "")).lower()
-            if "art" in tr: art_items.append(l)
-            elif "phys" in tr or "time" in tr or "univ" in tr: phys_items.append(l)
-            else: found_items.append(l)
+    art_items = (tracks.get("art") or {}).get("lessons") or []
+    phys_items = (tracks.get("universe") or {}).get("lessons") or []
+    found_items = (tracks.get("matrix") or {}).get("lessons") or []
 
     def _fmt_item(it):
         if isinstance(it, dict):
-            return f"{it.get('title', 'Lesson')}: {str(it.get('summary') or it.get('content') or it.get('body') or '')[:180]}"
-        return str(it)[:180]
+            return f"{it.get('title', 'Lesson')} ({it.get('maker', '')}): {str(it.get('core') or it.get('deep_dive') or '')[:200]}"
+        return str(it)[:200]
 
     art_pick = _fmt_item(random.choice(art_items)) if art_items else "Endurance Art & Material Accumulation"
     sci_pool = phys_items + found_items
