@@ -1,0 +1,16 @@
+name: Epoch Zero 24/7 Cloud Heartbeat Cron
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  pulse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake Render Cloud Container & Trigger 5-Min Heartbeat
+        run: |
+          curl -s -m 45 -X POST "https://knowledge-center-ef23.onrender.com/api/heartbeat" \
+               -H "Content-Type: application/json" \
+               -d '{"force": false}' || true

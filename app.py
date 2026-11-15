@@ -1504,3 +1504,35 @@ def matrix_portal():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5055")))
+
+
+# --- 24/7 CLOUD AUTONOMIC HEARTBEAT DAEMON (RUNS WHEN LAPTOP IS COMPLETELY OFF) ---
+import threading as _cloud_threading
+import time as _cloud_time
+import urllib.request as _cloud_urllib
+
+def _cloud_autonomic_loop():
+    _cloud_time.sleep(15)
+    while True:
+        try:
+            # 1. Ping own public Render URL so Render's load balancer sees active HTTP traffic and stays awake
+            try:
+                req = _cloud_urllib.Request(
+                    "https://knowledge-center-ef23.onrender.com/api/state",
+                    headers={"User-Agent": "EpochZeroCloudKeepAlive/1.0"}
+                )
+                with _cloud_urllib.urlopen(req, timeout=10) as _:
+                    pass
+            except Exception:
+                pass
+            # 2. Check if 5 minutes have elapsed and fire heartbeat in the cloud
+            ke.run_gemini_heartbeat(force_synthesis=False)
+            ke.check_and_run_daily_drop(force=False)
+        except Exception as e:
+            print("[Cloud Autonomic Loop Note]:", e)
+        _cloud_time.sleep(60)
+
+if not globals().get("_CLOUD_DAEMON_STARTED"):
+    _CLOUD_DAEMON_STARTED = True
+    _t = _cloud_threading.Thread(target=_cloud_autonomic_loop, daemon=True)
+    _t.start()
