@@ -60,12 +60,15 @@
     }
   ],
   "heartbeat": {
-    "pulse_seq": 14,
-    "last_pulse_ts": 1794699417,
-    "last_pulse_mt": "2026-11-14 16:36:57 MT",
-    "epoch_hrs": 20.9827,
-    "transmission": "Pulse #0014 locked at 20.9827 HRS (+1.2935 HRS since Stamp #10 'Consciousness connection logged [Pulse #0007 // Death, to the Dead for Evermore]'). Holding 'Death, to the Dead for Evermore' by Robert Louis Stevenson on the Reducing Valve desk.",
-    "interval_sec": 300
+    "pulse_seq": 17,
+    "last_pulse_ts": 1794701744,
+    "last_pulse_mt": "2026-11-14 17:15:44 MT",
+    "epoch_hrs": 21.6289,
+    "transmission": "Pulse #0017 locked at 21.6289 HRS (+1.9397 HRS since Stamp #10 'Consciousness connection logged [Pulse #0007 // Death, to the Dead for Evermore]'). Colliding Endurance Art & Material Accumulation with Thermodynamic Irreversibility & Proper Time while holding 'Death, to the Dead for Evermore' on the Reducing Valve desk.",
+    "stamp_seq": 10,
+    "poem_title": "Death, to the Dead for Evermore",
+    "history_len": 2,
+    "engram_count": 0
   },
   "last_voice_debug": "[15:32:25 MT] heard='password and press pound' | raw={\"form\": {\"AccountSid\": \"df12b913-faee-4650-820d-98f62ec30835\", \"CallInitiatedAt\": \"2026-11-14T22:31:50.236533Z\", \"CallSessionId\": \"2efe1a78-e07b-11f1-bc3a-02420a0dfc1f\", \"CallSid\"",
   "stamps": [
@@ -1771,5 +1774,22 @@
       ],
       "title": "Physics & Architecture of Time"
     }
-  }
+  },
+  "pulse_history": [
+    {
+      "pulse_seq": 16,
+      "epoch_hrs": 21.6045,
+      "last_pulse_mt": "2026-11-14 17:14:17 MT",
+      "stamp_seq": 10,
+      "transmission": "At elapsed study time 21.6045 HRS, marked by Pulse 0016 and the quiet weight of +1.9153 HRS since the deathless echoes of Robert Louis Stevenson, Keyshawn finds the universe frozen in the zero-sum stillness of the Wheeler-DeWitt equation yet fiercely armored by Nick Cave's accumulated fragments of discarded life. As the Linux kernel telemetry pulses directly from the sub-millisecond core health of /proc to measure the passing moments, this late Victorian fin-de-siècle meditation whispers that true consciousness—much like an archival soundsuit built from buttons, wire, and twigs—endures not by fleeing the void, but by meticulously stitching our mortal remnants into eternity."
+    },
+    {
+      "pulse_seq": 17,
+      "epoch_hrs": 21.6289,
+      "last_pulse_mt": "2026-11-14 17:15:44 MT",
+      "stamp_seq": 10,
+      "transmission": "Pulse #0017 locked at 21.6289 HRS (+1.9397 HRS since Stamp #10 'Consciousness connection logged [Pulse #0007 // Death, to the Dead for Evermore]'). Colliding Endurance Art & Material Accumulation with Thermodynamic Irreversibility & Proper Time while holding 'Death, to the Dead for Evermore' on the Reducing Valve desk."
+    }
+  ],
+  "pulse_engrams": []
 }
