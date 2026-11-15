@@ -22,7 +22,7 @@ def _bg_scheduler():
                 today_s = datetime.now(MT_ZONE).strftime("%Y-%m-%d")
                 curr = ke.load_curriculum()
                 missing = [
-                    tk for tk in ("art", "universe", "matrix")
+                    tk for tk in ("art", "universe", "mind", "matrix")
                     if not any(l.get("date") == today_s for l in curr.get("tracks", {}).get(tk, {}).get("lessons", []))
                 ]
                 now_hm = (datetime.now(MT_ZONE).hour, datetime.now(MT_ZONE).minute)
@@ -415,6 +415,7 @@ WEB_TEMPLATE = r"""<!doctype html>
     <button class="tab" id="tab-foundations" onclick="switchTrack('foundations')" style="border-color:#d2a8ff;color:#d2a8ff;">⏳ FOUNDATIONS (EPOCH ZERO)</button>
     <button class="tab active" id="tab-art" onclick="switchTrack('art')">🎨 ART ENDURANCE</button>
     <button class="tab" id="tab-universe" onclick="switchTrack('universe')">🌌 PHYSICS OF TIME</button>
+      <button class="tab" id="tab-mind" onclick="switchTrack('mind')" style="border-color:#f778ba;color:#f778ba;">🧠 PHILOSOPHY OF CONSCIOUSNESS</button>
     <button class="tab" id="tab-favorites" onclick="switchTrack('favorites')" style="border-color:#fbbf24;">⭐ KEY'S FAVORITES (0)</button>
     <a class="tab" href="/matrix" style="border-color:#3fb950;color:#3fb950;">🧬 OPEN MATRIX CENTER ↗</a>
   {% endif %}
@@ -507,6 +508,7 @@ function renderHeaderStats() {
   if (document.getElementById('tab-art') && DATA.tracks.art) {
     document.getElementById('tab-art').textContent = `🎨 ART ENDURANCE (${DATA.tracks.art.lessons.length})`;
     document.getElementById('tab-universe').textContent = `🌌 PHYSICS OF TIME (${DATA.tracks.universe.lessons.length})`;
+      if (DATA.tracks.mind && document.getElementById('tab-mind')) document.getElementById('tab-mind').textContent = `🧠 PHILOSOPHY OF CONSCIOUSNESS (${DATA.tracks.mind.lessons.length})`;
   }
   const favBtn = document.getElementById('tab-favorites');
   if (favBtn) {
@@ -548,7 +550,7 @@ function switchTrack(t) {
 }
 
 const PAGE_SIZE = 5;
-const PAGE_IDX = {art: 0, universe: 0, matrix: 0, favorites: 0};
+const PAGE_IDX = {art: 0, universe: 0, mind: 0, matrix: 0, favorites: 0};
 const CLOSED_QA = {};
 let SEARCH_Q = '';
 

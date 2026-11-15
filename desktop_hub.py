@@ -299,6 +299,7 @@ class KnowledgeDesktopHub(tk.Tk):
         y = 92
         a_n = len(self.data.get("tracks", {}).get("art", {}).get("lessons", []))
         u_n = len(self.data.get("tracks", {}).get("universe", {}).get("lessons", []))
+        m_n = len(self.data.get("tracks", {}).get("mind", {}).get("lessons", []))
         f_n = len(self.data.get("favorites") or [])
 
         x_cur = 16
@@ -311,6 +312,9 @@ class KnowledgeDesktopHub(tk.Tk):
 
         x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHYSICS OF TIME ({u_n})", "#58a6ff" if self.cur_track == "universe" else "#21262d", "#090d13" if self.cur_track == "universe" else "#c9d1d9", "nav_uni")
         self.cv.tag_bind("nav_uni", "<Button-1>", lambda e: self.switch_track("universe"))
+
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHILOSOPHY OF CONSCIOUSNESS ({m_n})", "#f778ba" if self.cur_track == "mind" else "#21262d", "#090d13" if self.cur_track == "mind" else "#f778ba", "nav_mind")
+        self.cv.tag_bind("nav_mind", "<Button-1>", lambda e: self.switch_track("mind"))
 
         x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"* FAVORITES ({f_n})", "#fbbf24" if self.cur_track == "favorites" else "#21262d", "#090d13" if self.cur_track == "favorites" else "#fbbf24", "nav_fav")
         self.cv.tag_bind("nav_fav", "<Button-1>", lambda e: self.switch_track("favorites"))
@@ -398,7 +402,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         # Top Pagination Bar
         self.cv.create_rectangle(16, y, cw - 16, y + 28, fill="#111822", outline="#30363d")
-        t_label = "ART ENDURANCE" if self.cur_track == "art" else "PHYSICS OF TIME"
+        t_label = "ART ENDURANCE" if self.cur_track == "art" else ("PHILOSOPHY OF CONSCIOUSNESS" if self.cur_track == "mind" else "PHYSICS OF TIME")
         if total > 0:
             meta_p = f"{t_label}  |  Showing #{page_slice[0]['seq']:03d}-#{page_slice[-1]['seq']:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})"
         else:

@@ -557,7 +557,7 @@ def get_capacity_telemetry(data=None):
 
     d = data if isinstance(data, dict) else load_curriculum()
     tracks = d.get("tracks", {})
-    total_lessons = sum(len(tracks.get(t, {}).get("lessons", [])) for t in ("art", "universe", "matrix"))
+    total_lessons = sum(len(tracks.get(t, {}).get("lessons", [])) for t in ("art", "universe", "mind", "matrix"))
     avg_bytes = max(3800, raw_bytes / max(1, total_lessons))
     daily_bytes = avg_bytes * 3.0
     remaining_bytes = max(0, (gh_limit_mb * 1024 * 1024) - raw_bytes)
@@ -624,6 +624,20 @@ Return JSON:
   "maker": "1-2 concrete sentences connecting this directly to multi-layered denim/felt/flannel/Climalite garment architecture and hand/zig-zag stitching.",
   "deep_dive": "4 rich paragraphs separated by \\n\\n covering origin, physical material technique, landmark work, and studio craft synthesis."
 }}"""
+    elif track_key == "mind":
+        prompt = f"""Generate the next daily lesson #{next_seq} for the 'Philosophy of Consciousness' track (date: {today_str}).
+Already covered titles (DO NOT repeat these exact topics):
+{existing_titles}
+
+Choose a landmark philosopher, thought experiment, or theory of consciousness/free will/identity/phenomenology (e.g., Thomas Nagel's 'What Is It Like to Be a Bat?', Integrated Information Theory (Tononi), Global Workspace Theory, Husserl's Phenomenology of Internal Time-Consciousness, Merleau-Ponty's Embodied Cognition, Nietzsche's Eternal Recurrence & Will, Hofstadter's Strange Loops, Dennett's Multiple Drafts Model, Panpsychism, Split-Brain Personal Identity, Libet's Readiness Potential & Free Will, Higher-Order Thought Theory).
+
+Return ONLY valid JSON with keys:
+"title": punchy academic + visceral title,
+"core": 4-5 rich sentences explaining the exact philosophical argument, thought experiment, and counter-arguments,
+"maker": 2 vivid sentences connecting this theory of consciousness to high-density hand-stitched garment construction, endurance craft, or irreversible Proper Time,
+"tags": list of 4 short topic strings,
+"image_query": Wikimedia Commons search term for the philosopher or concept,
+"image_caption": 1-sentence caption."""
     elif track_key == "universe":
         prompt = f"""Generate Physics of Time, Entropy & Block Universe Lesson #{next_seq:03d}.
 Avoid repeating: {prev_titles}.
@@ -692,7 +706,7 @@ def check_and_run_daily_drop(force=False):
         data = load_curriculum()
         changed = []
         errors = {}
-        for t_key in ("art", "universe", "matrix"):
+        for t_key in ("art", "universe", "mind", "matrix"):
             track = data.get("tracks", {}).get(t_key)
             if not track:
                 continue
@@ -738,7 +752,7 @@ def add_epoch_stamp(note=""):
 def _get_recent_curriculum_context(data):
     tracks = data.get("tracks", {})
     summary = []
-    for t_key, label in (("art", "Art Endurance"), ("universe", "Physics of Time"), ("matrix", "Matrix")):
+    for t_key, label in (("art", "Art Endurance"), ("universe", "Physics of Time"), ("mind", "Philosophy of Consciousness"), ("matrix", "Matrix")):
         lessons = tracks.get(t_key, {}).get("lessons", [])
         if lessons:
             latest = lessons[-1]
@@ -1022,8 +1036,8 @@ def run_gemini_heartbeat(force_synthesis=False):
     # --- TIER 3: CROSS-TRACK SYNTHESIS COLLISION ---
     tracks = data.get("tracks") or {}
     art_items = (tracks.get("art") or {}).get("lessons") or []
-    phys_items = (tracks.get("universe") or {}).get("lessons") or []
-    found_items = (tracks.get("matrix") or {}).get("lessons") or []
+    phys_items = ((tracks.get("universe") or {}).get("lessons") or []) + ((tracks.get("mind") or {}).get("lessons") or [])
+    found_items = ((tracks.get("matrix") or {}).get("lessons") or []) + ((tracks.get("mind") or {}).get("lessons") or [])
 
     def _fmt_item(it):
         if isinstance(it, dict):
