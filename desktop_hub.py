@@ -100,7 +100,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.title("[EPOCH ZERO] // CONSCIOUSNESS IRREVERSER")
         self.geometry("960x760")
         self.minsize(480, 440)
-        self.configure(highlightbackground="#c81d25", highlightcolor="#c81d25", highlightthickness=6, bg="#dfd0b0")
+        self.configure(highlightbackground="#c81d25", highlightcolor="#c81d25", highlightthickness=6, bg="#d5ab61")
         self.protocol("WM_DELETE_WINDOW", self._instant_quit)
 
         _BLANK_TK = ImageTk.PhotoImage(Image.new("RGB", (240, 170), (28, 35, 45)))
@@ -122,10 +122,10 @@ class KnowledgeDesktopHub(tk.Tk):
         self.search_query = ""
 
         # SINGLE Canvas for the entire application (Header + Tabs + Cards + Drawers = ZERO nested X11 sub-windows!)
-        wrap = tk.Frame(self, bg="#dfd0b0")
+        wrap = tk.Frame(self, bg="#d5ab61")
         wrap.pack(fill="both", expand=True)
-        self.cv = tk.Canvas(wrap, bg="#dfd0b0", highlightthickness=0, bd=0)
-        self.sb = tk.Scrollbar(wrap, orient="vertical", command=self.cv.yview, bg="#e8dac0", troughcolor="#dfd0b0", activebackground="#c81d25", highlightthickness=0, bd=0)
+        self.cv = tk.Canvas(wrap, bg="#d5ab61", highlightthickness=0, bd=0)
+        self.sb = tk.Scrollbar(wrap, orient="vertical", command=self.cv.yview, bg="#e2be7e", troughcolor="#d5ab61", activebackground="#c81d25", highlightthickness=0, bd=0)
         self.cv.configure(yscrollcommand=self.sb.set)
         self.cv.pack(side="left", fill="both", expand=True)
         self.sb.pack(side="right", fill="y")
@@ -312,23 +312,23 @@ class KnowledgeDesktopHub(tk.Tk):
 
         x_cur = 16
         s_n = len(self.data.get("stamps") or [])
-        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#d2a8ff" if self.cur_track == "foundations" else "#e6dcc8", "#090d13" if self.cur_track == "foundations" else "#d2a8ff", "nav_fnd")
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#d2a8ff" if self.cur_track == "foundations" else "#c49648", "#090d13" if self.cur_track == "foundations" else "#d2a8ff", "nav_fnd")
         self.cv.tag_bind("nav_fnd", "<Button-1>", lambda e: self.switch_track("foundations"))
         x_cur += 8
-        x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#b91c1c" if self.cur_track == "art" else "#e6dcc8", "#090d13" if self.cur_track == "art" else "#26221e", "nav_art")
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#b91c1c" if self.cur_track == "art" else "#c49648", "#090d13" if self.cur_track == "art" else "#26221e", "nav_art")
         self.cv.tag_bind("nav_art", "<Button-1>", lambda e: self.switch_track("art"))
 
-        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHYSICS OF TIME ({u_n})", "#58a6ff" if self.cur_track == "universe" else "#e6dcc8", "#090d13" if self.cur_track == "universe" else "#26221e", "nav_uni")
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHYSICS OF TIME ({u_n})", "#58a6ff" if self.cur_track == "universe" else "#c49648", "#090d13" if self.cur_track == "universe" else "#26221e", "nav_uni")
         self.cv.tag_bind("nav_uni", "<Button-1>", lambda e: self.switch_track("universe"))
 
-        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHILOSOPHY OF CONSCIOUSNESS ({m_n})", "#f778ba" if self.cur_track == "mind" else "#e6dcc8", "#090d13" if self.cur_track == "mind" else "#f778ba", "nav_mind")
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHILOSOPHY OF CONSCIOUSNESS ({m_n})", "#f778ba" if self.cur_track == "mind" else "#c49648", "#090d13" if self.cur_track == "mind" else "#f778ba", "nav_mind")
         self.cv.tag_bind("nav_mind", "<Button-1>", lambda e: self.switch_track("mind"))
 
-        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"* FAVORITES ({f_n})", "#b91c1c" if self.cur_track == "favorites" else "#e6dcc8", "#090d13" if self.cur_track == "favorites" else "#b91c1c", "nav_fav")
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"* FAVORITES ({f_n})", "#b91c1c" if self.cur_track == "favorites" else "#c49648", "#090d13" if self.cur_track == "favorites" else "#b91c1c", "nav_fav")
         self.cv.tag_bind("nav_fav", "<Button-1>", lambda e: self.switch_track("favorites"))
 
         filt_txt = f"Filter: '{self.search_query}' [x]" if self.search_query else "Filter / Search..."
-        x_cur, _ = self._draw_pill_btn(x_cur + 10, y, filt_txt, "#e8dac0", "#b91c1c" if self.search_query else "#e11d2a", "nav_search", border="#c81d25")
+        x_cur, _ = self._draw_pill_btn(x_cur + 10, y, filt_txt, "#e2be7e", "#b91c1c" if self.search_query else "#e11d2a", "nav_search", border="#c81d25")
         self.cv.tag_bind("nav_search", "<Button-1>", lambda e: (setattr(self, "search_query", ""), self.render_scene()) if self.search_query else self._prompt_search())
 
         # Right-hand Matrix & Sync Drop buttons
@@ -336,7 +336,7 @@ class KnowledgeDesktopHub(tk.Tk):
         _, _ = self._draw_pill_btn(cw - 102, y, sync_lbl, "#192b20", "#3fb950", "nav_sync", border="#238636")
         self.cv.tag_bind("nav_sync", "<Button-1>", lambda e: self._manual_sync_drop())
 
-        _, _ = self._draw_pill_btn(cw - 196, y, "Matrix ->", "#e6dcc8", "#58a6ff", "nav_matrix")
+        _, _ = self._draw_pill_btn(cw - 196, y, "Matrix ->", "#c49648", "#58a6ff", "nav_matrix")
         self.cv.tag_bind("nav_matrix", "<Button-1>", lambda e: webbrowser.open(get_cloud_url() + "/matrix"))
 
         y += 34
@@ -355,7 +355,7 @@ class KnowledgeDesktopHub(tk.Tk):
             y += 38
             favs = self.data.get("favorites") or []
             if not favs:
-                self.cv.create_rectangle(16, y, cw - 16, y + 80, fill="#e8dac0", outline="#c81d25")
+                self.cv.create_rectangle(16, y, cw - 16, y + 80, fill="#e2be7e", outline="#c81d25")
                 self.cv.create_text(cw // 2, y + 28, text="* Key's Favorites Vault is empty right now.", fill="#141210", font=("Courier", 12, "bold"))
                 self.cv.create_text(cw // 2, y + 54, text="Click [+Fav Plate] on any card or gallery plate to pin it permanently to GitHub.", fill="#e11d2a", font=("Courier", 10))
                 y += 100
@@ -366,7 +366,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     f_tr = str(f.get("track", "art"))
                     f_sq = int(f.get("seq", 1))
                     is_poem = str(f_url).startswith("poem://")
-                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#e8dac0", outline="#d2a8ff" if is_poem else "#b91c1c")
+                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#e2be7e", outline="#d2a8ff" if is_poem else "#b91c1c")
                     if is_poem:
                         self.cv.create_rectangle(28, y + 10, 268, y + 150, fill="#090d13", outline="#d2a8ff")
                         p_preview = _fast_ascii("\n".join((f.get("study_note") or "").splitlines()[:6]))
@@ -381,7 +381,7 @@ class KnowledgeDesktopHub(tk.Tk):
                     self.cv.create_text(tx, y + 40, text=f_cap, fill="#ff2a36", font=("Courier", 12, "bold"), anchor="nw", width=max(180, cw - tx - 30))
                     if f.get("study_note"):
                         self.cv.create_text(tx, y + 68, text=_fast_ascii(f.get("study_note", "")), fill="#b91c1c", font=("Courier", 10), anchor="nw", width=max(180, cw - tx - 30))
-                    bx, _ = self._draw_pill_btn(tx, y + 118, f"Open {f_tr.upper()} (#{f_sq:03d}) ->", "#e6dcc8", "#b91c1c", f"fav_jmp_{idx_f}")
+                    bx, _ = self._draw_pill_btn(tx, y + 118, f"Open {f_tr.upper()} (#{f_sq:03d}) ->", "#c49648", "#b91c1c", f"fav_jmp_{idx_f}")
                     self.cv.tag_bind(f"fav_jmp_{idx_f}", "<Button-1>", lambda e, tr=f_tr, sq=f_sq: self._jump_to_lesson(tr, sq))
                     self._draw_pill_btn(bx + 10, y + 118, "[*] Unstar", "#2d2208", "#b91c1c", f"fav_uns_{idx_f}")
                     self.cv.tag_bind(f"fav_uns_{idx_f}", "<Button-1>", lambda e, tr=f_tr, sq=f_sq, u=f_url: self._toggle_star(tr, sq, u))
@@ -418,10 +418,10 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(cw // 2, y + 14, text=meta_p, fill="#141210", font=("Courier", 10, "bold"), anchor="center")
 
         if has_prev:
-            self._draw_pill_btn(22, y + 3, "<< Newer 5", "#e6dcc8", "#58a6ff", "pg_prev_top", pad_x=8, pad_y=3)
+            self._draw_pill_btn(22, y + 3, "<< Newer 5", "#c49648", "#58a6ff", "pg_prev_top", pad_x=8, pad_y=3)
             self.cv.tag_bind("pg_prev_top", "<Button-1>", lambda e: self._step_page(-1))
         if has_next:
-            self._draw_pill_btn(cw - 108, y + 3, "Older 5 >>", "#e6dcc8", "#58a6ff", "pg_next_top", pad_x=8, pad_y=3)
+            self._draw_pill_btn(cw - 108, y + 3, "Older 5 >>", "#c49648", "#58a6ff", "pg_next_top", pad_x=8, pad_y=3)
             self.cv.tag_bind("pg_next_top", "<Button-1>", lambda e: self._step_page(1))
         y += 38
 
@@ -435,10 +435,10 @@ class KnowledgeDesktopHub(tk.Tk):
             self.cv.create_rectangle(16, y, cw - 16, y + 34, fill="#111822", outline="#c81d25")
             self.cv.create_text(cw // 2, y + 17, text=f"Page {cur_p + 1} of {max_page + 1}", fill="#e11d2a", font=("Courier", 10, "bold"), anchor="center")
             if has_prev:
-                self._draw_pill_btn(24, y + 5, "<< Newer 5 Lessons", "#e6dcc8", "#b91c1c", "pg_prev_bot", pad_x=10, pad_y=4)
+                self._draw_pill_btn(24, y + 5, "<< Newer 5 Lessons", "#c49648", "#b91c1c", "pg_prev_bot", pad_x=10, pad_y=4)
                 self.cv.tag_bind("pg_prev_bot", "<Button-1>", lambda e: self._step_page(-1))
             if has_next:
-                self._draw_pill_btn(cw - 165, y + 5, "Older 5 Lessons >>", "#e6dcc8", "#b91c1c", "pg_next_bot", pad_x=10, pad_y=4)
+                self._draw_pill_btn(cw - 165, y + 5, "Older 5 Lessons >>", "#c49648", "#b91c1c", "pg_next_bot", pad_x=10, pad_y=4)
                 self.cv.tag_bind("pg_next_bot", "<Button-1>", lambda e: self._step_page(1))
             y += 48
 
@@ -447,7 +447,7 @@ class KnowledgeDesktopHub(tk.Tk):
     def _draw_card_on_canvas(self, les, track_key, y_top, cw, is_wide):
         seq = les["seq"]
         key = (track_key, seq)
-        card_bg_id = self.cv.create_rectangle(16, y_top, cw - 16, y_top + 200, fill="#e8dac0", outline="#c81d25", width=1)
+        card_bg_id = self.cv.create_rectangle(16, y_top, cw - 16, y_top + 200, fill="#e2be7e", outline="#c81d25", width=1)
 
         img_w, img_h = 240, 170
         left_x = 28
@@ -497,7 +497,7 @@ class KnowledgeDesktopHub(tk.Tk):
             dd_txt, dd_bg, dd_fg = (f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive"), "#1f2937", "#b91c1c"
         else:
             dd_txt = (f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive"
-            dd_bg, dd_fg = "#e6dcc8", "#58a6ff"
+            dd_bg, dd_fg = "#c49648", "#58a6ff"
 
         bx = left_x
         dd_tag = f"btn_dd_{track_key}_{seq}"
@@ -514,13 +514,13 @@ class KnowledgeDesktopHub(tk.Tk):
         else:
             gal_txt = f"Plates ({len(gal_list)})" if has_gal else "Curate Plates"
         gal_tag = f"btn_gal_{track_key}_{seq}"
-        bx, _ = self._draw_pill_btn(bx + 8, y, gal_txt, "#e6dcc8", "#3fb950", gal_tag)
+        bx, _ = self._draw_pill_btn(bx + 8, y, gal_txt, "#c49648", "#3fb950", gal_tag)
         self.cv.tag_bind(gal_tag, "<Button-1>", lambda e, t=track_key, s=seq, r=has_gal: self._on_gal_click(t, s, r))
 
         if img_url:
             starred = self._is_starred(img_url)
             fav_tag = f"btn_fav_{track_key}_{seq}"
-            bx, _ = self._draw_pill_btn(bx + 8, y, "[*Fav Plate]" if starred else "[+Fav Plate]", "#e6dcc8", "#b91c1c" if starred else "#e11d2a", fav_tag)
+            bx, _ = self._draw_pill_btn(bx + 8, y, "[*Fav Plate]" if starred else "[+Fav Plate]", "#c49648", "#b91c1c" if starred else "#e11d2a", fav_tag)
             self.cv.tag_bind(fav_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=img_url, cp=les.get("image_caption") or les.get("title", ""): self._toggle_star(t, s, u, cp, "", "Lead Plate"))
 
         ask_wait = self._busy_btns.get((track_key, seq, "ask"), "Ask Gemini...")
@@ -537,7 +537,7 @@ class KnowledgeDesktopHub(tk.Tk):
             self.cv.create_text(left_x + 10, y + 15, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fill="#58a6ff", font=("Courier", 10, "bold"), anchor="w")
 
             min_tag = f"dd_min_{track_key}_{seq}"
-            self._draw_pill_btn(cw - 178, y + 4, "Minimize Deep Dive", "#e6dcc8", "#b91c1c", min_tag, pad_x=8, pad_y=3)
+            self._draw_pill_btn(cw - 178, y + 4, "Minimize Deep Dive", "#c49648", "#b91c1c", min_tag, pad_x=8, pad_y=3)
             self.cv.tag_bind(min_tag, "<Button-1>", lambda e, k=key: (self.open_dd.discard(k), self.render_scene()))
 
             dp_wait = self._busy_btns.get((track_key, seq, "deeper"), f"+ Deeper Dive (Ch.{ch_count + 1})")
@@ -550,7 +550,7 @@ class KnowledgeDesktopHub(tk.Tk):
             dd_bb = self.cv.bbox(dd_txt_id) or (left_x, y, cw - 28, y + 100)
             y = dd_bb[3] + 12
             min_bot_tag = f"dd_min_b_{track_key}_{seq}"
-            _, y_end_btn = self._draw_pill_btn(cw - 182, y, "Minimize Deep Dive", "#e6dcc8", "#b91c1c", min_bot_tag, pad_x=8, pad_y=3)
+            _, y_end_btn = self._draw_pill_btn(cw - 182, y, "Minimize Deep Dive", "#c49648", "#b91c1c", min_bot_tag, pad_x=8, pad_y=3)
             self.cv.tag_bind(min_bot_tag, "<Button-1>", lambda e, k=key: (self.open_dd.discard(k), self.render_scene()))
             y = y_end_btn + 8
             dd_box = self.cv.create_rectangle(left_x, dd_top, cw - 28, y, fill="#090d13", outline="#c81d25")
@@ -571,7 +571,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 gs = _fast_ascii(g_item.get("source", "Archive"))[:16]
                 g_star = self._is_starred(gu)
 
-                self.cv.create_rectangle(cx, cy, cx + 194, cy + 160, fill="#e8dac0", outline="#c81d25")
+                self.cv.create_rectangle(cx, cy, cx + 194, cy + 160, fill="#e2be7e", outline="#c81d25")
                 del_tag = f"gdel_{track_key}_{seq}_{idx_g}"
                 self.cv.create_text(cx + 8, cy + 3, text="x", fill="#f85149", font=("Courier", 10, "bold"), anchor="nw", tags=(del_tag,))
                 self.cv.tag_bind(del_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=gu: self._delete_plate(t, s, u))
@@ -946,7 +946,7 @@ class KnowledgeDesktopHub(tk.Tk):
             cloud_base = "https://knowledge-center-dsog.onrender.com"
             old_seq = int(((self.data or {}).get("heartbeat") or {}).get("pulse_seq", 0))
             try:
-                u = cloud_base + "/api/heartbeat"
+                new_hb = ke.run_gemini_heartbeat(force_synthesis=True); u = cloud_base + "/api/heartbeat"
                 req = urllib.request.Request(
                     u,
                     data=json.dumps({"force": True}).encode("utf-8"),
@@ -1066,7 +1066,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#f85149", font=("Courier", 11, "bold"), anchor="n")
         bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#b91c1c", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
-        self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#e6dcc8", "#d2a8ff", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
+        self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#c49648", "#d2a8ff", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_jmp_poem_top", "<Button-1>", lambda e: self._jump_to_poem_desk())
         y += 206
 
@@ -1080,16 +1080,16 @@ class KnowledgeDesktopHub(tk.Tk):
         y += 12
         self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("Courier", 11, "bold"), anchor="nw", tags=("hb_header_txt",))
         b_ring_txt = self._busy_btns.get(("foundations", 1, "ring"), "[RING CELL PHONE]")
-        self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#e6dcc8", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
+        self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#c49648", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_ring_now", "<Button-1>", lambda e: self._ring_phone_now())
         b_hb_txt = self._busy_btns.get(("foundations", 1, "hb"), "[PULSE HEARTBEAT NOW]")
-        self._draw_pill_btn(cw - 205, y - 2, b_hb_txt, "#e6dcc8", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
+        self._draw_pill_btn(cw - 205, y - 2, b_hb_txt, "#c49648", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_hb_now", "<Button-1>", lambda e: self._trigger_heartbeat_now())
         y += 24
         tid_hb = self.cv.create_text(28, y, text=_fast_ascii(hb.get("transmission", "")), fill="#141210", font=("Courier", 10), anchor="nw", width=cw - 56)
         hbb = self.cv.bbox(tid_hb) or (28, y, cw - 28, y + 36)
         y = hbb[3] + 12
-        hb_bg = self.cv.create_rectangle(16, hb_top, cw - 16, y, fill="#e8dac0", outline="#3fb950", width=1)
+        hb_bg = self.cv.create_rectangle(16, hb_top, cw - 16, y, fill="#e2be7e", outline="#3fb950", width=1)
         self.cv.tag_lower(hb_bg)
         y += 16
 
@@ -1103,7 +1103,7 @@ class KnowledgeDesktopHub(tk.Tk):
             self.cv.create_rectangle(28, y, cw - 28, y + 26, fill="#090d13", outline="#c81d25")
             self.cv.create_text(38, y + 6, text=row_txt, fill="#ff2a36", font=("Courier", 10, "bold"), anchor="nw")
             y += 30
-        led_bg = self.cv.create_rectangle(16, led_top, cw - 16, y + 8, fill="#e8dac0", outline="#c81d25")
+        led_bg = self.cv.create_rectangle(16, led_top, cw - 16, y + 8, fill="#e2be7e", outline="#c81d25")
         self.cv.tag_lower(led_bg)
         y += 20
 
@@ -1138,24 +1138,24 @@ class KnowledgeDesktopHub(tk.Tk):
         dd_cnt = p_dd.count("=== POEM DEEP DIVE CHAPTER") if p_dd else 0
         p_starred = self._is_starred(p_uri)
 
-        self.cv.create_text(28, y, text=f"POEM DESK // REDUCING VALVE CURATOR (1,000-AUTHOR ARCHIVE • {_fast_ascii(p_obj.get('curated_at','LIVE'))})", fill="#d2a8ff", font=("Courier", 11, "bold"), anchor="nw")
+        self.cv.create_text(28, y, text=f"POEM DESK // REDUCING VALVE CURATOR (1,000-AUTHOR ARCHIVE • {_fast_ascii(p_obj.get('curated_at','LIVE'))})", fill="#141210", font=("Courier", 11, "bold"), anchor="nw")
         y += 22
 
         # Action Buttons Row
-        bx_p, _ = self._draw_pill_btn(28, y, "* STARRED" if p_starred else "+ STAR POEM", "#b91c1c" if p_starred else "#e6dcc8", "#090d13" if p_starred else "#b91c1c", "btn_star_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_p, _ = self._draw_pill_btn(28, y, "* STARRED" if p_starred else "+ STAR POEM", "#b91c1c" if p_starred else "#c49648", "#090d13" if p_starred else "#b91c1c", "btn_star_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_star_poem", "<Button-1>", lambda e, u=p_uri, t=p_title, a=p_author, ln=_fast_ascii("\n".join(full_arr)): self._toggle_star("foundations", 1, u, caption=f"{t} -- {a} ({p_when})", study_note=ln, source=f"{a} | {p_where}"))
 
         b_dd_txt = self._busy_btns.get(("foundations", 1, "poem_dd"), f"[+ DEEP DIVE CHAPTER ({dd_cnt})]")
-        bx_dd, _ = self._draw_pill_btn(bx_p + 8, y, b_dd_txt, "#e6dcc8", "#3fb950", "btn_dd_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_dd, _ = self._draw_pill_btn(bx_p + 8, y, b_dd_txt, "#c49648", "#3fb950", "btn_dd_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_dd_poem", "<Button-1>", lambda e: self._pull_poem_deep_dive())
 
         b_pull_txt = self._busy_btns.get(("foundations", 1, "poem"), "[PULL NEXT STANZA]")
-        bx_nx, _ = self._draw_pill_btn(bx_dd + 8, y, b_pull_txt, "#e6dcc8", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_nx, _ = self._draw_pill_btn(bx_dd + 8, y, b_pull_txt, "#c49648", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_next_poem", "<Button-1>", lambda e: self._pull_next_poem())
 
         if len(full_arr) > len(prev_arr):
             exp_txt = "[- COLLAPSE STANZAS]" if is_exp else f"[+ EXPAND FULL POEM ({len(full_arr)} LINES)]"
-            self._draw_pill_btn(bx_nx + 8, y, exp_txt, "#e6dcc8", "#58a6ff", "btn_exp_poem", pad_x=10, pad_y=4, font_sz=8)
+            self._draw_pill_btn(bx_nx + 8, y, exp_txt, "#c49648", "#58a6ff", "btn_exp_poem", pad_x=10, pad_y=4, font_sz=8)
             self.cv.tag_bind("btn_exp_poem", "<Button-1>", lambda e: self._toggle_expand_poem())
         y += 30
 
@@ -1181,7 +1181,7 @@ class KnowledgeDesktopHub(tk.Tk):
             self.cv.tag_lower(dd_bg)
             y = ddb[3] + 18
 
-        p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#e8dac0", outline="#d2a8ff", width=1)
+        p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#e2be7e", outline="#d2a8ff", width=1)
         self.cv.tag_lower(p_card_bg)
         y += 14
 
@@ -1202,7 +1202,7 @@ class KnowledgeDesktopHub(tk.Tk):
             tid = self.cv.create_text(28, y, text=body, fill="#26221e", font=("Courier", 11), anchor="nw", width=cw - 56)
             bb = self.cv.bbox(tid) or (28, y, cw - 28, y + 60)
             y = bb[3] + 12
-            cbg = self.cv.create_rectangle(16, ctop, cw - 16, y, fill="#e8dac0", outline=col, width=1)
+            cbg = self.cv.create_rectangle(16, ctop, cw - 16, y, fill="#e2be7e", outline=col, width=1)
             self.cv.tag_lower(cbg)
             y += 12
         return y
