@@ -501,6 +501,14 @@ p, li, .lesson-body, .summary, div {
     color: #ff2a36 !important;
 }
 
+
+/* Top Banner Title: [EPOCH ZERO] // CONSCIOUSNESS IRREVERSER in Arterial Red */
+h1, .hdr h1, header h1, .main-title {
+    color: #c81d25 !important;
+    text-shadow: 1px 1px 0px rgba(20, 18, 16, 0.25) !important;
+    font-weight: 900 !important;
+}
+
 </style>
 </head>
 <body>
