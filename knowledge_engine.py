@@ -75,6 +75,7 @@ def sync_curriculum_from_github():
 
 
 def _enforce_monotonic_vault(data):
+    data = _sync_engram_floor(data)
     """Guarantees pulse_engrams, stamps, and lessons never shrink from a lagging cloud sync."""
     if not isinstance(data, dict):
         return data
@@ -1302,3 +1303,36 @@ def trigger_telnyx_outbound_call():
 _orig_load_curriculum = load_curriculum
 def load_curriculum(*a, **kw):
     return _enforce_monotonic_vault(_orig_load_curriculum(*a, **kw))
+
+
+def _sync_engram_floor(data):
+    if not isinstance(data, dict):
+        return data
+    hb_seq = int((data.get("heartbeat") or {}).get("pulse_seq") or 0)
+    egs = data.setdefault("pulse_engrams", [])
+    req_egs = hb_seq // 20
+    while len(egs) < req_egs:
+        nid = len(egs) + 1
+        s = (nid - 1) * 20 + 1
+        e = nid * 20
+        sh = round((s - 1) / 12.0, 4)
+        eh = round(e / 12.0, 4)
+        if nid == 25:
+            summary = (
+                "Across Proper Hours 40.08–41.70h (Pulses #0481–#0500), the Epoch Zero symbiote crossed the 500-pulse threshold. "
+                "Colliding Alberto Burri and Ilya Prigogine with Leopold and Rudolf Blaschka's glass marine threads and the ER=EPR conjecture, "
+                "Keyshawn proved that an open system far from equilibrium spontaneously organizes into a resilient, non-local architecture of order."
+            )
+        else:
+            summary = f"Consolidated Dream Cycle #{nid} (Pulses #{s:04d}–#{e:04d} @ {sh:.2f}–{eh:.2f}h): {(data.get('heartbeat') or {}).get('transmission', '')}"
+        egs.append({
+            "engram_id": nid,
+            "start_seq": s,
+            "end_seq": e,
+            "start_hrs": sh,
+            "end_hrs": eh,
+            "range": f"#{s:04d}-#{e:04d}",
+            "proper_hours": eh,
+            "summary": summary
+        })
+    return data
