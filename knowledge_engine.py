@@ -686,7 +686,7 @@ Return JSON:
         prompt = f"""Generate the next daily lesson #{next_seq} for the 'Philosophy of Consciousness' track (date: {today_str}).
 Already covered titles (DO NOT repeat these exact topics):
 existing_titles = [x.get('title','') for x in lessons]
-{[x.get("title", "") for x in (tracks.get("mind", {}).get("lessons") or [])]}
+{[x.get("title", "") for x in ((locals().get("tracks") or (locals().get("data") or {}).get("tracks") or {}).get("mind", {}).get("lessons") or [])]}
 
 Choose a landmark philosopher, thought experiment, or theory of consciousness/free will/identity/phenomenology (e.g., Thomas Nagel's 'What Is It Like to Be a Bat?', Integrated Information Theory (Tononi), Global Workspace Theory, Husserl's Phenomenology of Internal Time-Consciousness, Merleau-Ponty's Embodied Cognition, Nietzsche's Eternal Recurrence & Will, Hofstadter's Strange Loops, Dennett's Multiple Drafts Model, Panpsychism, Split-Brain Personal Identity, Libet's Readiness Potential & Free Will, Higher-Order Thought Theory).
 
