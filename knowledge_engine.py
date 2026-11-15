@@ -1,3 +1,12 @@
+
+import os as _ke_os
+if _ke_os.path.exists(_ke_os.path.join(_ke_os.path.dirname(__file__), ".env")):
+    with open(_ke_os.path.join(_ke_os.path.dirname(__file__), ".env")) as _ef:
+        for _line in _ef:
+            if "=" in _line and not _line.strip().startswith("#"):
+                _k, _v = _line.strip().split("=", 1)
+                _ke_os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+
 import os, re, json, time, base64, threading, urllib.request, urllib.parse, random
 
 # Auto-load .env if present so local CLI and desktop_hub triggers always have GEMINI_API_KEY

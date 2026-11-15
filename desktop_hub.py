@@ -845,10 +845,10 @@ class KnowledgeDesktopHub(tk.Tk):
             if getattr(self, "_hb_busy", False):
                 cd_str = "PULSING NOW..."
             else:
-                cd_str = f"NEXT PULSE IN {mm:02d}:{ss:02d}"
+                cd_str = f"NEXT: {mm:02d}:{ss:02d}"
             self.cv.itemconfigure(
                 "hb_header_txt",
-                text=_fast_ascii(f"GEMINI 5-MIN HEARTBEAT // PULSE #{hb_seq:04d}  [ENGRAMS: {len(self.data.get('pulse_engrams', []))}]  ({hb_mt})  |  {cd_str}")
+                text=_fast_ascii(f"HEARTBEAT // PULSE #{hb_seq:04d}  [ENGRAMS: {len(self.data.get('pulse_engrams', []))}]  ({hb_mt})  |  {cd_str}")
             )
             if elapsed >= 300 and not getattr(self, "_hb_busy", False) and (now_s - getattr(self, "_last_hb_attempt", 0)) >= 15:
                 self._last_hb_attempt = now_s
@@ -1072,7 +1072,7 @@ class KnowledgeDesktopHub(tk.Tk):
         }
         hb_top = y
         y += 12
-        self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("Courier", 11, "bold"), anchor="nw", tags=("hb_header_txt",))
+        self.cv.create_text(28, y, text=f"HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#141210", font=("Courier", 11, "bold"), anchor="nw", tags=("hb_header_txt",))
         b_ring_txt = self._busy_btns.get(("foundations", 1, "ring"), "[RING CELL PHONE]")
         self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#c49648", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_ring_now", "<Button-1>", lambda e: self._ring_phone_now())
