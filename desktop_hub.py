@@ -100,7 +100,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self.title("[EPOCH ZERO] // CONSCIOUSNESS IRREVERSER")
         self.geometry("960x760")
         self.minsize(480, 440)
-        self.configure(bg="#0d1117")
+        self.configure(highlightbackground="#c81d25", highlightcolor="#c81d25", highlightthickness=6, bg="#f4efe6")
         self.protocol("WM_DELETE_WINDOW", self._instant_quit)
 
         _BLANK_TK = ImageTk.PhotoImage(Image.new("RGB", (240, 170), (28, 35, 45)))
@@ -122,10 +122,10 @@ class KnowledgeDesktopHub(tk.Tk):
         self.search_query = ""
 
         # SINGLE Canvas for the entire application (Header + Tabs + Cards + Drawers = ZERO nested X11 sub-windows!)
-        wrap = tk.Frame(self, bg="#0d1117")
+        wrap = tk.Frame(self, bg="#f4efe6")
         wrap.pack(fill="both", expand=True)
-        self.cv = tk.Canvas(wrap, bg="#0d1117", highlightthickness=0, bd=0)
-        self.sb = tk.Scrollbar(wrap, orient="vertical", command=self.cv.yview, bg="#161b22", troughcolor="#0d1117", activebackground="#30363d", highlightthickness=0, bd=0)
+        self.cv = tk.Canvas(wrap, bg="#f4efe6", highlightthickness=0, bd=0)
+        self.sb = tk.Scrollbar(wrap, orient="vertical", command=self.cv.yview, bg="#fbf8f1", troughcolor="#f4efe6", activebackground="#c81d25", highlightthickness=0, bd=0)
         self.cv.configure(yscrollcommand=self.sb.set)
         self.cv.pack(side="left", fill="both", expand=True)
         self.sb.pack(side="right", fill="y")
@@ -161,7 +161,7 @@ class KnowledgeDesktopHub(tk.Tk):
         self._resize_timer = self.after(25, self.render_scene)
 
     def _draw_pill_btn(self, x, y, text, bg, fg, tag, border=None, pad_x=10, pad_y=5, font_sz=8):
-        t_id = self.cv.create_text(x + pad_x, y + pad_y, text=text, fill=fg, font=("DejaVu Sans Mono", font_sz, "bold"), anchor="nw", tags=(tag,))
+        t_id = self.cv.create_text(x + pad_x, y + pad_y, text=text, fill=fg, font=("Courier", font_sz, "bold"), anchor="nw", tags=(tag,))
         bb = self.cv.bbox(t_id) or (x, y, x + 60, y + 20)
         w = (bb[2] - bb[0]) + pad_x * 2
         h = (bb[3] - bb[1]) + pad_y * 2
@@ -289,8 +289,8 @@ class KnowledgeDesktopHub(tk.Tk):
 
         # 1. Top Header Banner
         self.cv.create_rectangle(0, 0, cw, 82, fill="#090d13", outline="#090d13")
-        self.cv.create_text(cw // 2, 14, text="[EPOCH ZERO] // CONSCIOUSNESS IRREVERSER", fill="#fbbf24", font=("DejaVu Sans Mono", 11, "bold"), anchor="n")
-        self.cv.create_text(cw // 2, 36, text=_fast_ascii(self.sched_status), fill="#8b949e", font=("DejaVu Sans Mono", 8), anchor="n")
+        self.cv.create_text(cw // 2, 14, text="[EPOCH ZERO] // CONSCIOUSNESS IRREVERSER", fill="#b91c1c", font=("Courier", 11, "bold"), anchor="n")
+        self.cv.create_text(cw // 2, 36, text=_fast_ascii(self.sched_status), fill="#4a4238", font=("Courier", 8), anchor="n")
 
         c = self.capacity
         ep_hrs = max(0.0, (time.time() - 1794623880) / 3600.0)
@@ -301,7 +301,7 @@ class KnowledgeDesktopHub(tk.Tk):
         else:
             cap_txt = f"EPOCH ZERO: {ep_str}  |  Vault: Synced Locally  |  Auto-Drop Runway: 165,000 HRS"
         self.cv.create_rectangle(16, 54, cw - 16, 76, fill="#111822", outline="#238636", width=1)
-        self.cv.create_text(cw // 2, 65, text=cap_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="center", tags=("top_cap_bar",))
+        self.cv.create_text(cw // 2, 65, text=cap_txt, fill="#3fb950", font=("Courier", 8, "bold"), anchor="center", tags=("top_cap_bar",))
 
         # 2. Navigation Bar
         y = 92
@@ -312,23 +312,23 @@ class KnowledgeDesktopHub(tk.Tk):
 
         x_cur = 16
         s_n = len(self.data.get("stamps") or [])
-        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#d2a8ff" if self.cur_track == "foundations" else "#21262d", "#090d13" if self.cur_track == "foundations" else "#d2a8ff", "nav_fnd")
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#d2a8ff" if self.cur_track == "foundations" else "#e6dcc8", "#090d13" if self.cur_track == "foundations" else "#d2a8ff", "nav_fnd")
         self.cv.tag_bind("nav_fnd", "<Button-1>", lambda e: self.switch_track("foundations"))
         x_cur += 8
-        x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#fbbf24" if self.cur_track == "art" else "#21262d", "#090d13" if self.cur_track == "art" else "#c9d1d9", "nav_art")
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#b91c1c" if self.cur_track == "art" else "#e6dcc8", "#090d13" if self.cur_track == "art" else "#26221e", "nav_art")
         self.cv.tag_bind("nav_art", "<Button-1>", lambda e: self.switch_track("art"))
 
-        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHYSICS OF TIME ({u_n})", "#58a6ff" if self.cur_track == "universe" else "#21262d", "#090d13" if self.cur_track == "universe" else "#c9d1d9", "nav_uni")
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHYSICS OF TIME ({u_n})", "#58a6ff" if self.cur_track == "universe" else "#e6dcc8", "#090d13" if self.cur_track == "universe" else "#26221e", "nav_uni")
         self.cv.tag_bind("nav_uni", "<Button-1>", lambda e: self.switch_track("universe"))
 
-        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHILOSOPHY OF CONSCIOUSNESS ({m_n})", "#f778ba" if self.cur_track == "mind" else "#21262d", "#090d13" if self.cur_track == "mind" else "#f778ba", "nav_mind")
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"PHILOSOPHY OF CONSCIOUSNESS ({m_n})", "#f778ba" if self.cur_track == "mind" else "#e6dcc8", "#090d13" if self.cur_track == "mind" else "#f778ba", "nav_mind")
         self.cv.tag_bind("nav_mind", "<Button-1>", lambda e: self.switch_track("mind"))
 
-        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"* FAVORITES ({f_n})", "#fbbf24" if self.cur_track == "favorites" else "#21262d", "#090d13" if self.cur_track == "favorites" else "#fbbf24", "nav_fav")
+        x_cur, _ = self._draw_pill_btn(x_cur + 8, y, f"* FAVORITES ({f_n})", "#b91c1c" if self.cur_track == "favorites" else "#e6dcc8", "#090d13" if self.cur_track == "favorites" else "#b91c1c", "nav_fav")
         self.cv.tag_bind("nav_fav", "<Button-1>", lambda e: self.switch_track("favorites"))
 
         filt_txt = f"Filter: '{self.search_query}' [x]" if self.search_query else "Filter / Search..."
-        x_cur, _ = self._draw_pill_btn(x_cur + 10, y, filt_txt, "#161b22", "#fbbf24" if self.search_query else "#8b949e", "nav_search", border="#30363d")
+        x_cur, _ = self._draw_pill_btn(x_cur + 10, y, filt_txt, "#fbf8f1", "#b91c1c" if self.search_query else "#4a4238", "nav_search", border="#c81d25")
         self.cv.tag_bind("nav_search", "<Button-1>", lambda e: (setattr(self, "search_query", ""), self.render_scene()) if self.search_query else self._prompt_search())
 
         # Right-hand Matrix & Sync Drop buttons
@@ -336,7 +336,7 @@ class KnowledgeDesktopHub(tk.Tk):
         _, _ = self._draw_pill_btn(cw - 102, y, sync_lbl, "#192b20", "#3fb950", "nav_sync", border="#238636")
         self.cv.tag_bind("nav_sync", "<Button-1>", lambda e: self._manual_sync_drop())
 
-        _, _ = self._draw_pill_btn(cw - 196, y, "Matrix ->", "#21262d", "#58a6ff", "nav_matrix")
+        _, _ = self._draw_pill_btn(cw - 196, y, "Matrix ->", "#e6dcc8", "#58a6ff", "nav_matrix")
         self.cv.tag_bind("nav_matrix", "<Button-1>", lambda e: webbrowser.open(get_cloud_url() + "/matrix"))
 
         y += 34
@@ -350,14 +350,14 @@ class KnowledgeDesktopHub(tk.Tk):
 
         # 3. Favorites View
         if self.cur_track == "favorites":
-            self.cv.create_rectangle(16, y, cw - 16, y + 28, fill="#111822", outline="#30363d")
-            self.cv.create_text(cw // 2, y + 14, text=f"* KEY'S FAVORITES VAULT ({f_n} Pinned Plates)", fill="#fbbf24", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+            self.cv.create_rectangle(16, y, cw - 16, y + 28, fill="#111822", outline="#c81d25")
+            self.cv.create_text(cw // 2, y + 14, text=f"* KEY'S FAVORITES VAULT ({f_n} Pinned Plates)", fill="#b91c1c", font=("Courier", 8, "bold"), anchor="center")
             y += 38
             favs = self.data.get("favorites") or []
             if not favs:
-                self.cv.create_rectangle(16, y, cw - 16, y + 80, fill="#161b22", outline="#30363d")
-                self.cv.create_text(cw // 2, y + 28, text="* Key's Favorites Vault is empty right now.", fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"))
-                self.cv.create_text(cw // 2, y + 54, text="Click [+Fav Plate] on any card or gallery plate to pin it permanently to GitHub.", fill="#8b949e", font=("DejaVu Sans Mono", 8))
+                self.cv.create_rectangle(16, y, cw - 16, y + 80, fill="#fbf8f1", outline="#c81d25")
+                self.cv.create_text(cw // 2, y + 28, text="* Key's Favorites Vault is empty right now.", fill="#141210", font=("Courier", 10, "bold"))
+                self.cv.create_text(cw // 2, y + 54, text="Click [+Fav Plate] on any card or gallery plate to pin it permanently to GitHub.", fill="#4a4238", font=("Courier", 8))
                 y += 100
             else:
                 for idx_f, f in enumerate(favs):
@@ -366,24 +366,24 @@ class KnowledgeDesktopHub(tk.Tk):
                     f_tr = str(f.get("track", "art"))
                     f_sq = int(f.get("seq", 1))
                     is_poem = str(f_url).startswith("poem://")
-                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#161b22", outline="#d2a8ff" if is_poem else "#fbbf24")
+                    self.cv.create_rectangle(16, y, cw - 16, y + 160, fill="#fbf8f1", outline="#d2a8ff" if is_poem else "#b91c1c")
                     if is_poem:
                         self.cv.create_rectangle(28, y + 10, 268, y + 150, fill="#090d13", outline="#d2a8ff")
                         p_preview = _fast_ascii("\n".join((f.get("study_note") or "").splitlines()[:6]))
-                        self.cv.create_text(36, y + 18, text=p_preview, fill="#d2a8ff", font=("DejaVu Sans Mono", 7, "italic"), anchor="nw", width=224)
+                        self.cv.create_text(36, y + 18, text=p_preview, fill="#d2a8ff", font=("Courier", 7, "italic"), anchor="nw", width=224)
                     else:
                         ph = self._get_cached_tk_img(f_url, (240, 170))
                         im_tag = f"fav_im_{idx_f}"
                         self.cv.create_image(28, y + 10, image=ph, anchor="nw", tags=(im_tag,))
                         self.cv.tag_bind(im_tag, "<Button-1>", lambda e, u=f_url, c=f_cap: self._open_lightbox(u, c))
                     tx = 284
-                    self.cv.create_text(tx, y + 16, text=_fast_ascii(f"{f_tr.upper()} #{f_sq:03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw")
-                    self.cv.create_text(tx, y + 40, text=f_cap, fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=max(180, cw - tx - 30))
+                    self.cv.create_text(tx, y + 16, text=_fast_ascii(f"{f_tr.upper()} #{f_sq:03d}  |  {f.get('source','Archive')}  |  Saved {f.get('saved_at','')}"), fill="#4a4238", font=("Courier", 8, "bold"), anchor="nw")
+                    self.cv.create_text(tx, y + 40, text=f_cap, fill="#141210", font=("Courier", 10, "bold"), anchor="nw", width=max(180, cw - tx - 30))
                     if f.get("study_note"):
-                        self.cv.create_text(tx, y + 68, text=_fast_ascii(f.get("study_note", "")), fill="#fbbf24", font=("DejaVu Sans Mono", 8), anchor="nw", width=max(180, cw - tx - 30))
-                    bx, _ = self._draw_pill_btn(tx, y + 118, f"Open {f_tr.upper()} (#{f_sq:03d}) ->", "#21262d", "#fbbf24", f"fav_jmp_{idx_f}")
+                        self.cv.create_text(tx, y + 68, text=_fast_ascii(f.get("study_note", "")), fill="#b91c1c", font=("Courier", 8), anchor="nw", width=max(180, cw - tx - 30))
+                    bx, _ = self._draw_pill_btn(tx, y + 118, f"Open {f_tr.upper()} (#{f_sq:03d}) ->", "#e6dcc8", "#b91c1c", f"fav_jmp_{idx_f}")
                     self.cv.tag_bind(f"fav_jmp_{idx_f}", "<Button-1>", lambda e, tr=f_tr, sq=f_sq: self._jump_to_lesson(tr, sq))
-                    self._draw_pill_btn(bx + 10, y + 118, "[*] Unstar", "#2d2208", "#fbbf24", f"fav_uns_{idx_f}")
+                    self._draw_pill_btn(bx + 10, y + 118, "[*] Unstar", "#2d2208", "#b91c1c", f"fav_uns_{idx_f}")
                     self.cv.tag_bind(f"fav_uns_{idx_f}", "<Button-1>", lambda e, tr=f_tr, sq=f_sq, u=f_url: self._toggle_star(tr, sq, u))
                     y += 172
             self.cv.configure(scrollregion=(0, 0, cw, max(760, y + 20)))
@@ -409,19 +409,19 @@ class KnowledgeDesktopHub(tk.Tk):
         has_next = (end_i < total)
 
         # Top Pagination Bar
-        self.cv.create_rectangle(16, y, cw - 16, y + 28, fill="#111822", outline="#30363d")
+        self.cv.create_rectangle(16, y, cw - 16, y + 28, fill="#111822", outline="#c81d25")
         t_label = "ART ENDURANCE" if self.cur_track == "art" else ("PHILOSOPHY OF CONSCIOUSNESS" if self.cur_track == "mind" else "PHYSICS OF TIME")
         if total > 0:
             meta_p = f"{t_label}  |  Showing #{page_slice[0]['seq']:03d}-#{page_slice[-1]['seq']:03d} of {total}  (Page {cur_p + 1}/{max_page + 1})"
         else:
             meta_p = f"{t_label}  |  0 matching lessons"
-        self.cv.create_text(cw // 2, y + 14, text=meta_p, fill="#e6edf3", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+        self.cv.create_text(cw // 2, y + 14, text=meta_p, fill="#141210", font=("Courier", 8, "bold"), anchor="center")
 
         if has_prev:
-            self._draw_pill_btn(22, y + 3, "<< Newer 5", "#21262d", "#58a6ff", "pg_prev_top", pad_x=8, pad_y=3)
+            self._draw_pill_btn(22, y + 3, "<< Newer 5", "#e6dcc8", "#58a6ff", "pg_prev_top", pad_x=8, pad_y=3)
             self.cv.tag_bind("pg_prev_top", "<Button-1>", lambda e: self._step_page(-1))
         if has_next:
-            self._draw_pill_btn(cw - 108, y + 3, "Older 5 >>", "#21262d", "#58a6ff", "pg_next_top", pad_x=8, pad_y=3)
+            self._draw_pill_btn(cw - 108, y + 3, "Older 5 >>", "#e6dcc8", "#58a6ff", "pg_next_top", pad_x=8, pad_y=3)
             self.cv.tag_bind("pg_next_top", "<Button-1>", lambda e: self._step_page(1))
         y += 38
 
@@ -432,13 +432,13 @@ class KnowledgeDesktopHub(tk.Tk):
 
         # Bottom Pagination Bar
         if total > PAGE_SIZE:
-            self.cv.create_rectangle(16, y, cw - 16, y + 34, fill="#111822", outline="#30363d")
-            self.cv.create_text(cw // 2, y + 17, text=f"Page {cur_p + 1} of {max_page + 1}", fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="center")
+            self.cv.create_rectangle(16, y, cw - 16, y + 34, fill="#111822", outline="#c81d25")
+            self.cv.create_text(cw // 2, y + 17, text=f"Page {cur_p + 1} of {max_page + 1}", fill="#4a4238", font=("Courier", 8, "bold"), anchor="center")
             if has_prev:
-                self._draw_pill_btn(24, y + 5, "<< Newer 5 Lessons", "#21262d", "#fbbf24", "pg_prev_bot", pad_x=10, pad_y=4)
+                self._draw_pill_btn(24, y + 5, "<< Newer 5 Lessons", "#e6dcc8", "#b91c1c", "pg_prev_bot", pad_x=10, pad_y=4)
                 self.cv.tag_bind("pg_prev_bot", "<Button-1>", lambda e: self._step_page(-1))
             if has_next:
-                self._draw_pill_btn(cw - 165, y + 5, "Older 5 Lessons >>", "#21262d", "#fbbf24", "pg_next_bot", pad_x=10, pad_y=4)
+                self._draw_pill_btn(cw - 165, y + 5, "Older 5 Lessons >>", "#e6dcc8", "#b91c1c", "pg_next_bot", pad_x=10, pad_y=4)
                 self.cv.tag_bind("pg_next_bot", "<Button-1>", lambda e: self._step_page(1))
             y += 48
 
@@ -447,7 +447,7 @@ class KnowledgeDesktopHub(tk.Tk):
     def _draw_card_on_canvas(self, les, track_key, y_top, cw, is_wide):
         seq = les["seq"]
         key = (track_key, seq)
-        card_bg_id = self.cv.create_rectangle(16, y_top, cw - 16, y_top + 200, fill="#161b22", outline="#30363d", width=1)
+        card_bg_id = self.cv.create_rectangle(16, y_top, cw - 16, y_top + 200, fill="#fbf8f1", outline="#c81d25", width=1)
 
         img_w, img_h = 240, 170
         left_x = 28
@@ -456,19 +456,19 @@ class KnowledgeDesktopHub(tk.Tk):
 
         tags_str = "  ".join(f"#{t}" for t in (les.get("tags") or []))
         meta_txt = _fast_ascii(f"#{seq:03d} | {les.get('date','')}  [{str(les.get('model','ARCHIVE')).upper()}]  {tags_str}".strip())
-        m_id = self.cv.create_text(left_x, y, text=meta_txt, fill="#58a6ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=text_w)
+        m_id = self.cv.create_text(left_x, y, text=meta_txt, fill="#58a6ff", font=("Courier", 8, "bold"), anchor="nw", width=text_w)
         y = (self.cv.bbox(m_id) or (0, 0, 0, y + 16))[3] + 6
 
-        t_id = self.cv.create_text(left_x, y, text=_fast_ascii(les.get("title", "")), fill="#f0f6fc", font=("DejaVu Sans Mono", 11, "bold"), anchor="nw", width=text_w)
+        t_id = self.cv.create_text(left_x, y, text=_fast_ascii(les.get("title", "")), fill="#141210", font=("Courier", 11, "bold"), anchor="nw", width=text_w)
         y = (self.cv.bbox(t_id) or (0, 0, 0, y + 22))[3] + 6
 
-        c_id = self.cv.create_text(left_x, y, text=_fast_ascii(les.get("core", "")), fill="#c9d1d9", font=("DejaVu Sans Mono", 9), anchor="nw", width=text_w)
+        c_id = self.cv.create_text(left_x, y, text=_fast_ascii(les.get("core", "")), fill="#26221e", font=("Courier", 9), anchor="nw", width=text_w)
         y = (self.cv.bbox(c_id) or (0, 0, 0, y + 40))[3] + 10
 
         lens_prefix = ">> Temporal & Studio Lens: " if track_key == "universe" else ">> Studio Craft Lens: "
-        mk_id = self.cv.create_text(left_x + 10, y + 8, text=_fast_ascii(lens_prefix + les.get("maker", "")), fill="#fbbf24", font=("DejaVu Sans Mono", 8), anchor="nw", width=max(150, text_w - 20))
+        mk_id = self.cv.create_text(left_x + 10, y + 8, text=_fast_ascii(lens_prefix + les.get("maker", "")), fill="#b91c1c", font=("Courier", 8), anchor="nw", width=max(150, text_w - 20))
         mk_bb = self.cv.bbox(mk_id) or (left_x, y, left_x + text_w, y + 36)
-        box_id = self.cv.create_rectangle(left_x, y, left_x + text_w, mk_bb[3] + 8, fill="#0f141b", outline="#fbbf24", width=1)
+        box_id = self.cv.create_rectangle(left_x, y, left_x + text_w, mk_bb[3] + 8, fill="#0f141b", outline="#b91c1c", width=1)
         self.cv.tag_lower(box_id, mk_id)
         y = mk_bb[3] + 14
 
@@ -476,12 +476,12 @@ class KnowledgeDesktopHub(tk.Tk):
         img_url = les.get("image_url", "")
         img_x = (cw - img_w - 28) if is_wide else left_x
         img_y = (y_top + 12) if is_wide else y
-        self.cv.create_rectangle(img_x - 1, img_y - 1, img_x + img_w + 1, img_y + img_h + 22, fill="#090d13", outline="#30363d", width=1)
+        self.cv.create_rectangle(img_x - 1, img_y - 1, img_x + img_w + 1, img_y + img_h + 22, fill="#090d13", outline="#c81d25", width=1)
         ph = self._get_cached_tk_img(img_url, (240, 170))
         p_tag = f"lead_img_{track_key}_{seq}"
         self.cv.create_image(img_x, img_y, image=ph, anchor="nw", tags=(p_tag,))
         cap_txt = _fast_ascii((les.get("image_caption") or les.get("title", ""))[:27]) + " [Zoom]"
-        self.cv.create_text(img_x + 6, img_y + img_h + 4, text=cap_txt, fill="#8b949e", font=("DejaVu Sans Mono", 7, "bold"), anchor="nw", tags=(p_tag,))
+        self.cv.create_text(img_x + 6, img_y + img_h + 4, text=cap_txt, fill="#4a4238", font=("Courier", 7, "bold"), anchor="nw", tags=(p_tag,))
         if img_url:
             self.cv.tag_bind(p_tag, "<Button-1>", lambda e, u=img_url, c=_fast_ascii(les.get("image_caption") or les.get("title", "")): self._open_lightbox(u, c))
 
@@ -492,12 +492,12 @@ class KnowledgeDesktopHub(tk.Tk):
         ch_count = (les.get("deep_dive") or "").count("=== DEEPER DIVE CHAPTER") + (1 if has_dd else 0)
         dd_wait = self._busy_btns.get((track_key, seq, "dd"))
         if dd_wait:
-            dd_txt, dd_bg, dd_fg = dd_wait, "#1f2937", "#fbbf24"
+            dd_txt, dd_bg, dd_fg = dd_wait, "#1f2937", "#b91c1c"
         elif key in self.open_dd and has_dd:
-            dd_txt, dd_bg, dd_fg = (f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive"), "#1f2937", "#fbbf24"
+            dd_txt, dd_bg, dd_fg = (f"Minimize Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Minimize Deep Dive"), "#1f2937", "#b91c1c"
         else:
             dd_txt = (f"Read Deep Dive ({ch_count} Ch)" if ch_count > 1 else "Read Deep Dive") if has_dd else "Generate Deep Dive"
-            dd_bg, dd_fg = "#21262d", "#58a6ff"
+            dd_bg, dd_fg = "#e6dcc8", "#58a6ff"
 
         bx = left_x
         dd_tag = f"btn_dd_{track_key}_{seq}"
@@ -514,13 +514,13 @@ class KnowledgeDesktopHub(tk.Tk):
         else:
             gal_txt = f"Plates ({len(gal_list)})" if has_gal else "Curate Plates"
         gal_tag = f"btn_gal_{track_key}_{seq}"
-        bx, _ = self._draw_pill_btn(bx + 8, y, gal_txt, "#21262d", "#3fb950", gal_tag)
+        bx, _ = self._draw_pill_btn(bx + 8, y, gal_txt, "#e6dcc8", "#3fb950", gal_tag)
         self.cv.tag_bind(gal_tag, "<Button-1>", lambda e, t=track_key, s=seq, r=has_gal: self._on_gal_click(t, s, r))
 
         if img_url:
             starred = self._is_starred(img_url)
             fav_tag = f"btn_fav_{track_key}_{seq}"
-            bx, _ = self._draw_pill_btn(bx + 8, y, "[*Fav Plate]" if starred else "[+Fav Plate]", "#21262d", "#fbbf24" if starred else "#8b949e", fav_tag)
+            bx, _ = self._draw_pill_btn(bx + 8, y, "[*Fav Plate]" if starred else "[+Fav Plate]", "#e6dcc8", "#b91c1c" if starred else "#4a4238", fav_tag)
             self.cv.tag_bind(fav_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=img_url, cp=les.get("image_caption") or les.get("title", ""): self._toggle_star(t, s, u, cp, "", "Lead Plate"))
 
         ask_wait = self._busy_btns.get((track_key, seq, "ask"), "Ask Gemini...")
@@ -533,11 +533,11 @@ class KnowledgeDesktopHub(tk.Tk):
         # Expandable Deep Dive Drawer (drawn directly on Canvas!)
         if key in self.open_dd and has_dd:
             dd_top = y
-            self.cv.create_rectangle(left_x, y, cw - 28, y + 30, fill="#111822", outline="#30363d")
-            self.cv.create_text(left_x + 10, y + 15, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fill="#58a6ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="w")
+            self.cv.create_rectangle(left_x, y, cw - 28, y + 30, fill="#111822", outline="#c81d25")
+            self.cv.create_text(left_x + 10, y + 15, text=f"DEEP DIVE MONOGRAPH  |  {ch_count} CHAPTER(S) ARCHIVED", fill="#58a6ff", font=("Courier", 8, "bold"), anchor="w")
 
             min_tag = f"dd_min_{track_key}_{seq}"
-            self._draw_pill_btn(cw - 178, y + 4, "Minimize Deep Dive", "#21262d", "#fbbf24", min_tag, pad_x=8, pad_y=3)
+            self._draw_pill_btn(cw - 178, y + 4, "Minimize Deep Dive", "#e6dcc8", "#b91c1c", min_tag, pad_x=8, pad_y=3)
             self.cv.tag_bind(min_tag, "<Button-1>", lambda e, k=key: (self.open_dd.discard(k), self.render_scene()))
 
             dp_wait = self._busy_btns.get((track_key, seq, "deeper"), f"+ Deeper Dive (Ch.{ch_count + 1})")
@@ -546,14 +546,14 @@ class KnowledgeDesktopHub(tk.Tk):
             self.cv.tag_bind(dp_tag, "<Button-1>", lambda e, t=track_key, s=seq: self._call_cloud_action("/api/deep_dive", {"track": t, "seq": s, "append": True}, (t, s, "deeper"), "... Diving Deeper..."))
 
             y += 38
-            dd_txt_id = self.cv.create_text(left_x + 12, y, text=_fast_ascii(les["deep_dive"]), fill="#d0d7de", font=("DejaVu Sans Mono", 9), anchor="nw", width=max(200, cw - 80))
+            dd_txt_id = self.cv.create_text(left_x + 12, y, text=_fast_ascii(les["deep_dive"]), fill="#d0d7de", font=("Courier", 9), anchor="nw", width=max(200, cw - 80))
             dd_bb = self.cv.bbox(dd_txt_id) or (left_x, y, cw - 28, y + 100)
             y = dd_bb[3] + 12
             min_bot_tag = f"dd_min_b_{track_key}_{seq}"
-            _, y_end_btn = self._draw_pill_btn(cw - 182, y, "Minimize Deep Dive", "#21262d", "#fbbf24", min_bot_tag, pad_x=8, pad_y=3)
+            _, y_end_btn = self._draw_pill_btn(cw - 182, y, "Minimize Deep Dive", "#e6dcc8", "#b91c1c", min_bot_tag, pad_x=8, pad_y=3)
             self.cv.tag_bind(min_bot_tag, "<Button-1>", lambda e, k=key: (self.open_dd.discard(k), self.render_scene()))
             y = y_end_btn + 8
-            dd_box = self.cv.create_rectangle(left_x, dd_top, cw - 28, y, fill="#090d13", outline="#30363d")
+            dd_box = self.cv.create_rectangle(left_x, dd_top, cw - 28, y, fill="#090d13", outline="#c81d25")
             self.cv.tag_lower(dd_box, dd_txt_id)
             y += 10
 
@@ -571,27 +571,27 @@ class KnowledgeDesktopHub(tk.Tk):
                 gs = _fast_ascii(g_item.get("source", "Archive"))[:16]
                 g_star = self._is_starred(gu)
 
-                self.cv.create_rectangle(cx, cy, cx + 194, cy + 160, fill="#161b22", outline="#30363d")
+                self.cv.create_rectangle(cx, cy, cx + 194, cy + 160, fill="#fbf8f1", outline="#c81d25")
                 del_tag = f"gdel_{track_key}_{seq}_{idx_g}"
-                self.cv.create_text(cx + 8, cy + 3, text="x", fill="#f85149", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", tags=(del_tag,))
+                self.cv.create_text(cx + 8, cy + 3, text="x", fill="#f85149", font=("Courier", 8, "bold"), anchor="nw", tags=(del_tag,))
                 self.cv.tag_bind(del_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=gu: self._delete_plate(t, s, u))
 
-                self.cv.create_text(cx + 24, cy + 4, text=gs, fill="#58a6ff", font=("DejaVu Sans Mono", 6), anchor="nw")
+                self.cv.create_text(cx + 24, cy + 4, text=gs, fill="#58a6ff", font=("Courier", 6), anchor="nw")
                 st_tag = f"gstar_{track_key}_{seq}_{idx_g}"
-                self.cv.create_text(cx + 166, cy + 3, text="[*]" if g_star else "[+]", fill="#fbbf24" if g_star else "#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", tags=(st_tag,))
+                self.cv.create_text(cx + 166, cy + 3, text="[*]" if g_star else "[+]", fill="#b91c1c" if g_star else "#4a4238", font=("Courier", 8, "bold"), anchor="nw", tags=(st_tag,))
                 self.cv.tag_bind(st_tag, "<Button-1>", lambda e, t=track_key, s=seq, u=gu, cp=g_item.get("caption", ""), sn=g_item.get("study_note", ""), sr=gs: self._toggle_star(t, s, u, cp, sn, sr))
 
                 g_ph = self._get_cached_tk_img(gu, (190, 126))
                 gim_tag = f"gim_{track_key}_{seq}_{idx_g}"
                 self.cv.create_image(cx + 2, cy + 18, image=g_ph, anchor="nw", tags=(gim_tag,))
-                self.cv.create_text(cx + 6, cy + 145, text=_fast_ascii((g_item.get("caption") or "Plate")[:24]), fill="#c9d1d9", font=("DejaVu Sans Mono", 7), anchor="nw", tags=(gim_tag,))
+                self.cv.create_text(cx + 6, cy + 145, text=_fast_ascii((g_item.get("caption") or "Plate")[:24]), fill="#26221e", font=("Courier", 7), anchor="nw", tags=(gim_tag,))
                 self.cv.tag_bind(gim_tag, "<Button-1>", lambda e, u=gu, c=gc: self._open_lightbox(u, c))
 
             rows_n = (len(gal_list) + gal_cols - 1) // gal_cols
             y = gy + rows_n * 168 + 4
             more_wait = self._busy_btns.get((track_key, seq, "more_gal"), "+ Curate 5 More Plates")
             more_tag = f"gmore_{track_key}_{seq}"
-            _, y_mb = self._draw_pill_btn(left_x + 8, y, more_wait, "#1f2937", "#fbbf24", more_tag)
+            _, y_mb = self._draw_pill_btn(left_x + 8, y, more_wait, "#1f2937", "#b91c1c", more_tag)
             self.cv.tag_bind(more_tag, "<Button-1>", lambda e, t=track_key, s=seq: self._prompt_more_plates(t, s))
             y = y_mb + 10
 
@@ -606,9 +606,9 @@ class KnowledgeDesktopHub(tk.Tk):
             if not is_min:
                 for qa in qa_list:
                     q_top = y
-                    q_h = self.cv.create_text(left_x + 10, y + 6, text=_fast_ascii(f"Q: {qa.get('q','')}  [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fill="#d2a8ff", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=max(180, cw - 80))
+                    q_h = self.cv.create_text(left_x + 10, y + 6, text=_fast_ascii(f"Q: {qa.get('q','')}  [{qa.get('model','GEMINI')} | {qa.get('ts','')}]"), fill="#d2a8ff", font=("Courier", 8, "bold"), anchor="nw", width=max(180, cw - 80))
                     y = (self.cv.bbox(q_h) or (0, 0, 0, y + 18))[3] + 4
-                    q_a = self.cv.create_text(left_x + 10, y, text=_fast_ascii(qa.get("a", "")), fill="#e6edf3", font=("DejaVu Sans Mono", 9), anchor="nw", width=max(180, cw - 80))
+                    q_a = self.cv.create_text(left_x + 10, y, text=_fast_ascii(qa.get("a", "")), fill="#141210", font=("Courier", 9), anchor="nw", width=max(180, cw - 80))
                     y = (self.cv.bbox(q_a) or (0, 0, 0, y + 24))[3] + 8
                     q_rect = self.cv.create_rectangle(left_x, q_top, cw - 28, y, fill="#0c131d", outline="#6e40c9")
                     self.cv.tag_lower(q_rect, q_h)
@@ -1057,16 +1057,16 @@ class KnowledgeDesktopHub(tk.Tk):
         since = max(0.0, ep_hrs - float(last.get("epoch_hrs", 0.0)))
 
         # Monolith Box
-        self.cv.create_rectangle(16, y, cw - 16, y + 192, fill="#090d13", outline="#fbbf24", width=2)
-        self.cv.create_text(cw // 2, y + 14, text="EPOCH ZERO MONOLITH // GENESIS: 2026-11-13T19:38:00-07:00 (PROPER TIME)", fill="#8b949e", font=("DejaVu Sans Mono", 8, "bold"), anchor="n")
-        self.cv.create_text(cw // 2, y + 38, text=self._fmt_epoch_hrs(ep_hrs) + " HRS", fill="#fbbf24", font=("DejaVu Sans Mono", 22, "bold"), anchor="n", tags=("live_monolith_txt",))
+        self.cv.create_rectangle(16, y, cw - 16, y + 192, fill="#090d13", outline="#b91c1c", width=2)
+        self.cv.create_text(cw // 2, y + 14, text="EPOCH ZERO MONOLITH // GENESIS: 2026-11-13T19:38:00-07:00 (PROPER TIME)", fill="#4a4238", font=("Courier", 8, "bold"), anchor="n")
+        self.cv.create_text(cw // 2, y + 38, text=self._fmt_epoch_hrs(ep_hrs) + " HRS", fill="#b91c1c", font=("Courier", 22, "bold"), anchor="n", tags=("live_monolith_txt",))
         sub_txt = _fast_ascii(f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT")
-        self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="n", tags=("live_lap_txt",))
-        self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#c9d1d9", font=("DejaVu Sans Mono", 8), anchor="n")
-        self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#f85149", font=("DejaVu Sans Mono", 9, "bold"), anchor="n")
-        bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#fbbf24", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
+        self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("Courier", 8, "bold"), anchor="n", tags=("live_lap_txt",))
+        self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#26221e", font=("Courier", 8), anchor="n")
+        self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#f85149", font=("Courier", 9, "bold"), anchor="n")
+        bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#b91c1c", "#090d13", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
-        self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#21262d", "#d2a8ff", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
+        self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#e6dcc8", "#d2a8ff", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_jmp_poem_top", "<Button-1>", lambda e: self._jump_to_poem_desk())
         y += 206
 
@@ -1078,32 +1078,32 @@ class KnowledgeDesktopHub(tk.Tk):
         }
         hb_top = y
         y += 12
-        self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw", tags=("hb_header_txt",))
+        self.cv.create_text(28, y, text=f"GEMINI 5-MIN HEARTBEAT // PULSE #{int(hb.get('pulse_seq',1)):04d}  ({hb.get('last_pulse_mt','LIVE')})", fill="#3fb950", font=("Courier", 9, "bold"), anchor="nw", tags=("hb_header_txt",))
         b_ring_txt = self._busy_btns.get(("foundations", 1, "ring"), "[RING CELL PHONE]")
-        self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#21262d", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
+        self._draw_pill_btn(cw - 365, y - 2, b_ring_txt, "#e6dcc8", "#d2a8ff", "btn_ring_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_ring_now", "<Button-1>", lambda e: self._ring_phone_now())
         b_hb_txt = self._busy_btns.get(("foundations", 1, "hb"), "[PULSE HEARTBEAT NOW]")
-        self._draw_pill_btn(cw - 205, y - 2, b_hb_txt, "#21262d", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
+        self._draw_pill_btn(cw - 205, y - 2, b_hb_txt, "#e6dcc8", "#3fb950", "btn_hb_now", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_hb_now", "<Button-1>", lambda e: self._trigger_heartbeat_now())
         y += 24
-        tid_hb = self.cv.create_text(28, y, text=_fast_ascii(hb.get("transmission", "")), fill="#e6edf3", font=("DejaVu Sans Mono", 8), anchor="nw", width=cw - 56)
+        tid_hb = self.cv.create_text(28, y, text=_fast_ascii(hb.get("transmission", "")), fill="#141210", font=("Courier", 8), anchor="nw", width=cw - 56)
         hbb = self.cv.bbox(tid_hb) or (28, y, cw - 28, y + 36)
         y = hbb[3] + 12
-        hb_bg = self.cv.create_rectangle(16, hb_top, cw - 16, y, fill="#161b22", outline="#3fb950", width=1)
+        hb_bg = self.cv.create_rectangle(16, hb_top, cw - 16, y, fill="#fbf8f1", outline="#3fb950", width=1)
         self.cv.tag_lower(hb_bg)
         y += 16
 
         # Stamp Ledger Box
         led_top = y
         y += 12
-        self.cv.create_text(28, y, text=f"THE IRREVERSER STAMP LEDGER ({len(stamps)} MARKS ANCHORED)", fill="#fbbf24", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw")
+        self.cv.create_text(28, y, text=f"THE IRREVERSER STAMP LEDGER ({len(stamps)} MARKS ANCHORED)", fill="#b91c1c", font=("Courier", 10, "bold"), anchor="nw")
         y += 24
         for s in stamps[:12]:
             row_txt = _fast_ascii(f"STAMP #{int(s.get('seq',1)):03d}  |  {self._fmt_epoch_hrs(s.get('epoch_hrs',0))} HRS  (Delta +{self._fmt_epoch_hrs(s.get('delta_hrs',0))} HRS)  -->  '{s.get('note','')}'")
-            self.cv.create_rectangle(28, y, cw - 28, y + 26, fill="#090d13", outline="#30363d")
-            self.cv.create_text(38, y + 6, text=row_txt, fill="#e6edf3", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw")
+            self.cv.create_rectangle(28, y, cw - 28, y + 26, fill="#090d13", outline="#c81d25")
+            self.cv.create_text(38, y + 6, text=row_txt, fill="#141210", font=("Courier", 8, "bold"), anchor="nw")
             y += 30
-        led_bg = self.cv.create_rectangle(16, led_top, cw - 16, y + 8, fill="#161b22", outline="#30363d")
+        led_bg = self.cv.create_rectangle(16, led_top, cw - 16, y + 8, fill="#fbf8f1", outline="#c81d25")
         self.cv.tag_lower(led_bg)
         y += 20
 
@@ -1138,50 +1138,50 @@ class KnowledgeDesktopHub(tk.Tk):
         dd_cnt = p_dd.count("=== POEM DEEP DIVE CHAPTER") if p_dd else 0
         p_starred = self._is_starred(p_uri)
 
-        self.cv.create_text(28, y, text=f"POEM DESK // REDUCING VALVE CURATOR (1,000-AUTHOR ARCHIVE • {_fast_ascii(p_obj.get('curated_at','LIVE'))})", fill="#d2a8ff", font=("DejaVu Sans Mono", 9, "bold"), anchor="nw")
+        self.cv.create_text(28, y, text=f"POEM DESK // REDUCING VALVE CURATOR (1,000-AUTHOR ARCHIVE • {_fast_ascii(p_obj.get('curated_at','LIVE'))})", fill="#d2a8ff", font=("Courier", 9, "bold"), anchor="nw")
         y += 22
 
         # Action Buttons Row
-        bx_p, _ = self._draw_pill_btn(28, y, "* STARRED" if p_starred else "+ STAR POEM", "#fbbf24" if p_starred else "#21262d", "#090d13" if p_starred else "#fbbf24", "btn_star_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_p, _ = self._draw_pill_btn(28, y, "* STARRED" if p_starred else "+ STAR POEM", "#b91c1c" if p_starred else "#e6dcc8", "#090d13" if p_starred else "#b91c1c", "btn_star_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_star_poem", "<Button-1>", lambda e, u=p_uri, t=p_title, a=p_author, ln=_fast_ascii("\n".join(full_arr)): self._toggle_star("foundations", 1, u, caption=f"{t} -- {a} ({p_when})", study_note=ln, source=f"{a} | {p_where}"))
 
         b_dd_txt = self._busy_btns.get(("foundations", 1, "poem_dd"), f"[+ DEEP DIVE CHAPTER ({dd_cnt})]")
-        bx_dd, _ = self._draw_pill_btn(bx_p + 8, y, b_dd_txt, "#21262d", "#3fb950", "btn_dd_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_dd, _ = self._draw_pill_btn(bx_p + 8, y, b_dd_txt, "#e6dcc8", "#3fb950", "btn_dd_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_dd_poem", "<Button-1>", lambda e: self._pull_poem_deep_dive())
 
         b_pull_txt = self._busy_btns.get(("foundations", 1, "poem"), "[PULL NEXT STANZA]")
-        bx_nx, _ = self._draw_pill_btn(bx_dd + 8, y, b_pull_txt, "#21262d", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
+        bx_nx, _ = self._draw_pill_btn(bx_dd + 8, y, b_pull_txt, "#e6dcc8", "#d2a8ff", "btn_next_poem", pad_x=10, pad_y=4, font_sz=8)
         self.cv.tag_bind("btn_next_poem", "<Button-1>", lambda e: self._pull_next_poem())
 
         if len(full_arr) > len(prev_arr):
             exp_txt = "[- COLLAPSE STANZAS]" if is_exp else f"[+ EXPAND FULL POEM ({len(full_arr)} LINES)]"
-            self._draw_pill_btn(bx_nx + 8, y, exp_txt, "#21262d", "#58a6ff", "btn_exp_poem", pad_x=10, pad_y=4, font_sz=8)
+            self._draw_pill_btn(bx_nx + 8, y, exp_txt, "#e6dcc8", "#58a6ff", "btn_exp_poem", pad_x=10, pad_y=4, font_sz=8)
             self.cv.tag_bind("btn_exp_poem", "<Button-1>", lambda e: self._toggle_expand_poem())
         y += 30
 
-        self.cv.create_text(28, y, text=f'"{p_title}"  --  {p_author}', fill="#f0f6fc", font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=cw - 56)
+        self.cv.create_text(28, y, text=f'"{p_title}"  --  {p_author}', fill="#141210", font=("Courier", 10, "bold"), anchor="nw", width=cw - 56)
         y += 20
-        self.cv.create_text(28, y, text=f"Written: {p_when}   |   Location: {p_where}", fill="#fbbf24", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=cw - 56)
+        self.cv.create_text(28, y, text=f"Written: {p_when}   |   Location: {p_where}", fill="#b91c1c", font=("Courier", 8, "bold"), anchor="nw", width=cw - 56)
         y += 22
 
-        tid_p = self.cv.create_text(38, y + 8, text=p_lines, fill="#e6edf3", font=("DejaVu Sans Mono", 9, "italic"), anchor="nw", width=cw - 76)
+        tid_p = self.cv.create_text(38, y + 8, text=p_lines, fill="#141210", font=("Courier", 9, "italic"), anchor="nw", width=cw - 76)
         pb = self.cv.bbox(tid_p) or (38, y, cw - 38, y + 60)
-        p_box_bg = self.cv.create_rectangle(28, y, cw - 28, pb[3] + 10, fill="#090d13", outline="#30363d")
+        p_box_bg = self.cv.create_rectangle(28, y, cw - 28, pb[3] + 10, fill="#090d13", outline="#c81d25")
         self.cv.tag_lower(p_box_bg)
         y = pb[3] + 18
 
-        tid_n = self.cv.create_text(28, y, text=f"Gemini Heartbeat Synthesis: {p_note}", fill="#3fb950", font=("DejaVu Sans Mono", 8, "bold"), anchor="nw", width=cw - 56)
+        tid_n = self.cv.create_text(28, y, text=f"Gemini Heartbeat Synthesis: {p_note}", fill="#3fb950", font=("Courier", 8, "bold"), anchor="nw", width=cw - 56)
         nb = self.cv.bbox(tid_n) or (28, y, cw - 28, y + 20)
         y = nb[3] + 10
 
         if p_dd:
-            tid_dd = self.cv.create_text(38, y + 10, text=p_dd, fill="#c9d1d9", font=("DejaVu Sans Mono", 8), anchor="nw", width=cw - 76)
+            tid_dd = self.cv.create_text(38, y + 10, text=p_dd, fill="#26221e", font=("Courier", 8), anchor="nw", width=cw - 76)
             ddb = self.cv.bbox(tid_dd) or (38, y, cw - 38, y + 60)
             dd_bg = self.cv.create_rectangle(28, y, cw - 28, ddb[3] + 12, fill="#111822", outline="#3fb950")
             self.cv.tag_lower(dd_bg)
             y = ddb[3] + 18
 
-        p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#161b22", outline="#d2a8ff", width=1)
+        p_card_bg = self.cv.create_rectangle(16, p_top, cw - 16, y, fill="#fbf8f1", outline="#d2a8ff", width=1)
         self.cv.tag_lower(p_card_bg)
         y += 14
 
@@ -1197,12 +1197,12 @@ class KnowledgeDesktopHub(tk.Tk):
         for title, col, body in cards:
             ctop = y
             y += 12
-            self.cv.create_text(28, y, text=title, fill=col, font=("DejaVu Sans Mono", 10, "bold"), anchor="nw", width=cw - 56)
+            self.cv.create_text(28, y, text=title, fill=col, font=("Courier", 10, "bold"), anchor="nw", width=cw - 56)
             y += 24
-            tid = self.cv.create_text(28, y, text=body, fill="#c9d1d9", font=("DejaVu Sans Mono", 9), anchor="nw", width=cw - 56)
+            tid = self.cv.create_text(28, y, text=body, fill="#26221e", font=("Courier", 9), anchor="nw", width=cw - 56)
             bb = self.cv.bbox(tid) or (28, y, cw - 28, y + 60)
             y = bb[3] + 12
-            cbg = self.cv.create_rectangle(16, ctop, cw - 16, y, fill="#161b22", outline=col, width=1)
+            cbg = self.cv.create_rectangle(16, ctop, cw - 16, y, fill="#fbf8f1", outline=col, width=1)
             self.cv.tag_lower(cbg)
             y += 12
         return y
@@ -1216,8 +1216,8 @@ class KnowledgeDesktopHub(tk.Tk):
         top.configure(bg="#090d13")
         l_cv = tk.Canvas(top, bg="#090d13", highlightthickness=0)
         l_cv.pack(fill="both", expand=True)
-        l_cv.create_text(450, 300, text="... Loading high-resolution archival plate...", fill="#fbbf24", font=("DejaVu Sans Mono", 10), tags=("wait",))
-        l_cv.create_text(450, 640, text=caption, fill="#e6edf3", font=("DejaVu Sans Mono", 9), width=840)
+        l_cv.create_text(450, 300, text="... Loading high-resolution archival plate...", fill="#b91c1c", font=("Courier", 10), tags=("wait",))
+        l_cv.create_text(450, 640, text=caption, fill="#141210", font=("Courier", 9), width=840)
 
         def _load():
             im = fetch_cached_pil(url, (860, 580))
@@ -1234,3 +1234,5 @@ class KnowledgeDesktopHub(tk.Tk):
 
 if __name__ == "__main__":
     KnowledgeDesktopHub().mainloop()
+
+# ARCHIVAL_RED_FRAME = True

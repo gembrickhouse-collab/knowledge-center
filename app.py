@@ -200,11 +200,11 @@ def api_state_live():
     })
 
 
-@app.route("/api/heartbeat", methods=["POST"])
+@app.route("/api/heartbeat", methods=["GET", "POST"])
 def api_heartbeat():
     try:
         body = request.get_json(silent=True) or {}
-        hb = ke.run_gemini_heartbeat(force_synthesis=bool(body.get("force", True)))
+        hb = ke.run_gemini_heartbeat(force_synthesis=bool(body.get("force", False)))
         return jsonify({"ok": True, "heartbeat": hb, "capacity": ke.get_capacity_telemetry()})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -399,6 +399,69 @@ WEB_TEMPLATE = r"""<!doctype html>
   #lightbox p { color:var(--fg); font-size:0.82rem; max-width:760px; text-align:center; margin-top:10px; }
   .del-btn { position:absolute; top:8px; left:8px; width:28px; height:28px; border-radius:50%; background:rgba(9,13,19,0.84); border:1px solid #30363d; color:#8b949e; font-size:15px; font-weight:bold; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:4; transition:all 0.15s ease; }
   .del-btn:hover { background:#f85149; border-color:#ff7b72; color:#fff; transform:scale(1.08); }
+
+/* === ARCHIVAL CASE-FILE MAKEOVER (TAN PARCHMENT + ARTERIAL RED BORDER + TYPEWRITER INK) === */
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Special+Elite&display=swap');
+
+html, body {
+    background-color: #f4efe6 !important;
+    color: #141210 !important;
+    font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    box-sizing: border-box;
+    border: 6px solid #c81d25 !important;
+}
+
+body {
+    padding: 12px !important;
+    background-image: radial-gradient(rgba(200, 29, 37, 0.04) 1px, transparent 0) !important;
+    background-size: 16px 16px !important;
+}
+
+*, input, button, textarea, select, pre, code, div, span, p, h1, h2, h3, h4 {
+    font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
+}
+
+/* Structural panels, cards, monolith boxes, heartbeat & stamp ledger containers */
+div[style*="background"], .card, .panel, .box, section, header {
+    background-color: #fbf8f1 !important;
+    color: #141210 !important;
+    border: 2px solid #c81d25 !important;
+    box-shadow: 3px 3px 0px rgba(200, 29, 37, 0.18) !important;
+}
+
+/* Inputs and textareas */
+input, textarea, select {
+    background-color: #fffdf9 !important;
+    color: #141210 !important;
+    border: 2px solid #c81d25 !important;
+    font-weight: 700 !important;
+}
+
+/* Keep buttons crisp with arterial red outlines & typewriter punch */
+button {
+    font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
+    font-weight: 700 !important;
+    border: 2px solid #c81d25 !important;
+    background-color: #ede4d3 !important;
+    color: #141210 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 2px 2px 0px #c81d25 !important;
+}
+button:hover, button:active {
+    background-color: #c81d25 !important;
+    color: #fbf8f1 !important;
+}
+
+/* Ensure readable high-contrast ink for muted/light text on parchment */
+[style*="color: #e"], [style*="color: #f"], [style*="color: #c"], [style*="color: #9"], [style*="color: #8"],
+[style*="color:#e"], [style*="color:#f"], [style*="color:#c"], [style*="color:#9"], [style*="color:#8"] {
+    color: #1c1917 !important;
+}
+
 </style>
 </head>
 <body>
