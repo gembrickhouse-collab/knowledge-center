@@ -472,6 +472,35 @@ p, li, .lesson-body, .summary, div {
     color: #ff2a36 !important;
 }
 
+
+/* === MOBILE & WEB ARTERIAL RED (#ff2a36) FONT OVERRIDES (#1, #2, #3, #4) === */
+/* #1 Studio / Craft Lens & #2 Poem Heartbeat / Deep Dive boxes */
+.maker, .maker *,
+.dd-box, .dd-box *,
+.qa-item, .qa-item *,
+.plate-cap, .plate-cap *,
+.gal-cap, .gal-cap * {
+    background-color: #0f172a !important;
+    color: #ff2a36 !important;
+}
+.maker strong, .dd-box strong, .qa-item strong {
+    color: #ff2a36 !important;
+}
+
+/* #3 Key's Favorites description & metadata on dark card body */
+.fav-card, .fav-body {
+    background-color: #0f172a !important;
+    color: #ff2a36 !important;
+}
+.fav-body div, .fav-body span, .fav-body strong {
+    color: #ff2a36 !important;
+}
+
+/* #4 Top Pill: GitHub Vault & Render RAM in arterial red */
+#cap-bar, .cap-bar, .red-pill-txt, .red-pill-txt strong {
+    color: #ff2a36 !important;
+}
+
 </style>
 </head>
 <body>
