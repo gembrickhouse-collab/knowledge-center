@@ -3,6 +3,14 @@ _T0 = time.perf_counter()
 import tkinter as tk
 from tkinter import simpledialog
 from PIL import Image, ImageTk, ImageOps
+_PINNED_TK_IMGS = []
+_ORIG_PHOTOIMAGE = ImageTk.PhotoImage
+def _pinned_photoimage(*a, **kw):
+    im = _ORIG_PHOTOIMAGE(*a, **kw)
+    _PINNED_TK_IMGS.append(im)
+    return im
+ImageTk.PhotoImage = _pinned_photoimage
+
 
 def _log_t(msg):
     print(f"[{time.perf_counter() - _T0:6.3f}s] {msg}", flush=True)
