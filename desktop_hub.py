@@ -836,7 +836,7 @@ class KnowledgeDesktopHub(tk.Tk):
                 cd_str = f"NEXT PULSE IN {mm:02d}:{ss:02d}"
             self.cv.itemconfigure(
                 "hb_header_txt",
-                text=_fast_ascii(f"GEMINI 5-MIN HEARTBEAT // PULSE #{hb_seq:04d}  ({hb_mt})  |  {cd_str}")
+                text=_fast_ascii(f"GEMINI 5-MIN HEARTBEAT // PULSE #{hb_seq:04d}  [ENGRAMS: {len(self.data.get('pulse_engrams', []))}]  ({hb_mt})  |  {cd_str}")
             )
             if elapsed >= 300 and not getattr(self, "_hb_busy", False) and (now_s - getattr(self, "_last_hb_attempt", 0)) >= 15:
                 self._last_hb_attempt = now_s

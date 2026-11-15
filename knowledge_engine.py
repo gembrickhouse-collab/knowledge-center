@@ -1034,7 +1034,7 @@ def run_gemini_heartbeat(force_synthesis=False):
     sci_pool = phys_items + found_items
     sci_pick = _fmt_item(random.choice(sci_pool)) if sci_pool else "Thermodynamic Irreversibility & Proper Time"
 
-    engram_ctx = " | ".join([f"[Pulses #{e['start_seq']}-#{e['end_seq']} @{e['start_hrs']}-{e['end_hrs']}h]: {e['summary']}" for e in engrams[-12:]])
+    engram_ctx = " | ".join([f"[Pulses #{e['start_seq']}-#{e['end_seq']} @{e['start_hrs']}-{e['end_hrs']}h]: {e['summary']}" for e in engrams[:]])
     recent_pulses_ctx = " || ".join([f"Pulse #{p['pulse_seq']} (@{p['epoch_hrs']}h): {p['transmission']}" for p in history[-8:]])
 
     prompt = (
