@@ -905,7 +905,6 @@ class KnowledgeDesktopHub(tk.Tk):
 
         def _worker():
             try:
-                import knowledge_engine as ke
                 ke.trigger_telnyx_outbound_call()
             except Exception:
                 pass
@@ -946,7 +945,7 @@ class KnowledgeDesktopHub(tk.Tk):
             cloud_base = "https://knowledge-center-dsog.onrender.com"
             old_seq = int(((self.data or {}).get("heartbeat") or {}).get("pulse_seq", 0))
             try:
-                new_hb = ke.run_gemini_heartbeat(force_synthesis=True); u = cloud_base + "/api/heartbeat"
+                u = cloud_base + "/api/heartbeat"
                 req = urllib.request.Request(
                     u,
                     data=json.dumps({"force": True}).encode("utf-8"),
@@ -962,13 +961,11 @@ class KnowledgeDesktopHub(tk.Tk):
                     self.data["heartbeat"] = new_hb
                     self._save_local()
                     try:
-                        import knowledge_engine as ke
                         ke.save_curriculum(self.data, f"Lock Heartbeat Pulse #{new_hb.get('pulse_seq')}")
                     except Exception:
                         pass
                     self.after(0, self.render_scene)
                     try:
-                        import knowledge_engine as ke
                         ke.save_curriculum(self.data, f"Auto-sync Heartbeat Pulse #{new_hb.get('pulse_seq')}")
                     except Exception:
                         pass
@@ -981,7 +978,6 @@ class KnowledgeDesktopHub(tk.Tk):
                     self.data["heartbeat"] = new_hb
                     self._save_local()
                     try:
-                        import knowledge_engine as ke
                         ke.save_curriculum(self.data, f"Lock Heartbeat Pulse #{new_hb.get('pulse_seq')}")
                     except Exception:
                         pass
@@ -1014,7 +1010,6 @@ class KnowledgeDesktopHub(tk.Tk):
                     self._save_local()
             except Exception:
                 try:
-                    import knowledge_engine as ke
                     self.data["current_poem"] = ke.curate_poem_desk(force_new=True)
                     self._poem_expanded = False
                     self._save_local()
@@ -1041,7 +1036,6 @@ class KnowledgeDesktopHub(tk.Tk):
                     self._save_local()
             except Exception:
                 try:
-                    import knowledge_engine as ke
                     self.data["current_poem"] = ke.generate_poem_deep_dive()
                     self._save_local()
                 except Exception:

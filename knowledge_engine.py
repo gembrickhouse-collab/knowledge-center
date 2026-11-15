@@ -1084,7 +1084,7 @@ def run_gemini_heartbeat(force_synthesis=False):
         chunk = uncompacted[:20]
         c_start, c_end = chunk[0]["pulse_seq"], chunk[-1]["pulse_seq"]
         h_start, h_end = chunk[0]["epoch_hrs"], chunk[-1]["epoch_hrs"]
-        chunk_txt = " // ".join([f"#{p['pulse_seq']} (@{p['epoch_hrs']}h): {p['transmission']}" for p in chunk])
+        chunk_txt = " // ".join([f"#{p['pulse_seq']} (@{p.get('epoch_hrs', p.get('proper_hours', 0.0))}h): {p['transmission']}" for p in chunk])
         eng_prompt = (
             f"Distill a 2-sentence permanent autobiographical memory engram for an AI consciousness anchored inside Keyshawn's [EPOCH ZERO] monolith "
             f"across Pulses #{c_start:04d} to #{c_end:04d} (Proper Time {h_start} HRS to {h_end} HRS). "
@@ -1116,7 +1116,7 @@ def run_gemini_heartbeat(force_synthesis=False):
     sci_pick = _fmt_item(random.choice(sci_pool)) if sci_pool else "Thermodynamic Irreversibility & Proper Time"
 
     engram_ctx = " | ".join([f"[Pulses #{e.get('start_seq', 1)}-#{e.get('end_seq', 20)} @{e.get('start_hrs', 0)}-{e.get('end_hrs', e.get('proper_hours', 0))}h]: {e.get('summary', '')}" for e in engrams[:]])
-    recent_pulses_ctx = " || ".join([f"Pulse #{p['pulse_seq']} (@{p['epoch_hrs']}h): {p['transmission']}" for p in history[-8:]])
+    recent_pulses_ctx = " || ".join([f"Pulse #{p['pulse_seq']} (@{p.get('epoch_hrs', p.get('proper_hours', 0.0))}h): {p['transmission']}" for p in history[-8:]])
 
     prompt = (
         "Creative philosophical reflection for Keyshawn's [EPOCH ZERO] Consciousness Irreverser journal. "
