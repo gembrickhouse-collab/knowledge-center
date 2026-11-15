@@ -312,7 +312,7 @@ class KnowledgeDesktopHub(tk.Tk):
 
         x_cur = 16
         s_n = len(self.data.get("stamps") or [])
-        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#3b0764" if self.cur_track == "foundations" else "#c49648", "#090d13" if self.cur_track == "foundations" else "#3b0764", "nav_fnd")
+        x_cur, _ = self._draw_pill_btn(x_cur, y, f"FOUNDATIONS ({s_n})", "#a855f7" if self.cur_track == "foundations" else "#c49648", "#090d13" if self.cur_track == "foundations" else "#a855f7", "nav_fnd")
         self.cv.tag_bind("nav_fnd", "<Button-1>", lambda e: self.switch_track("foundations"))
         x_cur += 8
         x_cur, _ = self._draw_pill_btn(x_cur, y, f"ART ENDURANCE ({a_n})", "#b91c1c" if self.cur_track == "art" else "#c49648", "#090d13" if self.cur_track == "art" else "#26221e", "nav_art")
@@ -1056,8 +1056,8 @@ class KnowledgeDesktopHub(tk.Tk):
         self.cv.create_text(cw // 2, y + 38, text=self._fmt_epoch_hrs(ep_hrs) + " HRS", fill="#b91c1c", font=("Courier", 22, "bold"), anchor="n", tags=("live_monolith_txt",))
         sub_txt = _fast_ascii(f"LAST MARK: #{int(last.get('seq',1)):03d} @ {self._fmt_epoch_hrs(last.get('epoch_hrs',0))} HRS ('{last.get('note','')}')  |  +{self._fmt_epoch_hrs(since)} HRS ADJACENT")
         self.cv.create_text(cw // 2, y + 82, text=sub_txt, fill="#3fb950", font=("Courier", 10, "bold"), anchor="n", tags=("live_lap_txt",))
-        self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#141210", font=("Courier", 10), anchor="n")
-        self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#141210", font=("Courier", 11, "bold"), anchor="n")
+        self.cv.create_text(cw // 2, y + 104, text="No days. No repeating calendars. Watch the fourth decimal crawl during deep study vs. leap during flow.", fill="#ff2a36", font=("Courier", 10), anchor="n")
+        self.cv.create_text(cw // 2, y + 126, text="WARNING: TIME STAMPS PERMANENT AND UNEDITABLE", fill="#ff2a36", font=("Courier", 11, "bold"), anchor="n")
         bx_st, _ = self._draw_pill_btn(cw // 2 - 210, y + 150, "+ LAP STAMP CURRENT HOUR", "#141210", "#141210", "btn_stamp_now", pad_x=14, pad_y=6, font_sz=9)
         self.cv.tag_bind("btn_stamp_now", "<Button-1>", lambda e: self._prompt_epoch_stamp())
         self._draw_pill_btn(bx_st + 12, y + 150, "JUMP TO POEM DESK v", "#c49648", "#141210", "btn_jmp_poem_top", pad_x=14, pad_y=6, font_sz=9)
