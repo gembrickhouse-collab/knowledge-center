@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Wake Render Cloud Container & Trigger 5-Min Heartbeat
         run: |
-          curl -s -m 45 -X POST "https://knowledge-center-ef23.onrender.com/api/heartbeat" \
+          curl -s -m 45 -X POST "https://knowledge-center-dsog.onrender.com/api/heartbeat" \
                -H "Content-Type: application/json" \
                -d '{"force": false}' || true

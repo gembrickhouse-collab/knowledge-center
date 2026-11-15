@@ -1581,7 +1581,7 @@ def _cloud_autonomic_loop():
             # 1. Ping own public Render URL so Render's load balancer sees active HTTP traffic and stays awake
             try:
                 req = _cloud_urllib.Request(
-                    "https://knowledge-center-ef23.onrender.com/api/state",
+                    "https://knowledge-center-dsog.onrender.com/api/state",
                     headers={"User-Agent": "EpochZeroCloudKeepAlive/1.0"}
                 )
                 with _cloud_urllib.urlopen(req, timeout=10) as _:
