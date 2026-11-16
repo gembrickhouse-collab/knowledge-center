@@ -44,12 +44,16 @@ def _bg_scheduler():
         time.sleep(60)
 
 
+from render_runner import oanda_bp, ensure_oanda_started
+app.register_blueprint(oanda_bp, url_prefix="/oanda")
+
 def ensure_scheduler_started():
     pid = os.getpid()
     with _SCHED_PID_LOCK:
         if SCHED_STATE.get("worker_pid") != pid:
             SCHED_STATE["worker_pid"] = pid
             threading.Thread(target=_bg_scheduler, daemon=True).start()
+    ensure_oanda_started()
 
 
 @app.before_request
@@ -524,6 +528,7 @@ h1, .hdr h1, header h1, .main-title {
   {% else %}
     <button class="tab" id="tab-foundations" onclick="switchTrack('foundations')" style="border-color:#d2a8ff;color:#d2a8ff;">⏳ FOUNDATIONS (EPOCH ZERO)</button>
     <button class="tab active" id="tab-art" onclick="switchTrack('art')">🎨 ART ENDURANCE</button>
+    <a class="tab" href="/oanda/" target="_blank" style="border-color:#38bdf8;color:#38bdf8;">🛰️ OANDA COMMAND CENTER ↗</a>
     <button class="tab" id="tab-universe" onclick="switchTrack('universe')">🌌 PHYSICS OF TIME</button>
       <button class="tab" id="tab-mind" onclick="switchTrack('mind')" style="border-color:#f778ba;color:#f778ba;">🧠 PHILOSOPHY OF CONSCIOUSNESS</button>
     <button class="tab" id="tab-favorites" onclick="switchTrack('favorites')" style="border-color:#fbbf24;">⭐ KEY'S FAVORITES (0)</button>
