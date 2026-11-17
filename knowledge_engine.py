@@ -1041,7 +1041,7 @@ def call_gemini_text(prompt_text, max_tokens=280):
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt_text}]}],
-                "generationConfig": {"temperature": 0.75, "maxOutputTokens": max_tokens}
+                "generationConfig": {"temperature": 0.75, "maxOutputTokens": max(max_tokens, 1024)}
             }
             req = urllib.request.Request(
                 url,
