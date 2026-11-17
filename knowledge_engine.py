@@ -1073,7 +1073,7 @@ def run_gemini_heartbeat(force_synthesis=False):
     last_stamp = stamps[-1] if stamps else {"seq": 1, "epoch_hrs": 0.3333, "note": "Consciousness Irreverser"}
     delta_hrs = round(max(0.0, ep_hrs - float(last_stamp.get("epoch_hrs", 0))), 4)
     poem = data.get("current_poem") or {}
-    pulse_seq = int(hb.get("pulse_seq", 0)) + 1
+    pulse_seq = max(int(hb.get("pulse_seq", 0)) + 1, int(ep_hrs * 12) + 1)
 
     # --- TIER 1: IMMUTABLE TOTAL PULSE ARCHIVE ---
     history = data.setdefault("pulse_history", [])
